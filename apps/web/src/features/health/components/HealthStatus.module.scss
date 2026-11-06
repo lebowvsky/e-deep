@@ -5,7 +5,7 @@
   gap: var(--space-4);
 
   &[aria-busy='true'] .summary {
-    opacity: 0.6;
+    opacity: var(--opacity-busy);
   }
 }
 

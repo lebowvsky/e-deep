@@ -2,6 +2,9 @@
 // and themed at runtime, so components read them with `var(--…)`.
 
 :root {
+  /* Content dimmed while a refresh is in flight */
+  --opacity-busy: 0.6;
+
   color-scheme: light dark;
 
   // Colors — light theme (default)

@@ -1,19 +1,16 @@
 import { Transform, plainToInstance, type ClassConstructor } from 'class-transformer';
 import {
   ArrayNotEmpty,
-  IsIn,
   IsInt,
   IsNotEmpty,
   IsString,
   IsUrl,
+  Matches,
   Max,
   Min,
   validateSync,
   type ValidationError,
 } from 'class-validator';
-
-export const NODE_ENVIRONMENTS = ['development', 'production', 'test'] as const;
-export type NodeEnvironment = (typeof NODE_ENVIRONMENTS)[number];
 
 const MIN_PORT = 1;
 const MAX_PORT = 65_535;
@@ -44,9 +41,6 @@ export class DatabaseEnvironment {
 
 /** Every variable the API reads. Validated once at startup by `ConfigModule`. */
 export class EnvironmentVariables extends DatabaseEnvironment {
-  @IsIn(NODE_ENVIRONMENTS)
-  NODE_ENV: NodeEnvironment = 'development';
-
   @IsInt()
   @Min(MIN_PORT)
   @Max(MAX_PORT)
@@ -61,6 +55,8 @@ export class EnvironmentVariables extends DatabaseEnvironment {
     { require_tld: false, require_protocol: true, protocols: ['http', 'https'] },
     { each: true },
   )
+  // The browser `Origin` header never has a path or a trailing slash: `cors` compares strings exactly.
+  @Matches(/^https?:\/\/[^/?#]+$/, { each: true, message: 'each entry must be a bare origin' })
   CORS_ORIGINS: string[];
 }
 

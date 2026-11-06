@@ -1,4 +1,4 @@
-import { Suspense, useState } from 'react';
+import { Suspense, useId, useState } from 'react';
 import { useApiClient } from '@/shared/hooks/useApiClient';
 import { ApiError } from '@/shared/lib/apiClient';
 import { createPromiseCache } from '@/shared/lib/promiseCache';
@@ -13,10 +13,11 @@ export function HealthPanel() {
   const client = useApiClient();
   // Lazy cache: creating it does not fetch, so a double initializer call (StrictMode) is harmless.
   const [healthCache] = useState(() => createPromiseCache(() => fetchHealth(client)));
+  const titleId = useId();
 
   return (
-    <section className={styles.panel} aria-labelledby="health-title">
-      <h2 id="health-title" className={styles.title}>
+    <section className={styles.panel} aria-labelledby={titleId}>
+      <h2 id={titleId} className={styles.title}>
         API status
       </h2>
       <ErrorBoundary
