@@ -1,0 +1,10 @@
+{
+  "extends": "@e-deep/tsconfig/base.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["src"]
+}

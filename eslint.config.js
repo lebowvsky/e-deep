@@ -1,0 +1,93 @@
+// @ts-check
+import js from '@eslint/js';
+import { defineConfig, globalIgnores } from 'eslint/config';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
+
+/** Front-end apps (React + Vite). */
+const FRONT_FILES = ['apps/web/**/*.{ts,tsx}', 'apps/admin/**/*.{ts,tsx}'];
+
+export default defineConfig([
+  globalIgnores([
+    '**/node_modules/',
+    '**/dist/',
+    '**/build/',
+    '**/coverage/',
+    '**/*.js',
+    '**/*.cjs',
+    '**/*.mjs',
+  ]),
+
+  {
+    files: ['**/*.{ts,tsx,mts,cts}'],
+    extends: [js.configs.recommended, tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      // Shared contracts are types only: they must be consumed with `import type`.
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@e-deep/shared',
+              message: '@e-deep/shared is types-only: use `import type`.',
+              allowTypeImports: true,
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // packages/shared: no runtime code, no TS enums.
+  {
+    files: ['packages/shared/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          // Only type-level statements are allowed at the top level (no enum, const, function, class...).
+          selector:
+            'Program > :not(ExportNamedDeclaration[exportKind="type"], ExportAllDeclaration[exportKind="type"], ImportDeclaration[importKind="type"], TSTypeAliasDeclaration, TSInterfaceDeclaration)',
+          message:
+            '@e-deep/shared must only contain types (type / interface, `export type`). No runtime code, no enum.',
+        },
+      ],
+    },
+  },
+
+  // React front-ends.
+  {
+    files: FRONT_FILES,
+    extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
+  },
+
+  // Tailwind is allowed in apps/admin only (required by shadcn/ui).
+  {
+    files: ['apps/web/**/*.{ts,tsx}', 'packages/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['tailwindcss', 'tailwindcss/*', '@tailwindcss/*'],
+              message: 'Tailwind is only allowed in apps/admin.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+]);
