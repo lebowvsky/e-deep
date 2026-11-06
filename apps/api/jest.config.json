@@ -1,0 +1,20 @@
+{
+  "projects": [
+    {
+      "displayName": "unit",
+      "testEnvironment": "node",
+      "rootDir": "src",
+      "testRegex": ".*\\.spec\\.ts$",
+      "moduleFileExtensions": ["js", "json", "ts"],
+      "transform": { "^.+\\.ts$": "ts-jest" }
+    },
+    {
+      "displayName": "e2e",
+      "testEnvironment": "node",
+      "rootDir": "test",
+      "testRegex": ".*\\.e2e-spec\\.ts$",
+      "moduleFileExtensions": ["js", "json", "ts"],
+      "transform": { "^.+\\.ts$": "ts-jest" }
+    }
+  ]
+}

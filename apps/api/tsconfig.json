@@ -1,0 +1,9 @@
+{
+  "extends": "@e-deep/tsconfig/nest.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "types": ["node", "jest"]
+  },
+  "include": ["src", "test"]
+}
