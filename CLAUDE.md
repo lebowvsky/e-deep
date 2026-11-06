@@ -1,0 +1,31 @@
+# E-Deep — guide agent
+
+**`ARCHITECTURE.md` est la source de vérité** (stack, conventions, styles, shared, DB, RGPD,
+décisions). Le lire avant toute modification. En cas de conflit entre un skill et ce document :
+s'arrêter et signaler.
+
+## Commandes (depuis la racine)
+
+```bash
+pnpm install
+docker compose up -d                # PostgreSQL de dev (lit .env)
+pnpm migration:run                  # migrations API (build puis CLI TypeORM)
+pnpm dev                            # api :3000, web :5173, admin :5174
+pnpm dev:api | dev:web | dev:admin
+
+pnpm lint && pnpm typecheck && pnpm test && pnpm build   # à lancer avant chaque commit
+pnpm format                         # Prettier (format:check en CI)
+
+pnpm --filter api run migration:generate src/database/migrations/<Nom>
+pnpm --filter <api|web|admin> run <script>
+```
+
+## Règles qui piègent
+
+- pnpm 12 : toujours `pnpm -r run <script>` / `pnpm --filter x run <script>`, jamais `pnpm -r build`.
+- Pas de `any`. `@e-deep/shared` = types seulement, importés avec `import type`.
+- `synchronize: false` toujours ; le schéma ne change que par migrations ; entités en `*.entity.ts`.
+- Tailwind **uniquement** dans `apps/admin` ; `apps/web` = SCSS modules, `@use` jamais `@import`.
+- Ne pas modifier `apps/admin/src/components/ui/` (shadcn) : wrapper.
+- Aucune donnée personnelle / de santé dans les logs (cf. ARCHITECTURE §9).
+- Commits conventionnels.
