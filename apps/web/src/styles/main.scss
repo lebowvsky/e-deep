@@ -1,0 +1,16 @@
+// Global entry point, imported once in main.tsx. Components style themselves with CSS modules.
+@use 'tokens';
+@use 'reset';
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
