@@ -1,0 +1,56 @@
+@use '@/styles/tokens' as *;
+
+// atoms.jsx · Btn — h 40px, radius md, padding 0 16px, gap 8px.
+.button {
+  @include focus-ring;
+  @include type($type-button);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $space-2;
+  min-height: $layout-control-height;
+  padding: 0 $space-4;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: $radius-md;
+  transition:
+    background-color $dur-base $ease-out,
+    color $dur-base $ease-out,
+    box-shadow $dur-base $ease-out;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: $opacity-busy;
+  }
+
+  &[aria-busy='true'] {
+    cursor: progress;
+  }
+}
+
+// Main CTA only: the accent stays rare.
+.primary {
+  color: $color-accent-ink;
+  background-color: $color-accent;
+  box-shadow: $shadow-accent-glow;
+}
+
+.secondary {
+  color: $color-text-high;
+  background-color: $color-control-fill;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+
+  &:hover:not(:disabled) {
+    background-color: $color-surface-2;
+  }
+}
+
+.ghost {
+  color: $color-text-med;
+  background-color: transparent;
+
+  &:hover:not(:disabled) {
+    color: $color-text-high;
+  }
+}

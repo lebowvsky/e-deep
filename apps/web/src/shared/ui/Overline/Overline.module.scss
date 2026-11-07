@@ -1,0 +1,15 @@
+@use '@/styles/tokens' as *;
+
+.overline {
+  @include overline;
+
+  display: block;
+}
+
+.med {
+  color: $color-text-med;
+}
+
+.accent {
+  color: $color-accent;
+}

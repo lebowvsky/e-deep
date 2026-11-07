@@ -38,6 +38,8 @@ export const color = {
 
   // Controls — secondary button fill (atoms.jsx · Btn secondary)
   controlFill: 'rgba(154, 186, 224, 0.06)',
+  chipFill: 'rgba(154, 186, 224, 0.08)', // neutral chip (visual-direction · Chips & badges)
+  ringSubtle: 'rgba(255, 255, 255, 0.08)', // inset ring on avatars
 
   // Data viz
   chart: '#4FD6C9',
@@ -59,9 +61,12 @@ export const type = {
   h3: { size: 16, lh: 22, w: 600, ls: -0.1 },
   body: { size: 14, lh: 20, w: 400, ls: 0 },
   bodyMed: { size: 14, lh: 20, w: 500, ls: 0 },
+  button: { size: 14, lh: 20, w: 500, ls: -0.1 },
+  bodySm: { size: 13, lh: 18, w: 500, ls: 0 }, // compact labels (buddy names, avatar initials)
   caption: { size: 12, lh: 16, w: 500, ls: 0.1 },
   overline: { size: 11, lh: 14, w: 600, ls: 0.8 }, // mono + uppercase
   kpi: { size: 44, lh: 48, w: 600, ls: -1.2 }, // mono + tabular-nums
+  chip: { size: 11, lh: 14, w: 400, ls: 0.2 }, // mono — badges / chips
 } as const;
 
 // 4px scale
@@ -80,7 +85,7 @@ export const space = {
   11: 80,
 } as const;
 
-export const radius = { sm: 6, md: 10, lg: 14, xl: 20, pill: 999 } as const;
+export const radius = { xs: 4, sm: 6, md: 10, lg: 14, xl: 20, pill: 999 } as const;
 
 export const shadow = {
   card: 'inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 6px 24px rgba(0, 0, 0, 0.35)',
@@ -113,7 +118,18 @@ export const layout = {
   hitTarget: 44, // Fitts — min touch target
   fabSize: 56,
   contentMaxWidth: 640, // single-column pages (no sidebar yet)
+  controlHeight: 40, // buttons (atoms.jsx · Btn)
+  avatarSm: 32,
+  avatarMd: 36,
+  avatarLg: 40,
+  badgePadX: 10,
+  badgePadY: 6,
+  badgeGap: 6,
+  badgeDot: 6,
 } as const;
+
+// Icon sizes (px) — TS only: used as SVG width/height attributes.
+export const iconSize = { sm: 14, md: 16, lg: 18, xl: 20 } as const;
 
 export const tokens = {
   color,
@@ -126,5 +142,6 @@ export const tokens = {
   opacity,
   breakpoint,
   layout,
+  iconSize,
 };
 export type Tokens = typeof tokens;

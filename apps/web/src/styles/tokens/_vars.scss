@@ -25,6 +25,8 @@
   --dl-color-danger: #E06A70;
   --dl-color-danger-soft: rgba(224, 106, 112, 0.12);
   --dl-color-control-fill: rgba(154, 186, 224, 0.06);
+  --dl-color-chip-fill: rgba(154, 186, 224, 0.08);
+  --dl-color-ring-subtle: rgba(255, 255, 255, 0.08);
   --dl-color-chart: #4FD6C9;
   --dl-color-chart-dim: rgba(79, 214, 201, 0.22);
   --dl-color-chart-bar: rgba(154, 186, 224, 0.22);
@@ -43,6 +45,7 @@
   --dl-space-9: 48px;
   --dl-space-10: 64px;
   --dl-space-11: 80px;
+  --dl-radius-xs: 4px;
   --dl-radius-sm: 6px;
   --dl-radius-md: 10px;
   --dl-radius-lg: 14px;
@@ -63,4 +66,12 @@
   --dl-layout-hit-target: 44px;
   --dl-layout-fab-size: 56px;
   --dl-layout-content-max-width: 640px;
+  --dl-layout-control-height: 40px;
+  --dl-layout-avatar-sm: 32px;
+  --dl-layout-avatar-md: 36px;
+  --dl-layout-avatar-lg: 40px;
+  --dl-layout-badge-pad-x: 10px;
+  --dl-layout-badge-pad-y: 6px;
+  --dl-layout-badge-gap: 6px;
+  --dl-layout-badge-dot: 6px;
 }
