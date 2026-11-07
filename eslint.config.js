@@ -30,6 +30,9 @@ export default defineConfig([
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
+      // `import { type X }` is kept as a side-effect import under verbatimModuleSyntax: it would make
+      // Vite resolve the types-only @e-deep/shared at runtime and fail. Require `import type` instead.
+      '@typescript-eslint/no-import-type-side-effects': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
@@ -62,6 +65,13 @@ export default defineConfig([
             'Program > :not(ExportNamedDeclaration[exportKind="type"], ExportAllDeclaration[exportKind="type"], ImportDeclaration[importKind="type"], TSTypeAliasDeclaration, TSInterfaceDeclaration)',
           message:
             '@e-deep/shared must only contain types (type / interface, `export type`). No runtime code, no enum.',
+        },
+        {
+          // Ambient declarations (`export declare enum / const / function / class`) are not types either.
+          selector:
+            'TSEnumDeclaration, VariableDeclaration, FunctionDeclaration, TSDeclareFunction, ClassDeclaration, TSModuleDeclaration',
+          message:
+            '@e-deep/shared must only contain types: no enum, const, function, class or namespace.',
         },
       ],
     },

@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
-import { HealthService } from './health.service';
+import { DATABASE_PING_TIMEOUT_MS, HealthService } from './health.service';
 
 // Typed as `unknown`: Jest asymmetric matchers are untyped.
 const ISO_TIMESTAMP: unknown = expect.stringMatching(
@@ -42,5 +42,19 @@ describe('HealthService', () => {
     expect(health).toMatchObject({ status: 'degraded', database: 'down' });
     // Only the error class is logged, never the driver message (connection details).
     expect(warn).toHaveBeenCalledWith('Database health check failed (Error)');
+  });
+
+  it('reports degraded when the database does not answer in time', async () => {
+    jest.useFakeTimers();
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    query.mockReturnValue(new Promise<never>(() => undefined));
+
+    const pending = service.check();
+    await jest.advanceTimersByTimeAsync(DATABASE_PING_TIMEOUT_MS);
+    const health = await pending;
+    jest.useRealTimers();
+
+    expect(health).toMatchObject({ status: 'degraded', database: 'down' });
+    expect(warn).toHaveBeenCalledWith('Database health check failed (DatabasePingTimeoutError)');
   });
 });

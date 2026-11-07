@@ -5,6 +5,7 @@ node_modules/
 dist/
 build/
 coverage/
+.screenshots/
 *.tsbuildinfo
 
 # Environment (only .env.example files are versioned)

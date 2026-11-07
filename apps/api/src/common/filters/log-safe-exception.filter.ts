@@ -25,6 +25,9 @@ export class LogSafeExceptionFilter extends BaseExceptionFilter<unknown> {
 
     // Errors raised by middlewares such as body-parser (malformed JSON, payload too large) are client errors.
     if (this.isHttpError(exception)) {
+      if (exception.statusCode >= 500) {
+        this.logger.error(`Unhandled ${errorClassName(exception)}`);
+      }
       super.catch(
         new HttpException(this.getHttpErrorMessage(exception), exception.statusCode),
         host,

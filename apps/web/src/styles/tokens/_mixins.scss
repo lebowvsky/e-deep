@@ -1,0 +1,99 @@
+// DiveLog — SCSS mixins (hand-written, built on generated _tokens.scss)
+@use 'sass:list';
+@use './tokens' as *;
+
+// Apply a type token tuple.
+//   .value { @include type($type-kpi, $font: $font-mono, $tabular: true); }
+@mixin type($t, $font: $font-sans, $tabular: false, $uppercase: false) {
+  font-family: $font;
+  font-size: list.nth($t, 1);
+  line-height: list.nth($t, 2);
+  font-weight: list.nth($t, 3);
+  letter-spacing: list.nth($t, 4);
+  @if $tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  @if $uppercase {
+    text-transform: uppercase;
+  }
+}
+
+// Small uppercase mono label (KPI labels, section eyebrows).
+@mixin overline($color: $color-text-low) {
+  @include type($type-overline, $font: $font-mono, $uppercase: true);
+  color: $color;
+}
+
+// Card surface: hairline inset border + soft drop shadow.
+// $elev: 0 → surface-0 · 1 → surface-1 (default) · 2 → surface-2
+@mixin card($elev: 1, $radius: $radius-lg) {
+  $bg: $color-surface-1;
+  @if $elev == 0 {
+    $bg: $color-surface-0;
+  }
+  @if $elev == 2 {
+    $bg: $color-surface-2;
+  }
+  background: $bg;
+  border-radius: $radius;
+  box-shadow:
+    inset 0 0 0 1px $color-line,
+    $shadow-card;
+}
+
+// Focus ring — accessibility, never remove without replacement.
+@mixin focus-ring {
+  &:focus-visible {
+    outline: 2px solid $color-accent;
+    outline-offset: 2px;
+  }
+}
+
+// Fitts — min hit target for interactive elements.
+@mixin hit-target($size: 44px) {
+  min-width: $size;
+  min-height: $size;
+}
+
+// Skeleton shimmer surface (loading state).
+@mixin skeleton($radius: 4px) {
+  background: linear-gradient(
+    90deg,
+    rgba(154, 186, 224, 0.06) 0%,
+    rgba(154, 186, 224, 0.14) 50%,
+    rgba(154, 186, 224, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: $radius;
+  animation: dl-shimmer 1.8s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+// Mobile-first breakpoints.
+//   @include from($bp-tablet) { … }
+@mixin from($bp) {
+  @media (min-width: $bp) {
+    @content;
+  }
+}
+
+@mixin until($bp) {
+  @media (max-width: ($bp - 1px)) {
+    @content;
+  }
+}
+
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

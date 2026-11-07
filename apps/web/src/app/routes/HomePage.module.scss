@@ -1,24 +1,23 @@
-@use '@/styles/mixins' as *;
+@use '@/styles/tokens' as *;
 
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: $space-6;
   width: 100%;
-  max-width: var(--content-max-width);
-  padding: var(--space-6) var(--space-4);
+  max-width: $layout-content-max-width;
+  padding: $space-6 $space-4;
   margin-inline: auto;
 
-  @include from('md') {
-    padding-block: var(--space-12);
+  @include from($bp-tablet) {
+    padding-block: $space-9;
   }
 }
 
 .title {
-  font-size: var(--font-size-xl);
-  line-height: var(--line-height-tight);
+  @include type($type-h-1);
 
-  @include from('md') {
-    font-size: var(--font-size-2xl);
+  @include from($bp-tablet) {
+    @include type($type-display);
   }
 }

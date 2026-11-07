@@ -18,6 +18,8 @@ export function buildDataSourceOptions(
     username: environment.DATABASE_USER,
     password: environment.DATABASE_PASSWORD,
     database: environment.DATABASE_NAME,
+    // Without it, pg-pool waits forever for a connection (unreachable host, exhausted pool).
+    connectTimeoutMS: 5_000,
     // The schema only ever changes through migrations, in every environment.
     synchronize: false,
     migrationsRun: false,

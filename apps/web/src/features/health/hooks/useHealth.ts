@@ -20,6 +20,8 @@ export function useHealth(cache: PromiseCache<HealthResponse>): UseHealthResult 
   const health = use(healthPromise);
 
   function refresh() {
+    // Eco-design: one request at a time, repeated clicks during a refresh are ignored.
+    if (isRefreshing) return;
     // A transition keeps the current result visible instead of falling back to the Suspense UI.
     startTransition(() => {
       setHealthPromise(cache.reload());
