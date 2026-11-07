@@ -1,0 +1,57 @@
+@use '@/styles/tokens' as *;
+
+// Page background: abyss + two discreet radial glows (dashboard mockups).
+.shell {
+  min-height: 100dvh;
+  background-color: $color-abyss;
+  background-image: $gradient-page-mobile;
+  background-repeat: no-repeat;
+
+  @include from($bp-tablet) {
+    display: flex;
+    align-items: flex-start;
+    background-image: $gradient-page-desktop;
+  }
+}
+
+// Mobile: 20px gutters, bottom room for the FAB (100px).
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: $space-5 $space-5 ($space-11 + $space-5);
+
+  &:focus {
+    outline: none;
+  }
+
+  @include from($bp-tablet) {
+    padding: $space-7 $space-7 $space-9;
+  }
+
+  // Desktop: 32px 48px 48px.
+  @include from($bp-desktop) {
+    padding: $space-7 $space-9 $space-9;
+  }
+}
+
+.skipLink {
+  @include visually-hidden;
+  @include type($type-body-med);
+
+  &:focus {
+    position: fixed;
+    top: $space-3;
+    left: $space-3;
+    z-index: 30;
+    width: auto;
+    height: auto;
+    padding: $space-3 $space-4;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    color: $color-accent-ink;
+    white-space: normal;
+    background: $color-accent;
+    border-radius: $radius-md;
+  }
+}

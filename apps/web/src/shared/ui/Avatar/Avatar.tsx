@@ -12,7 +12,7 @@ export interface AvatarProps {
   color?: string | undefined;
   /** sm 32px · md 36px (default) · lg 40px */
   size?: AvatarSize;
-  className?: string;
+  className?: string | undefined;
 }
 
 /** Round avatar with initials. Decorative: always rendered next to the person's name. */

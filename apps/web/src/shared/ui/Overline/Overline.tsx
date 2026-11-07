@@ -9,7 +9,7 @@ export interface OverlineProps {
   /** low (default) · med · accent (section eyebrows only) */
   tone?: OverlineTone;
   as?: 'span' | 'p' | 'h2' | 'h3';
-  className?: string;
+  className?: string | undefined;
 }
 
 /** Small uppercase mono label: KPI labels, section eyebrows (atoms.jsx · Overline). */

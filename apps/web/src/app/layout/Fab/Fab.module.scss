@@ -1,0 +1,20 @@
+@use '@/styles/tokens' as *;
+
+// dashboard-mobile.jsx · FAB
+.fab {
+  @include focus-ring;
+
+  position: fixed;
+  right: $space-5;
+  bottom: $space-6;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $layout-fab-size;
+  height: $layout-fab-size;
+  color: $color-accent-ink;
+  background: $color-accent;
+  border-radius: $radius-pill;
+  box-shadow: $shadow-fab;
+}

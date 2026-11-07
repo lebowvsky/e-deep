@@ -24,3 +24,13 @@ export function formatDiveDate(iso: string): string {
 export function daysSince(iso: string, now: Date = new Date()): number {
   return Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000);
 }
+
+/** ("Marine", "Rousseau") → "MR" */
+export function formatInitials(firstName: string, lastName: string): string {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
+
+/** ("N2", "FFESSM") → "N2 · FFESSM" · ("N1", "OTHER") → "N1 · Autre" */
+export function formatDiverLevel(level: string, federation: string): string {
+  return `${level} · ${federation === 'OTHER' ? 'Autre' : federation}`;
+}

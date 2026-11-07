@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { daysSince, formatDiveDate, formatUnderwaterTime, splitMinutes } from './format';
+import {
+  daysSince,
+  formatDiveDate,
+  formatDiverLevel,
+  formatInitials,
+  formatUnderwaterTime,
+  splitMinutes,
+} from './format';
 
 describe('format', () => {
   it('splits minutes into hours and minutes', () => {
@@ -17,5 +24,15 @@ describe('format', () => {
 
   it('counts whole days since a date', () => {
     expect(daysSince('2025-09-08T00:00:00Z', new Date('2025-09-10T12:00:00Z'))).toBe(2);
+  });
+
+  it('builds initials', () => {
+    expect(formatInitials('Marine', 'Rousseau')).toBe('MR');
+    expect(formatInitials('élise', 'marchand')).toBe('ÉM');
+  });
+
+  it('formats the diver level with the federation', () => {
+    expect(formatDiverLevel('N2', 'FFESSM')).toBe('N2 · FFESSM');
+    expect(formatDiverLevel('N1', 'OTHER')).toBe('N1 · Autre');
   });
 });

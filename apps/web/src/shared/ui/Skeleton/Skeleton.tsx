@@ -7,7 +7,7 @@ export interface SkeletonProps {
   /** text 4px radius (default) · block 6px (KPI values, titles) · control 10px (buttons) */
   shape?: SkeletonShape;
   /** Size it from the caller's CSS module, with tokens. */
-  className?: string;
+  className?: string | undefined;
 }
 
 /**

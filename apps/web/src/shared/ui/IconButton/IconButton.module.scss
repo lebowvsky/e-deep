@@ -1,0 +1,53 @@
+@use '@/styles/tokens' as *;
+
+.iconButton {
+  @include focus-ring;
+
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: $radius-md;
+  transition:
+    background-color $dur-base $ease-out,
+    color $dur-base $ease-out;
+}
+
+// Desktop header (dashboard-desktop.jsx · DashHeader): 40px framed square.
+.secondary {
+  width: $layout-control-height;
+  height: $layout-control-height;
+  color: $color-text-med;
+  background-color: $color-control-fill;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+
+  &:hover {
+    color: $color-text-high;
+    background-color: $color-surface-2;
+  }
+}
+
+// Mobile top bar / drawer: bare 44px target (Fitts).
+.ghost {
+  width: $layout-hit-target;
+  height: $layout-hit-target;
+  color: $color-text-med;
+  background-color: transparent;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+.dot {
+  position: absolute;
+  top: $space-3;
+  right: $space-3;
+  width: $layout-badge-dot;
+  height: $layout-badge-dot;
+  background: $color-accent;
+  border-radius: $radius-pill;
+  box-shadow: $shadow-dot-ring;
+}

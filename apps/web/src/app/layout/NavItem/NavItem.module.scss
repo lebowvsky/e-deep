@@ -1,0 +1,57 @@
+@use '@/styles/tokens' as *;
+
+// dashboard-desktop.jsx · SidebarItem / dashboard-mobile.jsx · Drawer items.
+.item {
+  @include focus-ring;
+  @include type($type-body);
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: 0 $layout-nav-pad-x;
+  color: $color-text-med;
+  border-radius: $radius-md;
+  transition:
+    background-color $dur-base $ease-out,
+    color $dur-base $ease-out;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+.md {
+  min-height: $layout-hit-target;
+}
+
+.lg {
+  @include type($type-body-lg);
+
+  min-height: $space-9;
+}
+
+.active {
+  font-weight: 500;
+  color: $color-accent;
+  background: $color-accent-soft;
+  box-shadow: inset 0 0 0 1px $color-accent-line;
+
+  &:hover {
+    color: $color-accent;
+  }
+
+  // Glowing bar on the sidebar edge (sidebar padding = $space-5).
+  &.md::before {
+    position: absolute;
+    top: 50%;
+    left: -$space-5;
+    width: $layout-nav-indicator-width;
+    height: $space-6;
+    content: '';
+    background: $color-accent;
+    border-radius: $radius-pill;
+    box-shadow: $shadow-nav-indicator;
+    transform: translateY(-50%);
+  }
+}

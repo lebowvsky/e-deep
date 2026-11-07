@@ -27,6 +27,8 @@ $color-danger-soft: rgba(224, 106, 112, 0.12);
 $color-control-fill: rgba(154, 186, 224, 0.06);
 $color-chip-fill: rgba(154, 186, 224, 0.08);
 $color-ring-subtle: rgba(255, 255, 255, 0.08);
+$color-abyss-glass: rgba(6, 12, 24, 0.85);
+$color-scrim: rgba(6, 12, 24, 0.6);
 $color-chart: #4FD6C9;
 $color-chart-dim: rgba(79, 214, 201, 0.22);
 $color-chart-bar: rgba(154, 186, 224, 0.22);
@@ -49,6 +51,10 @@ $type-caption: (12px, 16px, 500, 0.1px);
 $type-overline: (11px, 14px, 600, 0.8px);
 $type-kpi: (44px, 48px, 600, -1.2px);
 $type-chip: (11px, 14px, 400, 0.2px);
+$type-meta: (10px, 14px, 400, 0.3px);
+$type-body-lg: (15px, 22px, 400, 0);
+$type-brand: (15px, 20px, 600, -0.2px);
+$type-brand-sm: (14px, 20px, 600, -0.1px);
 
 // Space (4px scale)
 $space-0: 0;
@@ -77,6 +83,14 @@ $shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 6px 24px rgba(0, 0, 0, 
 $shadow-raised: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 40px rgba(0, 0, 0, 0.45);
 $shadow-focus: 0 0 0 2px rgba(79, 214, 201, 0.55);
 $shadow-accent-glow: 0 0 0 1px rgba(79, 214, 201, 0.2), 0 6px 20px rgba(79, 214, 201, 0.12);
+$shadow-nav-indicator: 0 0 10px #4FD6C9;
+$shadow-drawer: 10px 0 40px rgba(0, 0, 0, 0.5);
+$shadow-fab: 0 0 0 4px rgba(79, 214, 201, 0.15), 0 10px 28px rgba(79, 214, 201, 0.4);
+$shadow-dot-ring: 0 0 0 2px #060C18;
+
+// Gradient
+$gradient-page-mobile: radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%);
+$gradient-page-desktop: radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%);
 
 // Motion
 $ease-out: cubic-bezier(.2, .7, .3, 1);
@@ -108,3 +122,15 @@ $layout-badge-pad-x: 10px;
 $layout-badge-pad-y: 6px;
 $layout-badge-gap: 6px;
 $layout-badge-dot: 6px;
+$layout-sidebar-pad-y: 28px;
+$layout-nav-pad-x: 14px;
+$layout-nav-indicator-width: 3px;
+$layout-top-bar-pad-y: 14px;
+$layout-drawer-width: 296px;
+$layout-brand-mark: 28px;
+$layout-brand-mark-sm: 24px;
+$layout-brand-glyph: 16px;
+$layout-brand-glyph-sm: 13px;
+$layout-brand-radius: 8px;
+$layout-blur-glass: 12px;
+$layout-blur-scrim: 6px;

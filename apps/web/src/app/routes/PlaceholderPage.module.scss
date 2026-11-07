@@ -1,0 +1,16 @@
+@use '@/styles/tokens' as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-4;
+}
+
+.title {
+  @include type($type-h-1);
+}
+
+.message {
+  color: $color-text-med;
+}
