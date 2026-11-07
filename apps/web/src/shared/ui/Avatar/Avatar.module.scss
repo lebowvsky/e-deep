@@ -1,0 +1,44 @@
+@use '@/styles/tokens' as *;
+
+.avatar {
+  @include type($type-body-sm);
+
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-weight: 600;
+  color: $color-text-high;
+  border-radius: $radius-pill;
+  box-shadow: inset 0 0 0 1px $color-ring-subtle;
+}
+
+// Current user (sidebar / drawer user card).
+.gradient {
+  background: linear-gradient(135deg, $color-surface-3, $color-accent);
+}
+
+.sm {
+  @include type($type-chip);
+
+  width: $layout-avatar-sm;
+  height: $layout-avatar-sm;
+  font-weight: 600;
+}
+
+.md {
+  width: $layout-avatar-md;
+  height: $layout-avatar-md;
+}
+
+.lg {
+  width: $layout-avatar-lg;
+  height: $layout-avatar-lg;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

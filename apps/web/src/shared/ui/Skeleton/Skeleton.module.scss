@@ -1,0 +1,19 @@
+@use '@/styles/tokens' as *;
+
+.skeleton {
+  display: block;
+  width: 100%;
+  height: $space-3; // default text-line bar; callers resize via `className`
+}
+
+.text {
+  @include skeleton($radius-xs);
+}
+
+.block {
+  @include skeleton($radius-sm);
+}
+
+.control {
+  @include skeleton($radius-md);
+}
