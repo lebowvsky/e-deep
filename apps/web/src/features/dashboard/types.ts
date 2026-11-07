@@ -52,6 +52,8 @@ export interface DashboardStats {
   sitesVisited: number;
   divesPerMonth: { month: string; count: number }[]; // last 12 months
   recentMonthDelta: number;
+  /** Where most dives happen: short name (header, KPI) and map title. */
+  mainArea: { name: string; mapTitle: string };
 }
 
 export interface DashboardPayload {

@@ -1,0 +1,159 @@
+@use '@/styles/tokens' as *;
+
+// Phone: dashboard-mobile.jsx · MBars — tablet+: dashboard-desktop.jsx · BarChart (bars fixed).
+.card {
+  @include card(1);
+
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-4;
+
+  @include from($bp-tablet) {
+    gap: $space-5;
+    padding: $space-6;
+  }
+}
+
+.header {
+  display: flex;
+  gap: $space-3;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.title {
+  @include type($type-brand-sm);
+
+  @include from($bp-tablet) {
+    @include type($type-h-2);
+  }
+}
+
+.total {
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+}
+
+.totalValue {
+  @include type($type-figure, $font: $font-mono, $tabular: true);
+
+  color: $color-text-high;
+}
+
+.totalLabel {
+  @include type($type-meta, $font: $font-mono, $uppercase: true);
+
+  color: $color-text-low;
+}
+
+.peakNote {
+  @include type($type-meta, $font: $font-mono);
+
+  color: $color-accent;
+
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+.chart {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: $space-2;
+  justify-content: flex-end;
+}
+
+// Fixed-height plot so percentage heights resolve (the desktop mockup bug).
+.bars {
+  position: relative;
+  display: flex;
+  gap: $space-1;
+  align-items: flex-end;
+  height: $layout-chart-height-sm;
+  border-bottom: 1px solid $color-line;
+
+  @include from($bp-tablet) {
+    gap: $space-2;
+    height: $layout-chart-height;
+  }
+
+  // Mid gridline.
+  &::before {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    height: 1px;
+    content: '';
+    background: $color-gridline;
+  }
+}
+
+.column {
+  position: relative;
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  height: 100%;
+  align-items: flex-end;
+}
+
+.bar {
+  width: 100%;
+  max-width: $layout-bar-max-width;
+  min-height: $space-2;
+  background: $color-chart-bar;
+  border-radius: $radius-xs $radius-xs 0 0;
+}
+
+.zero {
+  min-height: $layout-hairline;
+}
+
+.peak {
+  background: $color-accent;
+  box-shadow: $shadow-peak;
+}
+
+.peakValue {
+  @include type($type-chip, $font: $font-mono, $tabular: true);
+
+  position: absolute;
+  top: -$space-5;
+  font-weight: 600;
+  color: $color-accent;
+}
+
+.axis {
+  display: flex;
+  gap: $space-1;
+
+  @include from($bp-tablet) {
+    gap: $space-2;
+  }
+}
+
+.month {
+  @include type($type-meta, $font: $font-mono);
+
+  flex: 1;
+  color: $color-text-low;
+  text-align: center;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

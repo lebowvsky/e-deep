@@ -50,6 +50,11 @@ export const color = {
   chartDim: 'rgba(79, 214, 201, 0.22)',
   chartBar: 'rgba(154, 186, 224, 0.22)', // non-peak bars
   gridline: 'rgba(154, 186, 224, 0.08)',
+
+  // Map placeholder — stylised coastlines, strongest to faintest
+  coast: 'rgba(154, 186, 224, 0.14)',
+  coastDim: 'rgba(154, 186, 224, 0.09)',
+  coastFaint: 'rgba(154, 186, 224, 0.07)',
 } as const;
 
 export const font = {
@@ -71,6 +76,15 @@ export const type = {
   overline: { size: 11, lh: 14, w: 600, ls: 0.8 }, // mono + uppercase
   kpi: { size: 44, lh: 48, w: 600, ls: -1.2 }, // mono + tabular-nums
   chip: { size: 11, lh: 14, w: 400, ls: 0.2 }, // mono — badges / chips
+  overlineSm: { size: 10, lh: 14, w: 600, ls: 0.8 }, // mono + uppercase — mobile labels
+  captionSm: { size: 11, lh: 15, w: 400, ls: 0 }, // mobile KPI captions
+  kpiSm: { size: 28, lh: 28, w: 600, ls: -0.6 }, // mono — mobile KPI tiles
+  metric: { size: 26, lh: 30, w: 600, ls: -0.6 }, // mono — last dive metrics
+  metricSm: { size: 18, lh: 22, w: 600, ls: -0.4 },
+  figure: { size: 20, lh: 24, w: 600, ls: -0.4 }, // mono — chart total
+  unit: { size: 16, lh: 20, w: 400, ls: 0 }, // mono — KPI units
+  unitSm: { size: 12, lh: 16, w: 400, ls: 0 },
+  unitXs: { size: 10, lh: 14, w: 400, ls: 0 },
   meta: { size: 10, lh: 14, w: 400, ls: 0.3 }, // mono — user level, footnotes
   bodyLg: { size: 15, lh: 22, w: 400, ls: 0 }, // drawer nav, header subtitle
   brand: { size: 15, lh: 20, w: 600, ls: -0.2 },
@@ -104,6 +118,11 @@ export const shadow = {
   drawer: '10px 0 40px rgba(0, 0, 0, 0.5)',
   fab: '0 0 0 4px rgba(79, 214, 201, 0.15), 0 10px 28px rgba(79, 214, 201, 0.4)',
   dotRing: '0 0 0 2px #060C18', // notification dot cut out of the page background
+  ringSurface: '0 0 0 2px #122544', // overlapping avatars on a surface1 card
+  marker: 'inset 0 0 0 1px rgba(79, 214, 201, 0.35), 0 4px 12px rgba(0, 0, 0, 0.4)',
+  markerActive: '0 0 0 3px rgba(79, 214, 201, 0.2), 0 6px 18px rgba(79, 214, 201, 0.35)',
+  popover: 'inset 0 0 0 1px rgba(154, 186, 224, 0.18), 0 12px 32px rgba(0, 0, 0, 0.5)',
+  peak: '0 0 16px rgba(79, 214, 201, 0.3)',
 } as const;
 
 // Page backgrounds: abyss + two discreet radial glows (dashboard mockups).
@@ -112,6 +131,9 @@ export const gradient = {
     'radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%)',
   pageDesktop:
     'radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%)',
+  mapMobile: 'radial-gradient(300px 200px at 50% 55%, rgba(36, 64, 109, 0.5), transparent 70%)',
+  mapDesktop:
+    'radial-gradient(800px 400px at 55% 60%, rgba(36, 64, 109, 0.4), transparent 70%), radial-gradient(500px 300px at 20% 30%, rgba(79, 214, 201, 0.05), transparent 70%)',
 } as const;
 
 export const motion = {
@@ -124,12 +146,13 @@ export const motion = {
 } as const;
 
 // Content dimmed while a refresh is in flight.
-export const opacity = { busy: 0.6 } as const;
+export const opacity = { busy: 0.6, mapGrid: 0.6, spark: 0.7, pulse: 0.35 } as const;
 
 export const breakpoint = {
   mobile: 375, // baseline
   tablet: 768, // sidebar appears
   desktop: 1024,
+  large: 1280, // 4 KPI columns and paired cards (too tight at 1024 with the sidebar)
   wide: 1440, // primary desktop target
 } as const;
 
@@ -158,6 +181,32 @@ export const layout = {
   brandRadius: 8,
   blurGlass: 12,
   blurScrim: 6,
+  hairline: 2, // map scale bar, empty chart bar
+  avatarXs: 26,
+  kpiMinHeight: 148,
+  tileMinHeight: 96,
+  tilePad: 14,
+  sparkHeight: 30,
+  mapHeight: 440,
+  mapHeightSm: 280,
+  mapGrid: 60,
+  mapGridSm: 40,
+  markerXs: 22,
+  markerSm: 26,
+  markerMd: 28,
+  markerLg: 36,
+  markerPulse: 20, // pulse ring = marker + 20px
+  popoverWidth: 200,
+  popoverOffset: 30, // gap between the popover and the marker centre
+  popoverTail: 12,
+  filterHeight: 30,
+  scaleBar: 60,
+  scaleBarSm: 40,
+  chartHeight: 120,
+  chartHeightSm: 80,
+  barMaxWidth: 24,
+  buddyCard: 180,
+  buddyCardSm: 140,
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.

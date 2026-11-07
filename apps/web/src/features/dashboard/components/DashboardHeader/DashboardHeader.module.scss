@@ -1,0 +1,88 @@
+@use '@/styles/tokens' as *;
+
+// dashboard-desktop.jsx · DashHeader / dashboard-mobile.jsx · header block.
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-4;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2 $space-3;
+  align-items: center;
+  margin-bottom: $space-2;
+}
+
+.when {
+  @include type($type-overline-sm, $font: $font-mono, $uppercase: true);
+
+  color: $color-accent;
+
+  @include from($bp-tablet) {
+    @include type($type-overline, $font: $font-mono, $uppercase: true);
+  }
+}
+
+// Zone is desktop / tablet only (mockup 04 shows date and time alone).
+.where {
+  @include overline;
+
+  display: none;
+  gap: $space-3;
+  align-items: center;
+
+  @include from($bp-tablet) {
+    display: inline-flex;
+  }
+}
+
+.dot {
+  width: $space-1;
+  height: $space-1;
+  background: $color-text-muted;
+  border-radius: $radius-pill;
+}
+
+.title {
+  @include type($type-h-1);
+
+  @include from($bp-desktop) {
+    @include type($type-display);
+  }
+}
+
+.greeting {
+  @include type($type-body-sm);
+
+  margin-top: $space-2;
+  font-weight: 400;
+  color: $color-text-med;
+
+  @include from($bp-tablet) {
+    @include type($type-body-lg);
+  }
+}
+
+.since {
+  color: $color-text-low;
+}
+
+.actions {
+  display: none;
+  gap: $space-3;
+  align-items: center;
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+}

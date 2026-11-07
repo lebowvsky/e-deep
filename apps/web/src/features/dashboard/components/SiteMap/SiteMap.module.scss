@@ -1,0 +1,386 @@
+@use '@/styles/tokens' as *;
+
+// Phone: dashboard-mobile.jsx · MiniMap — tablet+: dashboard-desktop.jsx · MapBlock.
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.phoneHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+.phoneTitle {
+  @include type($type-h-3);
+}
+
+.phoneOnly {
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+.desktopOnly {
+  display: none;
+
+  @include from($bp-tablet) {
+    display: block;
+  }
+}
+
+.map {
+  position: relative;
+  height: $layout-map-height-sm;
+  overflow: hidden;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line;
+
+  @include from($bp-tablet) {
+    @include card(1);
+
+    height: $layout-map-height;
+  }
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  background-color: $color-surface-0;
+  background-image: $gradient-map-mobile;
+
+  @include from($bp-tablet) {
+    background-image: $gradient-map-desktop;
+  }
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient($color-gridline 1px, transparent 1px),
+    linear-gradient(90deg, $color-gridline 1px, transparent 1px);
+  background-size: $layout-map-grid-sm $layout-map-grid-sm;
+  opacity: $opacity-map-grid;
+
+  @include from($bp-tablet) {
+    background-size: $layout-map-grid $layout-map-grid;
+  }
+}
+
+.coasts {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke-width: 1px;
+}
+
+.coast {
+  stroke: $color-coast;
+}
+
+.coastDim {
+  stroke: $color-coast-dim;
+}
+
+.coastFaint {
+  stroke: $color-coast-faint;
+}
+
+// Header overlay: overline + title + period filters (tablet+), « Agrandir » (phone).
+.overlay {
+  position: absolute;
+  top: $space-3;
+  right: $layout-tile-pad;
+  left: $layout-tile-pad;
+  z-index: 3;
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  justify-content: space-between;
+
+  @include from($bp-tablet) {
+    top: $space-5;
+    right: $space-6;
+    left: $space-6;
+    align-items: flex-start;
+  }
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+}
+
+.title {
+  @include type($type-h-2);
+
+  display: none;
+
+  @include from($bp-tablet) {
+    display: block;
+  }
+}
+
+.periods {
+  display: none;
+  gap: $space-2;
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+}
+
+.period {
+  @include focus-ring;
+  @include type($type-chip, $font: $font-mono);
+
+  height: $layout-filter-height;
+  padding: 0 $space-3;
+  color: $color-text-med;
+  cursor: pointer;
+  background: $color-control-fill;
+  border-radius: $radius-sm;
+  box-shadow: inset 0 0 0 1px $color-line;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+.periodActive {
+  color: $color-accent;
+  background: $color-accent-soft;
+  box-shadow: inset 0 0 0 1px $color-accent-line;
+
+  &:hover {
+    color: $color-accent;
+  }
+}
+
+.expand {
+  @include focus-ring;
+  @include type($type-unit-xs, $font: $font-mono);
+
+  flex-shrink: 0;
+  padding: $layout-badge-pad-y $layout-badge-pad-x;
+  color: $color-text-med;
+  background: $color-control-fill;
+  border-radius: $radius-sm;
+  box-shadow: inset 0 0 0 1px $color-line;
+
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+// Markers: positioned from the projection through --x / --y.
+.markers {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.markerItem {
+  position: absolute;
+  top: var(--y);
+  left: var(--x);
+  z-index: 2;
+  transform: translate(-50%, -50%);
+
+  &:has(.active) {
+    z-index: 4;
+  }
+}
+
+.marker {
+  @include focus-ring;
+  @include type($type-unit-xs, $font: $font-mono, $tabular: true);
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: $layout-marker-xs;
+  height: $layout-marker-xs;
+  font-weight: 600;
+  color: $color-text-high;
+  cursor: pointer;
+  background: $color-surface-2;
+  border-radius: $radius-pill;
+  box-shadow: $shadow-marker;
+
+  @include from($bp-tablet) {
+    @include type($type-chip, $font: $font-mono, $tabular: true);
+
+    width: $layout-marker-sm;
+    height: $layout-marker-sm;
+    font-weight: 600;
+  }
+}
+
+.big {
+  width: $layout-marker-md;
+  height: $layout-marker-md;
+
+  @include from($bp-tablet) {
+    @include type($type-unit-sm, $font: $font-mono, $tabular: true);
+
+    width: $layout-marker-lg;
+    height: $layout-marker-lg;
+    font-weight: 600;
+  }
+}
+
+.active {
+  width: $layout-marker-md;
+  height: $layout-marker-md;
+  color: $color-accent-ink;
+  background: $color-accent;
+  box-shadow: $shadow-marker-active;
+
+  // Pulse ring (tablet+), 20px wider than the marker.
+  @include from($bp-tablet) {
+    &::before {
+      position: absolute;
+      inset: calc(#{$layout-marker-pulse} / -2);
+      content: '';
+      border: 1px solid $color-accent;
+      border-radius: $radius-pill;
+      opacity: $opacity-pulse;
+    }
+  }
+}
+
+// Popover of the selected site (tablet+). Its tail points at the marker; near an edge it opens
+// towards the centre (`data-align`) so it never leaves the card.
+.popover {
+  --tail-inset: #{$space-5};
+
+  position: absolute;
+  top: var(--y);
+  left: var(--x);
+  z-index: 5;
+  display: none;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: $layout-popover-width;
+  padding: $space-3 $layout-tile-pad;
+  background: $color-surface-2;
+  border-radius: $radius-md;
+  box-shadow: $shadow-popover;
+  transform: translate(-50%, calc(-100% - #{$layout-popover-offset}));
+
+  &::after {
+    position: absolute;
+    bottom: calc(#{$layout-popover-tail} / -2);
+    left: calc(50% - #{$layout-popover-tail} / 2);
+    width: $layout-popover-tail;
+    height: $layout-popover-tail;
+    content: '';
+    background: $color-surface-2;
+    box-shadow: 1px 1px 0 $color-line-strong;
+    transform: rotate(45deg);
+  }
+
+  &[data-align='start'] {
+    transform: translate(
+      calc(-1 * (var(--tail-inset) + #{$layout-popover-tail} / 2)),
+      calc(-100% - #{$layout-popover-offset})
+    );
+
+    &::after {
+      left: var(--tail-inset);
+    }
+  }
+
+  &[data-align='end'] {
+    transform: translate(
+      calc(-100% + var(--tail-inset) + #{$layout-popover-tail} / 2),
+      calc(-100% - #{$layout-popover-offset})
+    );
+
+    &::after {
+      right: var(--tail-inset);
+      left: auto;
+    }
+  }
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+}
+
+.popoverLabel {
+  @include overline;
+}
+
+.popoverName {
+  @include type($type-brand-sm);
+
+  color: $color-text-high;
+}
+
+.popoverStats {
+  display: flex;
+  gap: $space-4;
+  margin-top: $space-1;
+
+  > span {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.popoverValue {
+  @include type($type-body-lg, $font: $font-mono, $tabular: true);
+
+  color: $color-text-high;
+}
+
+.accent {
+  color: $color-accent;
+}
+
+.popoverKey {
+  @include type($type-meta, $font: $font-mono, $uppercase: true);
+
+  color: $color-text-low;
+}
+
+.scale {
+  @include type($type-meta, $font: $font-mono);
+
+  position: absolute;
+  bottom: $space-3;
+  left: $layout-tile-pad;
+  display: flex;
+  gap: $space-2;
+  align-items: center;
+  color: $color-text-low;
+
+  @include from($bp-tablet) {
+    bottom: $space-5;
+    left: $space-6;
+  }
+}
+
+.scaleBar {
+  width: $layout-scale-bar-sm;
+  height: $layout-hairline;
+  background: $color-text-low;
+
+  @include from($bp-tablet) {
+    width: $layout-scale-bar;
+  }
+}

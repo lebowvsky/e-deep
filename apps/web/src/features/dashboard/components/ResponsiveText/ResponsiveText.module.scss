@@ -1,0 +1,15 @@
+@use '@/styles/tokens' as *;
+
+.long {
+  display: none;
+}
+
+@include from($bp-tablet) {
+  .short {
+    display: none;
+  }
+
+  .long {
+    display: inline;
+  }
+}

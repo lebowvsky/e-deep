@@ -1,0 +1,15 @@
+@use '@/styles/tokens' as *;
+
+// Mockup uses textMuted; textLow instead: textMuted is for decorative content only (contrast).
+.footer {
+  @include type($type-meta, $font: $font-mono);
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-1 $space-4;
+  color: $color-text-low;
+
+  span:first-child {
+    text-transform: uppercase;
+  }
+}

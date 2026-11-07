@@ -1,0 +1,51 @@
+@use '@/styles/tokens' as *;
+
+// Phone: dashboard-mobile.jsx · MKPI — tablet+: dashboard-desktop.jsx · KPI.
+.card {
+  @include card(1, $radius-md);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  min-width: 0;
+  min-height: $layout-tile-min-height;
+  padding: $layout-tile-pad;
+  overflow: hidden;
+
+  @include from($bp-tablet) {
+    justify-content: space-between;
+    min-height: $layout-kpi-min-height;
+    padding: $space-6;
+    border-radius: $radius-lg;
+  }
+}
+
+.label {
+  @include type($type-overline-sm, $font: $font-mono, $uppercase: true);
+
+  color: $color-text-low;
+
+  @include from($bp-tablet) {
+    @include type($type-overline, $font: $font-mono, $uppercase: true);
+  }
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.caption {
+  @include type($type-caption-sm);
+
+  color: $color-text-low;
+
+  @include from($bp-tablet) {
+    @include type($type-caption);
+
+    position: relative; // above the sparkline
+    font-weight: 400;
+  }
+}
