@@ -35,6 +35,7 @@ export const routes: RouteObject[] = [
       placeholder('/map', 'Carte'),
       placeholder('/stats', 'Statistiques'),
       placeholder('/buddies', 'Binômes'),
+      placeholder('/search', 'Recherche'),
       placeholder('/notifications', 'Notifications'),
       placeholder('/settings', 'Paramètres'),
       placeholder('/logout', 'Déconnexion'),

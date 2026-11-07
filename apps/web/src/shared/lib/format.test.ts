@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   daysSince,
+  formatDayCount,
   formatDiveDate,
   formatDiverLevel,
+  formatHeaderDate,
   formatInitials,
+  formatMonthInitial,
+  formatMonthShort,
+  formatNameList,
+  formatShortName,
   formatUnderwaterTime,
+  formatUtcOffset,
   splitMinutes,
 } from './format';
 
@@ -34,5 +41,29 @@ describe('format', () => {
   it('formats the diver level with the federation', () => {
     expect(formatDiverLevel('N2', 'FFESSM')).toBe('N2 · FFESSM');
     expect(formatDiverLevel('N1', 'OTHER')).toBe('N1 · Autre');
+  });
+
+  it('formats header date, month and initials in French', () => {
+    expect(formatHeaderDate(new Date(2026, 3, 23, 14, 8))).toBe('jeu. 23 avr.');
+    expect(formatMonthShort('2025-09-08T12:00:00Z')).toBe('sept.');
+    expect(formatMonthInitial('août')).toBe('A');
+    expect(formatMonthInitial('janv')).toBe('J');
+  });
+
+  it('formats the local UTC offset', () => {
+    const at = (offsetMinutes: number) =>
+      ({ getTimezoneOffset: () => offsetMinutes }) as unknown as Date;
+    expect(formatUtcOffset(at(-120))).toBe('UTC+2');
+    expect(formatUtcOffset(at(0))).toBe('UTC');
+    expect(formatUtcOffset(at(210))).toBe('UTC-3:30');
+  });
+
+  it('formats counts and names', () => {
+    expect(formatDayCount(1)).toBe('1 jour');
+    expect(formatDayCount(14)).toBe('14 jours');
+    expect(formatShortName('Lucas', 'Bernard')).toBe('L. Bernard');
+    expect(formatNameList(['L. Bernard', 'T. Nguyen'])).toBe('L. Bernard & T. Nguyen');
+    expect(formatNameList(['A', 'B', 'C'])).toBe('A, B & C');
+    expect(formatNameList(['A'])).toBe('A');
   });
 });

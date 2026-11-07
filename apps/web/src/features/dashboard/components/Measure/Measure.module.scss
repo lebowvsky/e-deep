@@ -1,0 +1,61 @@
+@use '@/styles/tokens' as *;
+
+.measure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 $space-1;
+}
+
+.value {
+  color: $color-text-high;
+}
+
+.unit {
+  color: $color-text-low;
+}
+
+// KPI: 28px tile on phones, 44px card above (mockups 04 / 01).
+.kpi {
+  .value {
+    @include type($type-kpi-sm, $font: $font-mono, $tabular: true);
+  }
+
+  .unit {
+    @include type($type-unit-sm, $font: $font-mono);
+  }
+
+  @include from($bp-tablet) {
+    .value {
+      @include type($type-kpi, $font: $font-mono, $tabular: true);
+    }
+
+    .unit {
+      @include type($type-unit, $font: $font-mono);
+    }
+  }
+}
+
+.metric {
+  .value {
+    @include type($type-metric-sm, $font: $font-mono, $tabular: true);
+  }
+
+  .unit {
+    @include type($type-unit-xs, $font: $font-mono);
+  }
+
+  @include from($bp-tablet) {
+    .value {
+      @include type($type-metric, $font: $font-mono, $tabular: true);
+    }
+
+    .unit {
+      @include type($type-unit-sm, $font: $font-mono);
+    }
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}

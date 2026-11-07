@@ -1,0 +1,22 @@
+@use '@/styles/tokens' as *;
+
+// Vertical rhythm: 20px between blocks on phones, 24px above (mockups 04 / 01).
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  @include from($bp-tablet) {
+    gap: $space-6;
+  }
+}
+
+// Grid: « last dive + activity » paired in two equal-height columns from 1280px (Proximity).
+.pair {
+  display: grid;
+  gap: $space-4;
+
+  @include from($bp-large) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

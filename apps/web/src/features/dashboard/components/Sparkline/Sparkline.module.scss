@@ -1,0 +1,27 @@
+@use '@/styles/tokens' as *;
+
+.sparkline {
+  position: absolute;
+  right: 0;
+  bottom: $space-2;
+  left: 0;
+  display: none;
+  width: 100%;
+  height: $layout-spark-height;
+  opacity: $opacity-spark;
+
+  @include from($bp-tablet) {
+    display: block;
+  }
+}
+
+.area {
+  fill: $color-accent-soft;
+}
+
+.line {
+  fill: none;
+  stroke: $color-accent;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

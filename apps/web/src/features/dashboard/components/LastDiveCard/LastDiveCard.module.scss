@@ -1,0 +1,136 @@
+@use '@/styles/tokens' as *;
+
+// Phone: dashboard-mobile.jsx · Last dive — tablet+: dashboard-desktop.jsx · LastDive.
+.card {
+  @include card(1);
+
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-4; // mockup 18px, rounded to the 4px scale
+
+  @include from($bp-tablet) {
+    gap: $space-5;
+    padding: $space-6;
+  }
+}
+
+.header {
+  display: flex;
+  gap: $space-3;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+}
+
+.title {
+  @include type($type-h-3);
+
+  @include from($bp-tablet) {
+    @include type($type-h-2);
+  }
+}
+
+.place {
+  @include type($type-caption);
+
+  font-weight: 400;
+  color: $color-text-med;
+
+  @include from($bp-tablet) {
+    @include type($type-body-sm);
+
+    font-weight: 400;
+  }
+}
+
+.badges {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: $layout-badge-gap;
+  justify-content: flex-end;
+}
+
+.gas {
+  display: none;
+
+  @include from($bp-tablet) {
+    display: inline-flex;
+  }
+}
+
+// Grid: four equal metric columns at every width (mockups 01 and 04).
+.metrics {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: $space-3;
+  align-content: center;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  @include from($bp-tablet) {
+    gap: $space-5;
+  }
+}
+
+.footer {
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: $space-3;
+  border-top: 1px solid $color-line;
+
+  @include from($bp-tablet) {
+    padding-top: $space-4;
+  }
+}
+
+.buddies {
+  display: flex;
+  gap: $space-2;
+  align-items: center;
+  min-width: 0;
+}
+
+.avatars {
+  display: none;
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+
+  // Overlapping avatars with a surface-coloured ring.
+  .avatar {
+    box-shadow: $shadow-ring-surface;
+  }
+
+  .avatar + .avatar {
+    margin-left: -$space-2;
+  }
+}
+
+.with {
+  @include type($type-caption-sm);
+
+  color: $color-text-low;
+
+  @include from($bp-tablet) {
+    @include type($type-caption);
+
+    font-weight: 400;
+  }
+}
+
+.names {
+  color: $color-text-med;
+}

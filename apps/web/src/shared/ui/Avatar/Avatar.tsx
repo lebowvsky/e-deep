@@ -1,7 +1,7 @@
 import { cx } from '@/shared/lib/classNames';
 import styles from './Avatar.module.scss';
 
-export type AvatarSize = 'sm' | 'md' | 'lg';
+export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg';
 
 export interface AvatarProps {
   /** Initials shown when there is no picture, e.g. "LB". */
@@ -10,7 +10,7 @@ export interface AvatarProps {
   src?: string | undefined;
   /** Background colour from the data (buddy accent). Default: the user gradient. */
   color?: string | undefined;
-  /** sm 32px · md 36px (default) · lg 40px */
+  /** xs 26px · sm 32px · md 36px (default) · lg 40px */
   size?: AvatarSize;
   className?: string | undefined;
 }

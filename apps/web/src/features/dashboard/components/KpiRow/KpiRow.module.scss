@@ -1,0 +1,19 @@
+@use '@/styles/tokens' as *;
+
+// Grid: 2 × 2 tiles on phones / tablets, 4 equal columns from 1280px.
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3; // mockup 10px on phones, rounded to the 4px scale
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  @include from($bp-tablet) {
+    gap: $space-4;
+  }
+
+  @include from($bp-large) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

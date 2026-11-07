@@ -1,0 +1,19 @@
+@use '@/styles/tokens' as *;
+
+.link {
+  @include focus-ring;
+  @include type($type-body-sm);
+
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: $space-1;
+  color: $color-accent;
+  white-space: nowrap;
+  border-radius: $radius-xs;
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: $space-1;
+  }
+}

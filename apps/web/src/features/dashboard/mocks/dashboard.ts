@@ -83,6 +83,7 @@ export const mockPayload: DashboardPayload = {
       { month: 'avr', count: 4 },
     ],
     recentMonthDelta: 3,
+    mainArea: { name: 'Méditerranée', mapTitle: 'Méditerranée occidentale' },
   },
   lastDive: {
     id: 'd1',

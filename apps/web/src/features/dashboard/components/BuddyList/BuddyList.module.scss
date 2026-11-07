@@ -1,0 +1,142 @@
+@use '@/styles/tokens' as *;
+
+// Phone: dashboard-mobile.jsx · Buddies (no card) — tablet+: dashboard-desktop.jsx · Buddies.
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+
+  @include from($bp-tablet) {
+    @include card(1);
+
+    gap: $space-5;
+    padding: $space-6;
+  }
+}
+
+.header {
+  display: flex;
+  gap: $space-3;
+  align-items: baseline;
+  justify-content: space-between;
+
+  @include from($bp-tablet) {
+    align-items: center;
+  }
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+// Phones show the overline only; the heading stays for screen readers.
+.title {
+  @include visually-hidden;
+
+  @include from($bp-tablet) {
+    @include type($type-h-2);
+
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+    white-space: normal;
+  }
+}
+
+// Bleeds to the screen edges on phones (main has 20px gutters).
+.list {
+  @include focus-ring;
+
+  display: flex;
+  gap: $space-3;
+  padding: 0 $space-5;
+  margin: 0 (-$space-5);
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @include from($bp-tablet) {
+    padding: 0;
+    margin: 0;
+  }
+}
+
+.item {
+  position: relative; // contains the visually-hidden text inside the scroller
+  display: flex;
+  flex-shrink: 0;
+  gap: $space-3;
+  align-items: center;
+  width: $layout-buddy-card-sm;
+  padding: $space-3;
+  background: $color-surface-1;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line;
+
+  @include from($bp-tablet) {
+    width: $layout-buddy-card;
+    padding: $space-4;
+    background: $color-surface-0;
+  }
+}
+
+// 32px on phones, 40px above (Avatar renders lg).
+.item .avatar {
+  @include type($type-chip);
+
+  width: $layout-avatar-sm;
+  height: $layout-avatar-sm;
+  font-weight: 600;
+
+  @include from($bp-tablet) {
+    @include type($type-body-sm);
+
+    width: $layout-avatar-lg;
+    height: $layout-avatar-lg;
+    font-weight: 600;
+  }
+}
+
+.identity {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  @include type($type-caption);
+
+  overflow: hidden;
+  color: $color-text-high;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  @include from($bp-tablet) {
+    @include type($type-body-sm);
+  }
+}
+
+.count {
+  @include type($type-meta, $font: $font-mono);
+
+  color: $color-text-low;
+
+  @include from($bp-tablet) {
+    @include type($type-chip, $font: $font-mono);
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}

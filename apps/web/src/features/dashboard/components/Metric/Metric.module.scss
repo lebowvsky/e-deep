@@ -1,0 +1,21 @@
+@use '@/styles/tokens' as *;
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+
+  @include from($bp-tablet) {
+    gap: $space-2;
+  }
+}
+
+.label {
+  @include type($type-overline-sm, $font: $font-mono, $uppercase: true);
+
+  color: $color-text-low;
+
+  @include from($bp-tablet) {
+    @include type($type-overline, $font: $font-mono, $uppercase: true);
+  }
+}

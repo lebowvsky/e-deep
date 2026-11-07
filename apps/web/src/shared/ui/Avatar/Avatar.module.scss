@@ -19,6 +19,14 @@
   background: linear-gradient(135deg, $color-surface-3, $color-accent);
 }
 
+.xs {
+  @include type($type-unit-xs);
+
+  width: $layout-avatar-xs;
+  height: $layout-avatar-xs;
+  font-weight: 600;
+}
+
 .sm {
   @include type($type-chip);
 
