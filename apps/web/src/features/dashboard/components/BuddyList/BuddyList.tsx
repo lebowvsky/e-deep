@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { formatInitials, formatShortName } from '@/shared/lib/format';
+import { formatDiveCount, formatInitials, formatShortName } from '@/shared/lib/format';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Overline } from '@/shared/ui/Overline';
 import { TextLink } from '@/shared/ui/TextLink';
@@ -52,11 +52,11 @@ export function BuddyList({ buddies }: BuddyListProps) {
                   <ResponsiveText
                     text={{
                       short: `${buddy.sharedDives} ×`,
-                      long: `${buddy.sharedDives} plongées`,
+                      long: formatDiveCount(buddy.sharedDives),
                     }}
                   />
                 </span>
-                <span className={styles.srOnly}>{buddy.sharedDives} plongées ensemble</span>
+                <span className={styles.srOnly}>{formatDiveCount(buddy.sharedDives)} ensemble</span>
               </span>
             </div>
           </li>

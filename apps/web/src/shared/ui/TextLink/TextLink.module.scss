@@ -2,6 +2,7 @@
 
 .link {
   @include focus-ring;
+  @include hit-area;
   @include type($type-body-sm);
 
   display: inline-flex;

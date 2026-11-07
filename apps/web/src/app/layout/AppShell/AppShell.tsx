@@ -1,5 +1,5 @@
-import { useCallback, useId, useState } from 'react';
-import { Outlet } from 'react-router';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Outlet, useLocation } from 'react-router';
 import { breakpoint } from '@/design/tokens';
 import type { User } from '@/features/dashboard/types';
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
@@ -24,6 +24,19 @@ export function AppShell({ user }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerId = useId();
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  const mainRef = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  const previousPath = useRef(pathname);
+
+  // Client-side navigation: move focus to the new content so screen readers announce it.
+  useEffect(() => {
+    if (previousPath.current === pathname) return;
+    previousPath.current = pathname;
+    mainRef.current?.focus();
+  }, [pathname]);
+
+  // While the modal drawer is open, the page behind it is out of reach (keyboard and screen readers).
+  const behindDrawer = drawerOpen && !isTabletUp;
 
   return (
     <div className={styles.shell}>
@@ -35,6 +48,7 @@ export function AppShell({ user }: AppShellProps) {
       ) : (
         <>
           <TopBar
+            inert={behindDrawer}
             drawerId={drawerId}
             drawerOpen={drawerOpen}
             onOpenMenu={() => setDrawerOpen(true)}
@@ -42,10 +56,16 @@ export function AppShell({ user }: AppShellProps) {
           <Drawer id={drawerId} open={drawerOpen} onClose={closeDrawer} user={user} />
         </>
       )}
-      <main id="main-content" className={styles.main} tabIndex={-1}>
+      <main
+        ref={mainRef}
+        id="main-content"
+        className={styles.main}
+        tabIndex={-1}
+        inert={behindDrawer}
+      >
         <Outlet />
       </main>
-      {!isTabletUp && <Fab />}
+      {!isTabletUp && <Fab inert={behindDrawer} />}
     </div>
   );
 }

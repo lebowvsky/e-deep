@@ -20,84 +20,87 @@ const position = ([x, y]: readonly [number, number]) =>
 /** Loading state (mockup 03): same structure as the nominal dashboard, shimmering placeholders. */
 export function DashboardSkeleton() {
   return (
-    <div className={styles.dashboard} aria-busy="true">
-      <h1 className={styles.srOnly}>Tableau de bord</h1>
+    <>
+      {/* Live region kept outside the aria-busy container, which can silence it. */}
       <p className={styles.srOnly} role="status">
         Chargement du tableau de bord
       </p>
+      <div className={styles.dashboard} aria-busy="true">
+        <h1 className={styles.srOnly}>Tableau de bord</h1>
 
-      <div className={styles.header} aria-hidden="true">
-        <div className={styles.headerText}>
-          <Skeleton className={styles.overline} />
-          <Skeleton shape="block" className={styles.title} />
-          <Skeleton className={styles.subtitle} />
-        </div>
-        <div className={styles.actions}>
-          <Skeleton shape="control" className={styles.iconAction} />
-          <Skeleton shape="control" className={styles.iconAction} />
-          <Skeleton shape="control" className={styles.cta} />
-        </div>
-      </div>
-
-      <ul className={styles.kpis} aria-hidden="true">
-        {Array.from({ length: 4 }, (_, index) => (
-          <li key={index} className={styles.kpi}>
-            <Skeleton className={styles.kpiLabel} />
-            <div className={styles.kpiBody}>
-              <Skeleton shape="block" className={styles.kpiValue} />
-              <Skeleton className={styles.kpiCaption} />
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <div className={styles.map} aria-hidden="true">
-        <div className={styles.mapHeader}>
-          <div className={styles.mapHeading}>
-            <Skeleton className={styles.mapOverline} />
-            <Skeleton shape="block" className={styles.mapTitle} />
+        <div className={styles.header} aria-hidden="true">
+          <div className={styles.headerText}>
+            <Skeleton className={styles.overline} />
+            <Skeleton shape="block" className={styles.title} />
+            <Skeleton className={styles.subtitle} />
           </div>
-          <div className={styles.filters}>
-            {Array.from({ length: FILTERS }, (_, index) => (
-              <Skeleton key={index} shape="block" className={styles.filter} />
-            ))}
+          <div className={styles.actions}>
+            <Skeleton shape="control" className={styles.iconAction} />
+            <Skeleton shape="control" className={styles.iconAction} />
+            <Skeleton shape="control" className={styles.cta} />
           </div>
         </div>
-        <div className={styles.mapCanvas}>
-          <Skeleton shape="control" className={styles.mapFill} />
-          {MARKERS.map((marker) => (
-            <span key={marker.join('-')} className={styles.marker} style={position(marker)} />
-          ))}
-        </div>
-      </div>
 
-      <div className={styles.pair} aria-hidden="true">
-        <div className={styles.card}>
-          <Skeleton className={styles.cardOverline} />
-          <Skeleton shape="block" className={styles.cardTitle} />
-          <Skeleton className={styles.cardSubtitle} />
-          <div className={styles.metrics}>
-            {Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className={styles.metric}>
-                <Skeleton className={styles.metricLabel} />
-                <Skeleton shape="block" className={styles.metricValue} />
+        <ul className={styles.kpis} aria-hidden="true">
+          {Array.from({ length: 4 }, (_, index) => (
+            <li key={index} className={styles.kpi}>
+              <Skeleton className={styles.kpiLabel} />
+              <div className={styles.kpiBody}>
+                <Skeleton shape="block" className={styles.kpiValue} />
+                <Skeleton className={styles.kpiCaption} />
               </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className={styles.map} aria-hidden="true">
+          <div className={styles.mapHeader}>
+            <div className={styles.mapHeading}>
+              <Skeleton className={styles.mapOverline} />
+              <Skeleton shape="block" className={styles.mapTitle} />
+            </div>
+            <div className={styles.filters}>
+              {Array.from({ length: FILTERS }, (_, index) => (
+                <Skeleton key={index} shape="block" className={styles.filter} />
+              ))}
+            </div>
+          </div>
+          <div className={styles.mapCanvas}>
+            <Skeleton shape="control" className={styles.mapFill} />
+            {MARKERS.map((marker) => (
+              <span key={marker.join('-')} className={styles.marker} style={position(marker)} />
             ))}
           </div>
         </div>
-        <div className={styles.card}>
-          <Skeleton className={styles.cardOverline} />
-          <Skeleton shape="block" className={styles.cardTitle} />
-          <div className={styles.bars}>
-            {BARS.map((height, index) => (
-              // Decorative bar height (inline, like the real chart).
-              <span key={index} className={styles.barSlot} style={{ height: `${height}%` }}>
-                <Skeleton className={styles.bar} />
-              </span>
-            ))}
+
+        <div className={styles.pair} aria-hidden="true">
+          <div className={styles.card}>
+            <Skeleton className={styles.cardOverline} />
+            <Skeleton shape="block" className={styles.cardTitle} />
+            <Skeleton className={styles.cardSubtitle} />
+            <div className={styles.metrics}>
+              {Array.from({ length: 4 }, (_, index) => (
+                <div key={index} className={styles.metric}>
+                  <Skeleton className={styles.metricLabel} />
+                  <Skeleton shape="block" className={styles.metricValue} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className={styles.card}>
+            <Skeleton className={styles.cardOverline} />
+            <Skeleton shape="block" className={styles.cardTitle} />
+            <div className={styles.bars}>
+              {BARS.map((height, index) => (
+                // Decorative bar height (inline, like the real chart).
+                <span key={index} className={styles.barSlot} style={{ height: `${height}%` }}>
+                  <Skeleton className={styles.bar} />
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

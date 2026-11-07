@@ -284,6 +284,8 @@ Décisions prises à l'installation du design system (**2026-11-07**).
 | D20 | **React Router (mode data)** : `createBrowserRouter` dans `app/router.tsx`, table des routes dans `app/routes.tsx` (réutilisée par les tests via `createMemoryRouter`). `/` redirige vers `/dashboard` ; les actions sans écran pointent vers des routes placeholder ; `/_dev/ui` (catalogue des primitives) n'existe qu'en dev. | Tranche D9 à l'arrivée de la deuxième page. Choix dicté par le brief du dashboard (`apps/web/design/prompts/`).                                                                            |
 | D19 | **`cx` maison** (`shared/lib/classNames.ts`) au lieu de `clsx` recommandé par le kit.                                                                                                                                                                                                                                            | Fonction de 3 lignes déjà présente : pas de dépendance supplémentaire (éco-conception).                                                                                                    |
 
+| D21 | **Corrections d'accessibilité des tokens** (audit du 2026-11-07) : `textLow` passe de `#6E819A` à `#889BB2` et `danger` de `#E06A70` à `#E47C81`, afin que le petit texte atteigne 4,5:1 sur toutes les surfaces (SC 1.4.3). Mixin `hit-area()` : zone tactile invisible de 44px autour des petites cibles (32px pour les marqueurs de carte, qui peuvent se chevaucher). | Les maquettes utilisaient `textLow` pour des libellés essentiels de 10 à 12px (3,25:1 sur `surface2`). La teinte est la plus proche de l'originale qui passe AA, et la hiérarchie avec `textMed` est conservée. |
+
 ## 11. Points ouverts
 
 Issus de la revue de l'initialisation (2026-11-06). Ils ne sont pas bloquants.
@@ -301,3 +303,12 @@ Issus de la revue de l'initialisation (2026-11-06). Ils ne sont pas bloquants.
   - logger de boot sans stack (voir §9.7).
 - **Tests à ajouter** : `validateEnvironment` (noms seulement dans le message), timeout
   d'`apiClient`, rejet CORS d'une origine non autorisée.
+
+Issus du dashboard (phases 1 à 5, 2026-11-07) :
+
+- **Carte** : placeholder SVG. MapLibre GL viendra ensuite : seule `projectToMap` (`features/dashboard/lib/mapProjection.ts`) et le rendu des marqueurs changeront. Les marqueurs proches se chevauchent (sites du Var) : il faudra un regroupement (clustering).
+- **Données** : mocks seulement. `useDashboard()` garde sa signature quand l'API arrivera. Les captions sans donnée de la maquette (« pace stable », « +1h42 ce mois ») ne sont pas affichées. `stats.mainArea` a été ajouté aux types pour « Méditerranée occidentale ».
+- **Filtres de période** de la carte : visuels uniquement (état local).
+- **i18n** : textes en français écrits dans les composants. Une lib i18n sera à prévoir si une deuxième langue arrive.
+- **Pages** : Mes plongées, Carte, Statistiques, Binômes, Recherche, Notifications et Paramètres sont des placeholders. La page Statistiques demandera une lib de graphiques (Visx ou ECharts, couleurs via `tokens.ts`).
+- **Accessibilité** : audit fait à la main et par scripts Playwright (axe-core n'est pas installé : à ajouter en CI si on accepte la dépendance). Le menu du compte se ferme au clic extérieur via `focusout`, sans écouteur global.
