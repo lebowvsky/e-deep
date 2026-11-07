@@ -29,6 +29,14 @@
   }
 }
 
+// dashboard-states.jsx · EmptyDesktop CTA — 48px, 15px label.
+.lg {
+  @include type($type-button-lg);
+
+  min-height: $space-9;
+  padding: 0 $space-5;
+}
+
 // Main CTA only: the accent stays rare.
 .primary {
   color: $color-accent-ink;

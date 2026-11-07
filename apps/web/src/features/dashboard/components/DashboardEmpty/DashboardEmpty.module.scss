@@ -1,0 +1,167 @@
+@use '@/styles/tokens' as *;
+
+// dashboard-states.jsx · EmptyDesktop — phone layout deduced from mockup 04.
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  @include from($bp-tablet) {
+    gap: $space-6;
+  }
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-4;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.title {
+  @include type($type-h-1);
+
+  @include from($bp-desktop) {
+    @include type($type-display);
+  }
+}
+
+.intro {
+  @include type($type-body-sm);
+
+  font-weight: 400;
+  color: $color-text-med;
+
+  @include from($bp-tablet) {
+    @include type($type-body-lg);
+  }
+}
+
+.hint {
+  color: $color-text-low;
+}
+
+.cta {
+  display: none;
+
+  @include from($bp-tablet) {
+    display: inline-flex;
+  }
+}
+
+// Grid: same KPI layout as the nominal state (2 × 2, 4 columns from 1280px).
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  @include from($bp-tablet) {
+    gap: $space-4;
+  }
+
+  @include from($bp-large) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.map {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: $layout-map-height-sm;
+  overflow: hidden;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line;
+
+  @include from($bp-tablet) {
+    @include card(1);
+
+    height: $layout-map-height;
+  }
+}
+
+.mapMessage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  align-items: center;
+  max-width: $layout-empty-text-max;
+  padding: $space-6;
+  text-align: center;
+}
+
+.pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $layout-empty-icon;
+  height: $layout-empty-icon;
+  margin-bottom: $space-3;
+  color: $color-accent;
+  background: $color-accent-soft;
+  border: 1px solid $color-accent-line;
+  border-radius: $radius-pill;
+}
+
+.mapTitle {
+  @include type($type-h-3);
+
+  @include from($bp-tablet) {
+    @include type($type-h-2);
+  }
+}
+
+.mapText {
+  @include type($type-body-loose);
+
+  color: $color-text-med;
+}
+
+// Grid: the two placeholders sit side by side from 1280px, like the nominal pair.
+.pair {
+  display: grid;
+  gap: $space-4;
+
+  @include from($bp-large) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.placeholder {
+  @include card(1);
+
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  align-items: center;
+  justify-content: center;
+  padding: $space-6;
+  text-align: center;
+
+  @include from($bp-tablet) {
+    min-height: $layout-empty-card-min-height;
+  }
+}
+
+.placeholderText {
+  @include type($type-body-loose);
+
+  max-width: $layout-empty-card-text-max;
+  color: $color-text-med;
+
+  @include from($bp-tablet) {
+    @include type($type-body-xl);
+  }
+}
