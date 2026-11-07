@@ -19,7 +19,8 @@ export const color = {
   // Text emphasis scale
   textHigh: '#EAF2FB', // AAA on surface0 (~16:1) — titles + KPI
   textMed: '#AFC1D6', // AA on surface0 (7.4:1) — body copy
-  textLow: '#6E819A', // meta, captions (3.1:1 → never for essential text < 18px)
+  // a11y (phase 5): #6E819A → #889BB2 so small text passes AA on every surface (≥ 4.5:1 on surface2).
+  textLow: '#889BB2', // meta, captions, overlines
   textMuted: '#43556F', // disabled / decorative only
 
   // Accent — cold turquoise, used SPARINGLY (CTA, active state, peak datapoint)
@@ -33,8 +34,8 @@ export const color = {
   successSoft: 'rgba(91, 211, 145, 0.12)',
   warning: '#E7B24A',
   warningSoft: 'rgba(231, 178, 74, 0.12)',
-  danger: '#E06A70',
-  dangerSoft: 'rgba(224, 106, 112, 0.12)',
+  danger: '#E47C81', // a11y (phase 5): was #E06A70, 4.1:1 on its soft background
+  dangerSoft: 'rgba(228, 124, 129, 0.12)',
 
   // Controls — secondary button fill (atoms.jsx · Btn secondary)
   controlFill: 'rgba(154, 186, 224, 0.06)',
@@ -209,6 +210,7 @@ export const layout = {
   markerMd: 28,
   markerLg: 36,
   markerPulse: 20, // pulse ring = marker + 20px
+  markerHitArea: 32, // markers can sit close together: smaller than 44 to limit overlaps
   popoverWidth: 200,
   popoverOffset: 30, // gap between the popover and the marker centre
   popoverTail: 12,

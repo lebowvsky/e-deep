@@ -97,6 +97,7 @@
 
 .period {
   @include focus-ring;
+  @include hit-area;
   @include type($type-chip, $font: $font-mono);
 
   height: $layout-filter-height;
@@ -124,6 +125,7 @@
 
 .expand {
   @include focus-ring;
+  @include hit-area;
   @include type($type-unit-xs, $font: $font-mono);
 
   flex-shrink: 0;
@@ -159,9 +161,9 @@
 
 .marker {
   @include focus-ring;
+  @include hit-area($layout-marker-hit-area);
   @include type($type-unit-xs, $font: $font-mono, $tabular: true);
 
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;

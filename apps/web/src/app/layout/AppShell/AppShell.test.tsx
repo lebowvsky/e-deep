@@ -41,9 +41,12 @@ describe('AppShell — mobile', () => {
     expect(dialog.contains(document.activeElement)).toBe(true);
     expect(document.body.style.overflow).toBe('hidden');
 
+    expect(document.querySelector('main')?.hasAttribute('inert')).toBe(true);
+
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(menuButton);
+    expect(document.querySelector('main')?.hasAttribute('inert')).toBe(false);
     expect(document.body.style.overflow).toBe('');
   });
 
@@ -72,6 +75,9 @@ describe('AppShell — mobile', () => {
     await user.click(within(dialog).getByRole('link', { name: 'Carte' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(router.state.location.pathname).toBe('/map');
+    // Focus moves to the new content and the document title follows.
+    expect(document.activeElement).toBe(document.querySelector('main'));
+    expect(document.title).toBe('Carte · E-Deep');
   });
 
   it('shows the FAB as a link to a new dive', async () => {
@@ -106,5 +112,6 @@ describe('AppShell — tablet and up', () => {
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('link', { name: 'Paramètres' })).toBeNull();
+    expect(document.activeElement).toBe(toggle);
   });
 });

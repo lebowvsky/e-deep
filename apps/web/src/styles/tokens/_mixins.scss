@@ -55,6 +55,22 @@
   min-height: $size;
 }
 
+// Invisible touch area of at least $size around a smaller control (Fitts, WCAG 2.5.8).
+// Uses ::after — keep ::before free for decorations.
+@mixin hit-area($size: $layout-hit-target) {
+  position: relative;
+
+  &::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, #{$size});
+    height: max(100%, #{$size});
+    content: '';
+    transform: translate(-50%, -50%);
+  }
+}
+
 // Skeleton shimmer surface (loading state).
 @mixin skeleton($radius: $radius-xs) {
   background: linear-gradient(

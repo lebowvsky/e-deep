@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { cx } from '@/shared/lib/classNames';
-import { formatMonthInitial } from '@/shared/lib/format';
+import { formatDiveCount, formatMonthInitial } from '@/shared/lib/format';
 import { Overline } from '@/shared/ui/Overline';
 import type { DashboardStats } from '../../types';
 import { ResponsiveText } from '../ResponsiveText';
@@ -29,7 +29,7 @@ export function DivesPerMonthChart({ months }: DivesPerMonthChartProps) {
             <ResponsiveText text={{ short: 'Plongées · 12 mois', long: 'Plongées par mois' }} />
           </Overline>
           <h2 id={titleId} className={styles.title}>
-            <ResponsiveText text={{ short: `${total} plongées`, long: '12 derniers mois' }} />
+            <ResponsiveText text={{ short: formatDiveCount(total), long: '12 derniers mois' }} />
           </h2>
         </div>
         <p className={styles.total}>

@@ -11,7 +11,10 @@ describe('DashboardPage', () => {
     renderAt('/dashboard?state=loading');
     const status = await screen.findByRole('status');
     expect(status.textContent).toBe('Chargement du tableau de bord');
-    expect(status.closest('[aria-busy="true"]')).not.toBeNull();
+    // The live region must stay outside the busy container, which could silence it.
+    expect(status.closest('[aria-busy="true"]')).toBeNull();
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(document.title).toBe('Tableau de bord · E-Deep');
     expect(screen.getByRole('heading', { level: 1, name: 'Tableau de bord' })).toBeTruthy();
   });
 

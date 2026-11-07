@@ -12,7 +12,7 @@
   --dl-color-line-strong: rgba(154, 186, 224, 0.18);
   --dl-color-text-high: #eaf2fb;
   --dl-color-text-med: #afc1d6;
-  --dl-color-text-low: #6e819a;
+  --dl-color-text-low: #889bb2;
   --dl-color-text-muted: #43556f;
   --dl-color-accent: #4fd6c9;
   --dl-color-accent-soft: rgba(79, 214, 201, 0.14);
@@ -22,8 +22,8 @@
   --dl-color-success-soft: rgba(91, 211, 145, 0.12);
   --dl-color-warning: #e7b24a;
   --dl-color-warning-soft: rgba(231, 178, 74, 0.12);
-  --dl-color-danger: #e06a70;
-  --dl-color-danger-soft: rgba(224, 106, 112, 0.12);
+  --dl-color-danger: #e47c81;
+  --dl-color-danger-soft: rgba(228, 124, 129, 0.12);
   --dl-color-control-fill: rgba(154, 186, 224, 0.06);
   --dl-color-chip-fill: rgba(154, 186, 224, 0.08);
   --dl-color-ring-subtle: rgba(255, 255, 255, 0.08);
@@ -141,6 +141,7 @@
   --dl-layout-marker-md: 28px;
   --dl-layout-marker-lg: 36px;
   --dl-layout-marker-pulse: 20px;
+  --dl-layout-marker-hit-area: 32px;
   --dl-layout-popover-width: 200px;
   --dl-layout-popover-offset: 30px;
   --dl-layout-popover-tail: 12px;

@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState, type FocusEvent } from 'react';
 import { Link } from 'react-router';
 import type { User } from '@/features/dashboard/types';
 import { formatDiverLevel, formatInitials } from '@/shared/lib/format';
@@ -38,11 +38,14 @@ export function UserCard({ user, action = 'menu', onNavigate }: UserCardProps) {
 function UserMenu({ onNavigate }: { onNavigate?: (() => void) | undefined }) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      toggleRef.current?.focus();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
@@ -53,9 +56,15 @@ function UserMenu({ onNavigate }: { onNavigate?: (() => void) | undefined }) {
     onNavigate?.();
   };
 
+  // Close when focus leaves the toggle + menu (Tab away, click elsewhere).
+  const onBlur = (event: FocusEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+  };
+
   return (
-    <>
+    <div className={styles.menuRoot} onBlur={onBlur}>
       <button
+        ref={toggleRef}
         type="button"
         className={styles.action}
         aria-label="Menu du compte"
@@ -81,6 +90,6 @@ function UserMenu({ onNavigate }: { onNavigate?: (() => void) | undefined }) {
           </li>
         </ul>
       )}
-    </>
+    </div>
   );
 }

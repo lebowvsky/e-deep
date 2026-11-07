@@ -1,4 +1,9 @@
-import { formatDiveDate, formatMonthShort, splitMinutes } from '@/shared/lib/format';
+import {
+  formatDiveCount,
+  formatDiveDate,
+  formatMonthShort,
+  splitMinutes,
+} from '@/shared/lib/format';
 import { cumulative } from '../../lib/sparkline';
 import type { DashboardStats, DiveSite } from '../../types';
 import { KpiCard } from '../KpiCard';
@@ -27,7 +32,7 @@ export function KpiRow({ stats, sites }: KpiRowProps) {
       <KpiCard
         label={{ short: 'Plongées', long: 'Plongées totales' }}
         value={stats.totalDives}
-        srText={`${stats.totalDives} plongées`}
+        srText={formatDiveCount(stats.totalDives)}
         caption={`${signed(stats.recentMonthDelta)} ce mois`}
         trend={<Sparkline values={cumulative(monthly)} />}
       />

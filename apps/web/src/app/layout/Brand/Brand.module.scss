@@ -2,6 +2,7 @@
 
 .brand {
   @include focus-ring;
+  @include hit-area;
 
   display: inline-flex;
   align-items: center;

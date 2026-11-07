@@ -1,6 +1,7 @@
 import { useId, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { cx } from '@/shared/lib/classNames';
+import { formatDiveCount } from '@/shared/lib/format';
 import { Overline } from '@/shared/ui/Overline';
 import { TextLink } from '@/shared/ui/TextLink';
 import { projectToMap } from '../../lib/mapProjection';
@@ -104,7 +105,7 @@ export function SiteMap({
                     isActive && styles.active,
                   )}
                   aria-pressed={isActive}
-                  aria-label={`${site.name}, ${site.diveCount} plongées, ${site.maxDepthM} mètres maximum`}
+                  aria-label={`${site.name}, ${formatDiveCount(site.diveCount)}, ${site.maxDepthM} mètres maximum`}
                   onClick={() => setActiveId(site.id)}
                 >
                   {site.diveCount}

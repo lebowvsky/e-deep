@@ -60,6 +60,10 @@
   }
 }
 
+.menuRoot {
+  display: contents; // layout unchanged: button and menu stay children of the card
+}
+
 .menu {
   @include card(2, $radius-md);
 

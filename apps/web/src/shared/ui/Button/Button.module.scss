@@ -3,6 +3,7 @@
 // atoms.jsx · Btn — h 40px, radius md, padding 0 16px, gap 8px.
 .button {
   @include focus-ring;
+  @include hit-area;
   @include type($type-button);
 
   display: inline-flex;

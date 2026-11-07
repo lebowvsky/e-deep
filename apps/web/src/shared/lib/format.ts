@@ -99,3 +99,8 @@ const dayMonth = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'shor
 export function formatDayMonth(iso: string): string {
   return dayMonth.format(new Date(iso));
 }
+
+/** 1 → "1 plongée" · 24 → "24 plongées" */
+export function formatDiveCount(count: number): string {
+  return `${count} ${count > 1 ? 'plongées' : 'plongée'}`;
+}

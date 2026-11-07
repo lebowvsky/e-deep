@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   daysSince,
   formatDayCount,
+  formatDiveCount,
   formatDiveDate,
   formatDiverLevel,
   formatHeaderDate,
@@ -61,6 +62,8 @@ describe('format', () => {
   it('formats counts and names', () => {
     expect(formatDayCount(1)).toBe('1 jour');
     expect(formatDayCount(14)).toBe('14 jours');
+    expect(formatDiveCount(1)).toBe('1 plongée');
+    expect(formatDiveCount(24)).toBe('24 plongées');
     expect(formatShortName('Lucas', 'Bernard')).toBe('L. Bernard');
     expect(formatNameList(['L. Bernard', 'T. Nguyen'])).toBe('L. Bernard & T. Nguyen');
     expect(formatNameList(['A', 'B', 'C'])).toBe('A, B & C');

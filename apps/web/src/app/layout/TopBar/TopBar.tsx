@@ -6,12 +6,14 @@ export interface TopBarProps {
   drawerId: string;
   drawerOpen: boolean;
   onOpenMenu: () => void;
+  /** Out of reach while the drawer is open. */
+  inert?: boolean;
 }
 
 /** Mobile top bar (< 768px): menu button, brand, notifications. */
-export function TopBar({ drawerId, drawerOpen, onOpenMenu }: TopBarProps) {
+export function TopBar({ drawerId, drawerOpen, onOpenMenu, inert = false }: TopBarProps) {
   return (
-    <header className={styles.topBar}>
+    <header className={styles.topBar} inert={inert}>
       <IconButton
         className={styles.menu}
         icon="menu"
