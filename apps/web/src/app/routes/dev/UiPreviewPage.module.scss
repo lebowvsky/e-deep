@@ -1,0 +1,38 @@
+@use '@/styles/tokens' as *;
+
+.page {
+  max-width: $bp-wide;
+  padding: $space-7 $space-5;
+  margin: 0 auto;
+}
+
+.title {
+  @include type($type-h-1);
+
+  margin-bottom: $space-6;
+}
+
+// Grid: two-column catalogue of independent cards.
+.grid {
+  display: grid;
+  gap: $space-4;
+
+  @include from($bp-desktop) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+  align-items: center;
+  margin-top: $space-4;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin-top: $space-4;
+}

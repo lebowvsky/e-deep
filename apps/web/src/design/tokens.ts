@@ -41,6 +41,10 @@ export const color = {
   chipFill: 'rgba(154, 186, 224, 0.08)', // neutral chip (visual-direction · Chips & badges)
   ringSubtle: 'rgba(255, 255, 255, 0.08)', // inset ring on avatars
 
+  // Overlays — mobile top bar glass and drawer scrim
+  abyssGlass: 'rgba(6, 12, 24, 0.85)',
+  scrim: 'rgba(6, 12, 24, 0.6)',
+
   // Data viz
   chart: '#4FD6C9',
   chartDim: 'rgba(79, 214, 201, 0.22)',
@@ -67,6 +71,10 @@ export const type = {
   overline: { size: 11, lh: 14, w: 600, ls: 0.8 }, // mono + uppercase
   kpi: { size: 44, lh: 48, w: 600, ls: -1.2 }, // mono + tabular-nums
   chip: { size: 11, lh: 14, w: 400, ls: 0.2 }, // mono — badges / chips
+  meta: { size: 10, lh: 14, w: 400, ls: 0.3 }, // mono — user level, footnotes
+  bodyLg: { size: 15, lh: 22, w: 400, ls: 0 }, // drawer nav, header subtitle
+  brand: { size: 15, lh: 20, w: 600, ls: -0.2 },
+  brandSm: { size: 14, lh: 20, w: 600, ls: -0.1 },
 } as const;
 
 // 4px scale
@@ -92,6 +100,18 @@ export const shadow = {
   raised: 'inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 40px rgba(0, 0, 0, 0.45)',
   focus: '0 0 0 2px rgba(79, 214, 201, 0.55)',
   accentGlow: '0 0 0 1px rgba(79, 214, 201, 0.2), 0 6px 20px rgba(79, 214, 201, 0.12)',
+  navIndicator: '0 0 10px #4FD6C9',
+  drawer: '10px 0 40px rgba(0, 0, 0, 0.5)',
+  fab: '0 0 0 4px rgba(79, 214, 201, 0.15), 0 10px 28px rgba(79, 214, 201, 0.4)',
+  dotRing: '0 0 0 2px #060C18', // notification dot cut out of the page background
+} as const;
+
+// Page backgrounds: abyss + two discreet radial glows (dashboard mockups).
+export const gradient = {
+  pageMobile:
+    'radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%)',
+  pageDesktop:
+    'radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%)',
 } as const;
 
 export const motion = {
@@ -126,10 +146,25 @@ export const layout = {
   badgePadY: 6,
   badgeGap: 6,
   badgeDot: 6,
+  sidebarPadY: 28,
+  navPadX: 14,
+  navIndicatorWidth: 3,
+  topBarPadY: 14,
+  drawerWidth: 296,
+  brandMark: 28,
+  brandMarkSm: 24,
+  brandGlyph: 16,
+  brandGlyphSm: 13,
+  brandRadius: 8,
+  blurGlass: 12,
+  blurScrim: 6,
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.
-export const iconSize = { sm: 14, md: 16, lg: 18, xl: 20 } as const;
+export const iconSize = { sm: 14, md: 16, lg: 18, xl: 20, xxl: 22 } as const;
+
+// Icon stroke widths — TS only (SVG attribute). `bold` = FAB plus.
+export const iconStroke = { regular: 1.5, bold: 2.2, brand: 1.6 } as const;
 
 export const tokens = {
   color,
@@ -138,10 +173,12 @@ export const tokens = {
   space,
   radius,
   shadow,
+  gradient,
   motion,
   opacity,
   breakpoint,
   layout,
   iconSize,
+  iconStroke,
 };
 export type Tokens = typeof tokens;

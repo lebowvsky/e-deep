@@ -27,6 +27,8 @@
   --dl-color-control-fill: rgba(154, 186, 224, 0.06);
   --dl-color-chip-fill: rgba(154, 186, 224, 0.08);
   --dl-color-ring-subtle: rgba(255, 255, 255, 0.08);
+  --dl-color-abyss-glass: rgba(6, 12, 24, 0.85);
+  --dl-color-scrim: rgba(6, 12, 24, 0.6);
   --dl-color-chart: #4FD6C9;
   --dl-color-chart-dim: rgba(79, 214, 201, 0.22);
   --dl-color-chart-bar: rgba(154, 186, 224, 0.22);
@@ -55,6 +57,12 @@
   --dl-shadow-raised: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 40px rgba(0, 0, 0, 0.45);
   --dl-shadow-focus: 0 0 0 2px rgba(79, 214, 201, 0.55);
   --dl-shadow-accent-glow: 0 0 0 1px rgba(79, 214, 201, 0.2), 0 6px 20px rgba(79, 214, 201, 0.12);
+  --dl-shadow-nav-indicator: 0 0 10px #4FD6C9;
+  --dl-shadow-drawer: 10px 0 40px rgba(0, 0, 0, 0.5);
+  --dl-shadow-fab: 0 0 0 4px rgba(79, 214, 201, 0.15), 0 10px 28px rgba(79, 214, 201, 0.4);
+  --dl-shadow-dot-ring: 0 0 0 2px #060C18;
+  --dl-gradient-page-mobile: radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%);
+  --dl-gradient-page-desktop: radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%);
   --dl-ease-out: cubic-bezier(.2, .7, .3, 1);
   --dl-ease-in: cubic-bezier(.5, 0, .75, 0);
   --dl-ease-std: cubic-bezier(.4, 0, .2, 1);
@@ -74,4 +82,16 @@
   --dl-layout-badge-pad-y: 6px;
   --dl-layout-badge-gap: 6px;
   --dl-layout-badge-dot: 6px;
+  --dl-layout-sidebar-pad-y: 28px;
+  --dl-layout-nav-pad-x: 14px;
+  --dl-layout-nav-indicator-width: 3px;
+  --dl-layout-top-bar-pad-y: 14px;
+  --dl-layout-drawer-width: 296px;
+  --dl-layout-brand-mark: 28px;
+  --dl-layout-brand-mark-sm: 24px;
+  --dl-layout-brand-glyph: 16px;
+  --dl-layout-brand-glyph-sm: 13px;
+  --dl-layout-brand-radius: 8px;
+  --dl-layout-blur-glass: 12px;
+  --dl-layout-blur-scrim: 6px;
 }

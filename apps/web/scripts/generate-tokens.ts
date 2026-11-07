@@ -39,6 +39,9 @@ for (const [k, v] of Object.entries(tokens.radius)) add(`radius-${k}`, px(v));
 scss.push('\n// Shadow');
 for (const [k, v] of Object.entries(tokens.shadow)) add(`shadow-${kebab(k)}`, v);
 
+scss.push('\n// Gradient');
+for (const [k, v] of Object.entries(tokens.gradient)) add(`gradient-${kebab(k)}`, v);
+
 scss.push('\n// Motion');
 for (const [k, v] of Object.entries(tokens.motion.ease)) add(`ease-${k}`, v);
 for (const [k, v] of Object.entries(tokens.motion.dur)) add(`dur-${k}`, `${v}ms`);

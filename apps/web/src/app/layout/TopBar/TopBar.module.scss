@@ -1,0 +1,25 @@
+@use '@/styles/tokens' as *;
+
+// dashboard-mobile.jsx · MobileTopBar — sticky glass bar.
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $layout-top-bar-pad-y $space-5;
+  background: $color-abyss-glass;
+  backdrop-filter: blur($layout-blur-glass);
+  border-bottom: 1px solid $color-line;
+}
+
+// Pull the 44px targets towards the edges so the icons line up with the content.
+.menu {
+  margin-left: -$space-3;
+  color: $color-text-high;
+}
+
+.notifications {
+  margin-right: -$space-3;
+}

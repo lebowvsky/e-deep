@@ -1,9 +1,9 @@
-import { HomePage } from './routes/HomePage';
+import { createBrowserRouter, RouterProvider } from 'react-router';
+import { routes } from './routes';
 
-/**
- * Single route for now: no router library until a second page exists.
- * When it does, pick one (TanStack Router or React Router) and move the routes here.
- */
+const router = createBrowserRouter(routes);
+
+/** React Router in data mode (ARCHITECTURE.md D20). Route table: `./routes.tsx`. */
 export function AppRouter() {
-  return <HomePage />;
+  return <RouterProvider router={router} />;
 }

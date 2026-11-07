@@ -1,0 +1,63 @@
+@use '@/styles/tokens' as *;
+
+.brand {
+  @include focus-ring;
+
+  display: inline-flex;
+  align-items: center;
+  border-radius: $radius-sm;
+}
+
+.mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: $color-accent;
+  background: $color-surface-2;
+  box-shadow: inset 0 0 0 1px $color-accent-line;
+}
+
+.name {
+  color: $color-text-high;
+}
+
+// Sidebar / drawer: 28px mark, radius 8, 15px name.
+.md {
+  gap: $space-3; // mockup 10px, rounded to the 4px scale
+
+  .mark {
+    width: $layout-brand-mark;
+    height: $layout-brand-mark;
+    border-radius: $layout-brand-radius;
+  }
+
+  .glyph {
+    width: $layout-brand-glyph;
+    height: $layout-brand-glyph;
+  }
+
+  .name {
+    @include type($type-brand);
+  }
+}
+
+// Mobile top bar: 24px mark, radius 6, 14px name.
+.sm {
+  gap: $space-2;
+
+  .mark {
+    width: $layout-brand-mark-sm;
+    height: $layout-brand-mark-sm;
+    border-radius: $radius-sm;
+  }
+
+  .glyph {
+    width: $layout-brand-glyph-sm;
+    height: $layout-brand-glyph-sm;
+  }
+
+  .name {
+    @include type($type-brand-sm);
+  }
+}

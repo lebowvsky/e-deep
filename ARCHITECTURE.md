@@ -50,10 +50,10 @@ e-deep/
 │   │   ├── design/               handoff : README (spec), screenshots/, mockups/ (lecture seule)
 │   │   ├── scripts/              generate-tokens.ts, screenshot.mjs (Playwright)
 │   │   └── src/
-│   │       ├── app/              App, providers, router, routes (pages), layout/
+│   │       ├── app/              App, providers, router + routes.tsx, routes/ (pages), layout/ (AppShell…)
 │   │       ├── design/tokens.ts  source unique des design tokens
 │   │       ├── features/<domaine>/{api,hooks,components} (+ types.ts, mocks/ si besoin)
-│   │       ├── shared/{ui,hooks,lib}
+│   │       ├── shared/{ui,hooks,lib,config}  config/app.ts : APP_NAME
 │   │       └── styles/           global.scss, tokens/ (_index, _tokens & _vars générés, _mixins)
 │   └── admin/                    React 19 + Vite 8 + Tailwind v4 + shadcn/ui
 │       └── src/
@@ -75,13 +75,13 @@ e-deep/
 
 Versions vérifiées le 2026-11-06. Node **26 LTS** (`.nvmrc`), pnpm **12.18** (`packageManager`).
 
-| Zone         | Stack                                                                                                                                                 |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Racine       | TypeScript ~6.0.3, ESLint 10 + typescript-eslint 8 (type-checked), Prettier 3                                                                         |
-| `apps/api`   | NestJS 12.4 (**CommonJS**), @nestjs/config, TypeORM 1.1 + pg, class-validator / class-transformer, Jest 30 + ts-jest + supertest                      |
-| `apps/web`   | React 19.3, Vite 8 (Rolldown), @vitejs/plugin-react 6, sass-embedded, Geist via fontsource, Vitest 5 + Testing Library + jsdom, Playwright (captures) |
-| `apps/admin` | Pareil que web pour React/Vite/tests, plus Tailwind 4.3 (`@tailwindcss/vite`) et shadcn/ui (CLI 4.23, base Radix, preset Nova)                        |
-| Infra dev    | PostgreSQL 18 (`postgres:18-alpine`) via docker compose                                                                                               |
+| Zone         | Stack                                                                                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Racine       | TypeScript ~6.0.3, ESLint 10 + typescript-eslint 8 (type-checked), Prettier 3                                                                                                                    |
+| `apps/api`   | NestJS 12.4 (**CommonJS**), @nestjs/config, TypeORM 1.1 + pg, class-validator / class-transformer, Jest 30 + ts-jest + supertest                                                                 |
+| `apps/web`   | React 19.3, Vite 8 (Rolldown), @vitejs/plugin-react 6, sass-embedded, Geist via fontsource, React Router 8 (data mode), Vitest 5 + Testing Library (+ user-event) + jsdom, Playwright (captures) |
+| `apps/admin` | Pareil que web pour React/Vite/tests, plus Tailwind 4.3 (`@tailwindcss/vite`) et shadcn/ui (CLI 4.23, base Radix, preset Nova)                                                                   |
+| Infra dev    | PostgreSQL 18 (`postgres:18-alpine`) via docker compose                                                                                                                                          |
 
 Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
 
@@ -276,12 +276,13 @@ Décisions prises lors de l'initialisation du **2026-11-06**.
 
 Décisions prises à l'installation du design system (**2026-11-07**).
 
-| #   | Décision                                                                                                                                                                                                                                                                                      | Raison                                                                                                                                                                                     |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| D16 | **Polices Geist / Geist Mono auto-hébergées** (`@fontsource-variable/geist`, `-mono`), à la place de la pile système.                                                                                                                                                                         | Rendu fidèle aux maquettes. Les fichiers sont servis par l'app (aucun CDN tiers, donc pas de transfert d'IP, RGPD), et le `unicode-range` limite le téléchargement au sous-ensemble latin. |
-| D17 | **Design system DiveLog** (kit de handoff) : `tokens.ts` → tokens SCSS/CSS générés, thème sombre uniquement, mixins dédiés. Il remplace les anciens `_tokens`/`_mixins`/`_reset`/`main.scss`. Le kit est adapté à l'arborescence existante (`shared/ui`, `app/layout`, `features/dashboard`). | Une seule source de vérité pour les tokens, partagée par SCSS et TS ; pas deux systèmes en parallèle.                                                                                      |
-| D18 | **Génération des tokens par Node natif** (`node scripts/generate-tokens.ts`, type stripping de Node 26), sans `tsx`. **Playwright** (Chromium) en devDependency pour les captures de comparaison aux maquettes.                                                                               | Une dépendance de moins ; le script est typé par `tsconfig.node.json` (`allowImportingTsExtensions`). La vérification visuelle demande un vrai navigateur.                                 |
-| D19 | **`cx` maison** (`shared/lib/classNames.ts`) au lieu de `clsx` recommandé par le kit.                                                                                                                                                                                                         | Fonction de 3 lignes déjà présente : pas de dépendance supplémentaire (éco-conception).                                                                                                    |
+| #   | Décision                                                                                                                                                                                                                                                                                                                         | Raison                                                                                                                                                                                     |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D16 | **Polices Geist / Geist Mono auto-hébergées** (`@fontsource-variable/geist`, `-mono`), à la place de la pile système.                                                                                                                                                                                                            | Rendu fidèle aux maquettes. Les fichiers sont servis par l'app (aucun CDN tiers, donc pas de transfert d'IP, RGPD), et le `unicode-range` limite le téléchargement au sous-ensemble latin. |
+| D17 | **Design system DiveLog** (kit de handoff) : `tokens.ts` → tokens SCSS/CSS générés, thème sombre uniquement, mixins dédiés. Il remplace les anciens `_tokens`/`_mixins`/`_reset`/`main.scss`. Le kit est adapté à l'arborescence existante (`shared/ui`, `app/layout`, `features/dashboard`).                                    | Une seule source de vérité pour les tokens, partagée par SCSS et TS ; pas deux systèmes en parallèle.                                                                                      |
+| D18 | **Génération des tokens par Node natif** (`node scripts/generate-tokens.ts`, type stripping de Node 26), sans `tsx`. **Playwright** (Chromium) en devDependency pour les captures de comparaison aux maquettes.                                                                                                                  | Une dépendance de moins ; le script est typé par `tsconfig.node.json` (`allowImportingTsExtensions`). La vérification visuelle demande un vrai navigateur.                                 |
+| D20 | **React Router (mode data)** : `createBrowserRouter` dans `app/router.tsx`, table des routes dans `app/routes.tsx` (réutilisée par les tests via `createMemoryRouter`). `/` redirige vers `/dashboard` ; les actions sans écran pointent vers des routes placeholder ; `/_dev/ui` (catalogue des primitives) n'existe qu'en dev. | Tranche D9 à l'arrivée de la deuxième page. Choix dicté par le brief du dashboard (`apps/web/design/prompts/`).                                                                            |
+| D19 | **`cx` maison** (`shared/lib/classNames.ts`) au lieu de `clsx` recommandé par le kit.                                                                                                                                                                                                                                            | Fonction de 3 lignes déjà présente : pas de dépendance supplémentaire (éco-conception).                                                                                                    |
 
 ## 11. Points ouverts
 

@@ -50,6 +50,10 @@ CSS-in-JS, pas de lib de composants UI.
 - Un seul composant par écran pour desktop et mobile : le responsive passe par le SCSS, pas par
   des composants `Mobile*` ni par `window.innerWidth` (sauf pour le passage sidebar ↔ drawer, via
   un hook `useMediaQuery` dans `src/shared/hooks/`).
+- Nom du produit : toujours `APP_NAME` (`@/shared/config/app`), jamais « DiveLog » en dur.
+- Routing : table dans `src/app/routes.tsx` (React Router, mode data). Une action sans écran pointe
+  vers une route placeholder : aucun lien ni bouton mort. Catalogue des primitives : `/_dev/ui` (dev).
+- Actions qui naviguent : `ButtonLink` / `IconLink` ; actions locales : `Button` / `IconButton`.
 - Alias `@/` → `src/`.
 
 ## Accessibilité (obligatoire)

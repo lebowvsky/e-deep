@@ -1,0 +1,13 @@
+@use '@/styles/tokens' as *;
+
+.header {
+  margin-bottom: $space-6;
+}
+
+.title {
+  @include type($type-h-1);
+
+  @include from($bp-desktop) {
+    @include type($type-display);
+  }
+}

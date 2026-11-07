@@ -10,7 +10,7 @@ export interface BadgeProps {
   tone?: BadgeTone;
   /** Leading status dot. */
   dot?: boolean;
-  className?: string;
+  className?: string | undefined;
 }
 
 /** Mono pill chip (visual-direction.jsx · Chips & badges). */

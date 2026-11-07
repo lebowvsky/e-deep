@@ -1,0 +1,34 @@
+@use '@/styles/tokens' as *;
+
+// dashboard-desktop.jsx · Sidebar — 240px, surface0, padding 28px 20px.
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  width: $layout-sidebar-width;
+  height: 100dvh;
+  padding: $layout-sidebar-pad-y $space-5;
+  overflow-y: auto;
+  background: $color-surface-0;
+  border-right: 1px solid $color-line;
+}
+
+.brand {
+  align-self: flex-start;
+  padding: 0 $space-1; // mockup 6px, rounded to the 4px scale
+  margin-bottom: $space-7 + $space-1; // 36px
+}
+
+.nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: $space-1;
+  margin-bottom: $space-6;
+}
+
+.heading {
+  padding: 0 $layout-nav-pad-x $space-2;
+}
