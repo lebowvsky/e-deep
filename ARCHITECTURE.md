@@ -45,12 +45,16 @@ e-deep/
 │   │   │   ├── common/           transverse : filtres, logging
 │   │   │   └── modules/<domaine>/ un module Nest par domaine métier (health)
 │   │   └── test/                 tests e2e (supertest)
-│   ├── web/                      React 19 + Vite 8 + SCSS modules
+│   ├── web/                      React 19 + Vite 8 + SCSS modules (design system DiveLog)
+│   │   ├── CLAUDE.md             règles du design system pour les agents
+│   │   ├── design/               handoff : README (spec), screenshots/, mockups/ (lecture seule)
+│   │   ├── scripts/              generate-tokens.ts, screenshot.mjs (Playwright)
 │   │   └── src/
-│   │       ├── app/              App, providers, router, routes (pages)
-│   │       ├── features/<domaine>/{api,hooks,components}
+│   │       ├── app/              App, providers, router, routes (pages), layout/
+│   │       ├── design/tokens.ts  source unique des design tokens
+│   │       ├── features/<domaine>/{api,hooks,components} (+ types.ts, mocks/ si besoin)
 │   │       ├── shared/{ui,hooks,lib}
-│   │       └── styles/           _tokens, _mixins, _reset, main.scss
+│   │       └── styles/           global.scss, tokens/ (_index, _tokens & _vars générés, _mixins)
 │   └── admin/                    React 19 + Vite 8 + Tailwind v4 + shadcn/ui
 │       └── src/
 │           ├── app/              App, providers, router, layout/, routes/, access-control/
@@ -71,13 +75,13 @@ e-deep/
 
 Versions vérifiées le 2026-11-06. Node **26 LTS** (`.nvmrc`), pnpm **12.18** (`packageManager`).
 
-| Zone         | Stack                                                                                                                            |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| Racine       | TypeScript ~6.0.3, ESLint 10 + typescript-eslint 8 (type-checked), Prettier 3                                                    |
-| `apps/api`   | NestJS 12.4 (**CommonJS**), @nestjs/config, TypeORM 1.1 + pg, class-validator / class-transformer, Jest 30 + ts-jest + supertest |
-| `apps/web`   | React 19.3, Vite 8 (Rolldown), @vitejs/plugin-react 6, sass-embedded, Vitest 5 + Testing Library + jsdom                         |
-| `apps/admin` | Pareil que web pour React/Vite/tests, plus Tailwind 4.3 (`@tailwindcss/vite`) et shadcn/ui (CLI 4.23, base Radix, preset Nova)   |
-| Infra dev    | PostgreSQL 18 (`postgres:18-alpine`) via docker compose                                                                          |
+| Zone         | Stack                                                                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Racine       | TypeScript ~6.0.3, ESLint 10 + typescript-eslint 8 (type-checked), Prettier 3                                                                         |
+| `apps/api`   | NestJS 12.4 (**CommonJS**), @nestjs/config, TypeORM 1.1 + pg, class-validator / class-transformer, Jest 30 + ts-jest + supertest                      |
+| `apps/web`   | React 19.3, Vite 8 (Rolldown), @vitejs/plugin-react 6, sass-embedded, Geist via fontsource, Vitest 5 + Testing Library + jsdom, Playwright (captures) |
+| `apps/admin` | Pareil que web pour React/Vite/tests, plus Tailwind 4.3 (`@tailwindcss/vite`) et shadcn/ui (CLI 4.23, base Radix, preset Nova)                        |
+| Infra dev    | PostgreSQL 18 (`postgres:18-alpine`) via docker compose                                                                                               |
 
 Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
 
@@ -129,22 +133,34 @@ Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
 
 ## 5. Stratégie de styles
 
-### `apps/web` : SCSS modules uniquement
+### `apps/web` : SCSS modules uniquement, design system DiveLog
 
 - Un fichier `Composant.module.scss` par composant. Pas de Tailwind, pas de CSS-in-JS, pas de
   classes utilitaires. Les noms de classes sont en camelCase (le scoping des modules remplace BEM).
+  Les classes se combinent avec `cx` (`shared/lib/classNames.ts`).
+- **Tokens** : source unique `src/design/tokens.ts` (couleurs, typo, espacements base 4px, rayons,
+  ombres, motion, opacités, breakpoints, layout). `pnpm --filter web run tokens` génère
+  `src/styles/tokens/_tokens.scss` (variables Sass `$color-…`) et `_vars.scss` (custom properties
+  `--dl-…` sur `:root`). Les fichiers générés ne s'éditent jamais à la main et sont exclus de
+  Prettier. Les valeurs calculées en JS (graphes, SVG) importent `@/design/tokens`.
 - `src/styles/` contient :
-  - `_tokens.scss` : custom properties CSS sur `:root` (couleurs, espacements, typo, rayons,
-    animations), avec le thème sombre via `prefers-color-scheme` ;
-  - `_mixins.scss` : Sass pur, sans sortie CSS. Il contient les breakpoints **mobile-first**
-    (`@include from(md)` génère un `min-width`), `focus-ring` et `visually-hidden` ;
-  - `_reset.scss` : reset minimal, avec `prefers-reduced-motion` ;
-  - `main.scss` : point d'entrée global, importé une seule fois dans `main.tsx`.
-- `@use` / `@forward` uniquement, **jamais `@import`**. Chaque module qui utilise un mixin
-  déclare explicitement `@use '@/styles/mixins' as *;` (pas d'`additionalData` global, pour garder les dépendances
-  visibles).
+  - `tokens/_index.scss` : point d'entrée des modules, `@use '@/styles/tokens' as *;` donne accès
+    aux tokens et aux mixins ;
+  - `tokens/_mixins.scss` (écrit à la main, sans sortie CSS) : `type()`, `overline()`, `card()`,
+    `focus-ring`, `hit-target()`, `skeleton()`, `from()` / `until()` (breakpoints **mobile-first**,
+    `@include from($bp-tablet)`), `visually-hidden` ;
+  - `global.scss` : reset, body, focus visible, keyframes, `prefers-reduced-motion`. Importé une
+    seule fois dans `main.tsx`, après les polices.
+- **Thème sombre uniquement** (`color-scheme: dark`) : pas de thème clair pour l'instant.
+- **Polices** : Geist et Geist Mono, auto-hébergées via `@fontsource-variable/*` (voir D16). Les
+  chiffres (KPI, mesures, dates) sont en Geist Mono + `tabular-nums`.
+- `@use` / `@forward` uniquement, **jamais `@import`**. Chaque module déclare explicitement son
+  `@use` (pas d'`additionalData` global, pour garder les dépendances visibles).
 - Flexbox par défaut. Grid seulement si c'est justifié par un commentaire.
-- Aucune valeur en dur hors tokens. Pas de webfont (pile système).
+- **Aucune valeur en dur hors tokens** (seules exceptions : `0`, `1px` des bordures fines, `100%`).
+  Une valeur manquante s'ajoute dans `tokens.ts`.
+- Maquettes de référence dans `apps/web/design/` ; vérification visuelle avec
+  `pnpm --filter web run screenshot <route> [largeur]` (sortie `apps/web/.screenshots/`, ignorée).
 
 ### `apps/admin` : exception Tailwind
 
@@ -257,6 +273,15 @@ Décisions prises lors de l'initialisation du **2026-11-06**.
 | D13 | **Code partagé entre fronts dupliqué** en phase 1 (client API, guards, `useHealth`…).                                                                                                                                                                                                                                                                        | Conséquence de D1 et de la règle « shared = types ». On factorisera au troisième consommateur (voir §6).                                                                                                                                                                                                                                     |
 | D14 | **PostgreSQL 18** (`18-alpine`).                                                                                                                                                                                                                                                                                                                             | Dernière majeure stable (19 est encore en RC).                                                                                                                                                                                                                                                                                               |
 | D15 | **Lint et format centralisés** à la racine. Le lint Nest 12 (oxlint) et celui du template Vite ne sont pas repris.                                                                                                                                                                                                                                           | Une seule config, imposée par le cadrage initial.                                                                                                                                                                                                                                                                                            |
+
+Décisions prises à l'installation du design system (**2026-11-07**).
+
+| #   | Décision                                                                                                                                                                                                                                                                                      | Raison                                                                                                                                                                                     |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D16 | **Polices Geist / Geist Mono auto-hébergées** (`@fontsource-variable/geist`, `-mono`), à la place de la pile système.                                                                                                                                                                         | Rendu fidèle aux maquettes. Les fichiers sont servis par l'app (aucun CDN tiers, donc pas de transfert d'IP, RGPD), et le `unicode-range` limite le téléchargement au sous-ensemble latin. |
+| D17 | **Design system DiveLog** (kit de handoff) : `tokens.ts` → tokens SCSS/CSS générés, thème sombre uniquement, mixins dédiés. Il remplace les anciens `_tokens`/`_mixins`/`_reset`/`main.scss`. Le kit est adapté à l'arborescence existante (`shared/ui`, `app/layout`, `features/dashboard`). | Une seule source de vérité pour les tokens, partagée par SCSS et TS ; pas deux systèmes en parallèle.                                                                                      |
+| D18 | **Génération des tokens par Node natif** (`node scripts/generate-tokens.ts`, type stripping de Node 26), sans `tsx`. **Playwright** (Chromium) en devDependency pour les captures de comparaison aux maquettes.                                                                               | Une dépendance de moins ; le script est typé par `tsconfig.node.json` (`allowImportingTsExtensions`). La vérification visuelle demande un vrai navigateur.                                 |
+| D19 | **`cx` maison** (`shared/lib/classNames.ts`) au lieu de `clsx` recommandé par le kit.                                                                                                                                                                                                         | Fonction de 3 lignes déjà présente : pas de dépendance supplémentaire (éco-conception).                                                                                                    |
 
 ## 11. Points ouverts
 

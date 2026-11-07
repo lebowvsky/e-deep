@@ -4,6 +4,9 @@
 décisions). Le lire avant toute modification. En cas de conflit entre un skill et ce document :
 s'arrêter et signaler.
 
+Front plongeur (`apps/web`) : design system DiveLog, règles dans **`apps/web/CLAUDE.md`** et skill
+`implement-screen` (`.claude/skills/`) pour implémenter un écran depuis `apps/web/design/`.
+
 ## Commandes (depuis la racine)
 
 ```bash
@@ -26,6 +29,8 @@ pnpm --filter <api|web|admin> run <script>
 - Pas de `any`. `@e-deep/shared` = types seulement, importés avec `import type`.
 - `synchronize: false` toujours ; le schéma ne change que par migrations ; entités en `*.entity.ts`.
 - Tailwind **uniquement** dans `apps/admin` ; `apps/web` = SCSS modules, `@use` jamais `@import`.
+- `apps/web` : tokens édités **uniquement** dans `src/design/tokens.ts` puis
+  `pnpm --filter web run tokens` ; aucune valeur en dur dans les `*.module.scss`.
 - Ne pas modifier `apps/admin/src/components/ui/` (shadcn) : wrapper.
 - Aucune donnée personnelle / de santé dans les logs (cf. ARCHITECTURE §9).
 - Commits conventionnels.

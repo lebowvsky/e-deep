@@ -1,0 +1,5 @@
+// Single entry point for components:
+//   @use '@/styles/tokens' as *;
+// gives access to every $token and every mixin.
+@forward './tokens';
+@forward './mixins';
