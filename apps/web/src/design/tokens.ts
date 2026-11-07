@@ -55,6 +55,9 @@ export const color = {
   coast: 'rgba(154, 186, 224, 0.14)',
   coastDim: 'rgba(154, 186, 224, 0.09)',
   coastFaint: 'rgba(154, 186, 224, 0.07)',
+  coastMuted: 'rgba(154, 186, 224, 0.08)', // empty map
+  coastGhost: 'rgba(154, 186, 224, 0.05)',
+  skeletonDot: 'rgba(154, 186, 224, 0.12)', // marker placeholders while loading
 } as const;
 
 export const font = {
@@ -71,6 +74,9 @@ export const type = {
   body: { size: 14, lh: 20, w: 400, ls: 0 },
   bodyMed: { size: 14, lh: 20, w: 500, ls: 0 },
   button: { size: 14, lh: 20, w: 500, ls: -0.1 },
+  buttonLg: { size: 15, lh: 20, w: 500, ls: -0.1 },
+  bodyLoose: { size: 14, lh: 22, w: 400, ls: 0 }, // empty-state explanations
+  bodyXl: { size: 16, lh: 24, w: 400, ls: 0 },
   bodySm: { size: 13, lh: 18, w: 500, ls: 0 }, // compact labels (buddy names, avatar initials)
   caption: { size: 12, lh: 16, w: 500, ls: 0.1 },
   overline: { size: 11, lh: 14, w: 600, ls: 0.8 }, // mono + uppercase
@@ -131,6 +137,7 @@ export const gradient = {
     'radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%)',
   pageDesktop:
     'radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%)',
+  mapEmpty: 'radial-gradient(900px 400px at 50% 60%, rgba(27, 49, 86, 0.35), transparent 70%)',
   mapMobile: 'radial-gradient(300px 200px at 50% 55%, rgba(36, 64, 109, 0.5), transparent 70%)',
   mapDesktop:
     'radial-gradient(800px 400px at 55% 60%, rgba(36, 64, 109, 0.4), transparent 70%), radial-gradient(500px 300px at 20% 30%, rgba(79, 214, 201, 0.05), transparent 70%)',
@@ -146,7 +153,13 @@ export const motion = {
 } as const;
 
 // Content dimmed while a refresh is in flight.
-export const opacity = { busy: 0.6, mapGrid: 0.6, spark: 0.7, pulse: 0.35 } as const;
+export const opacity = {
+  busy: 0.6,
+  mapGrid: 0.6,
+  mapGridEmpty: 0.4,
+  spark: 0.7,
+  pulse: 0.35,
+} as const;
 
 export const breakpoint = {
   mobile: 375, // baseline
@@ -207,6 +220,15 @@ export const layout = {
   barMaxWidth: 24,
   buddyCard: 180,
   buddyCardSm: 140,
+  emptyCardMinHeight: 260,
+  emptyIcon: 48,
+  emptyTextMax: 420,
+  emptyCardTextMax: 300,
+  skelText: 10,
+  skelTitle: 22,
+  skelKpi: 36,
+  skelFilterWidth: 38,
+  skelFilterHeight: 28,
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.

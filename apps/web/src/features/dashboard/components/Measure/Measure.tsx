@@ -9,13 +9,15 @@ export interface MeasureProps {
   srText: string;
   /** kpi: KPI cards · metric: last-dive metrics */
   size: 'kpi' | 'metric';
+  /** muted: placeholder value (« — ») of the empty state */
+  tone?: 'default' | 'muted';
   className?: string | undefined;
 }
 
 /** Mono tabular number with a smaller unit. Visual text is hidden from screen readers. */
-export function Measure({ value, unit, srText, size, className }: MeasureProps) {
+export function Measure({ value, unit, srText, size, tone = 'default', className }: MeasureProps) {
   return (
-    <span className={cx(styles.measure, styles[size], className)}>
+    <span className={cx(styles.measure, styles[size], tone === 'muted' && styles.muted, className)}>
       <span className={styles.value} aria-hidden="true">
         {value}
       </span>

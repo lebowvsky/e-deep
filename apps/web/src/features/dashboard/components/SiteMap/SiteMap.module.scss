@@ -49,52 +49,6 @@
   }
 }
 
-.canvas {
-  position: absolute;
-  inset: 0;
-  background-color: $color-surface-0;
-  background-image: $gradient-map-mobile;
-
-  @include from($bp-tablet) {
-    background-image: $gradient-map-desktop;
-  }
-}
-
-.grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient($color-gridline 1px, transparent 1px),
-    linear-gradient(90deg, $color-gridline 1px, transparent 1px);
-  background-size: $layout-map-grid-sm $layout-map-grid-sm;
-  opacity: $opacity-map-grid;
-
-  @include from($bp-tablet) {
-    background-size: $layout-map-grid $layout-map-grid;
-  }
-}
-
-.coasts {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  fill: none;
-  stroke-width: 1px;
-}
-
-.coast {
-  stroke: $color-coast;
-}
-
-.coastDim {
-  stroke: $color-coast-dim;
-}
-
-.coastFaint {
-  stroke: $color-coast-faint;
-}
-
 // Header overlay: overline + title + period filters (tablet+), « Agrandir » (phone).
 .overlay {
   position: absolute;

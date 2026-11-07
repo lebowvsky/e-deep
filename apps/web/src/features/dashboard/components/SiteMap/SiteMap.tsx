@@ -5,6 +5,7 @@ import { Overline } from '@/shared/ui/Overline';
 import { TextLink } from '@/shared/ui/TextLink';
 import { projectToMap } from '../../lib/mapProjection';
 import type { DiveSite } from '../../types';
+import { MapBackdrop } from '../MapBackdrop';
 import styles from './SiteMap.module.scss';
 
 const MAP_PERIODS = ['1M', '3M', '1A', 'Tout'] as const;
@@ -60,31 +61,7 @@ export function SiteMap({
       </div>
 
       <div className={styles.map}>
-        <div className={styles.canvas} aria-hidden="true">
-          <div className={styles.grid} />
-          <svg
-            className={styles.coasts}
-            viewBox="0 0 1000 440"
-            preserveAspectRatio="none"
-            focusable="false"
-          >
-            <path
-              className={styles.coast}
-              vectorEffect="non-scaling-stroke"
-              d="M0 150 Q 120 130, 220 170 T 420 180 Q 480 190, 560 170 T 760 200 Q 840 220, 1000 210"
-            />
-            <path
-              className={styles.coastDim}
-              vectorEffect="non-scaling-stroke"
-              d="M0 230 Q 160 210, 260 240 T 500 260 Q 600 270, 700 250 T 1000 280"
-            />
-            <path
-              className={styles.coastFaint}
-              vectorEffect="non-scaling-stroke"
-              d="M150 340 Q 280 320, 380 350 T 620 360 Q 720 370, 820 350"
-            />
-          </svg>
-        </div>
+        <MapBackdrop />
 
         <div className={styles.overlay}>
           <div className={styles.heading}>

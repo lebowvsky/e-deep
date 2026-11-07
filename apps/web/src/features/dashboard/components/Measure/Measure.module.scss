@@ -56,6 +56,10 @@
   }
 }
 
+.muted .value {
+  color: $color-text-muted;
+}
+
 .srOnly {
   @include visually-hidden;
 }

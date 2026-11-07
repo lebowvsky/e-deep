@@ -1,0 +1,282 @@
+@use '@/styles/tokens' as *;
+
+// dashboard-states.jsx · LoadingDesktop — phone layout deduced from mockup 04.
+// Placeholder sizes are relative (%), heights come from the type tokens they stand for.
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  @include from($bp-tablet) {
+    gap: $space-6;
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}
+
+.header {
+  display: flex;
+  gap: $space-4;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.headerText {
+  display: flex;
+  flex: 1;
+  max-width: $layout-empty-text-max;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.overline {
+  width: 45%;
+  height: $layout-skel-text;
+}
+
+.title {
+  width: 75%;
+  height: $layout-skel-kpi;
+}
+
+.subtitle {
+  width: 65%;
+  height: $space-3;
+}
+
+.actions {
+  display: none;
+  gap: $space-3;
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+}
+
+.iconAction {
+  width: $layout-control-height;
+  height: $layout-control-height;
+}
+
+.cta {
+  width: $layout-buddy-card;
+  height: $layout-control-height;
+}
+
+// Grid: same KPI layout as the nominal state.
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  @include from($bp-tablet) {
+    gap: $space-4;
+  }
+
+  @include from($bp-large) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.kpi {
+  @include card(1, $radius-md);
+
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  justify-content: space-between;
+  min-height: $layout-tile-min-height;
+  padding: $layout-tile-pad;
+
+  @include from($bp-tablet) {
+    min-height: $layout-kpi-min-height;
+    padding: $space-6;
+    border-radius: $radius-lg;
+  }
+}
+
+.kpiLabel {
+  width: 50%;
+  height: $layout-skel-text;
+}
+
+.kpiBody {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.kpiValue {
+  width: 55%;
+  height: $layout-skel-title;
+
+  @include from($bp-tablet) {
+    height: $layout-skel-kpi;
+  }
+}
+
+.kpiCaption {
+  width: 70%;
+  height: $layout-skel-text;
+}
+
+.map {
+  @include card(1, $radius-md);
+
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  height: $layout-map-height-sm;
+  padding: $layout-tile-pad;
+
+  @include from($bp-tablet) {
+    height: $layout-map-height;
+    padding: $space-6;
+    border-radius: $radius-lg;
+  }
+}
+
+.mapHeader {
+  display: flex;
+  justify-content: space-between;
+}
+
+.mapHeading {
+  display: flex;
+  flex: 1;
+  max-width: $layout-empty-text-max;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.mapOverline {
+  width: 30%;
+  height: $layout-skel-text;
+}
+
+.mapTitle {
+  width: 50%;
+  height: $layout-skel-title;
+}
+
+.filters {
+  display: none;
+  gap: $layout-badge-gap;
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+}
+
+.filter {
+  width: $layout-skel-filter-width;
+  height: $layout-skel-filter-height;
+}
+
+.mapCanvas {
+  position: relative;
+  flex: 1;
+}
+
+.mapFill {
+  width: 100%;
+  height: 100%;
+}
+
+.marker {
+  position: absolute;
+  top: var(--y);
+  left: var(--x);
+  width: $layout-marker-md;
+  height: $layout-marker-md;
+  background: $color-skeleton-dot;
+  border-radius: $radius-pill;
+  box-shadow: inset 0 0 0 1px $color-line;
+  transform: translate(-50%, -50%);
+}
+
+// Grid: paired cards from 1280px, like the nominal state.
+.pair {
+  display: grid;
+  gap: $space-4;
+
+  @include from($bp-large) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.card {
+  @include card(1);
+
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  padding: $space-4;
+
+  @include from($bp-tablet) {
+    min-height: $layout-empty-card-min-height;
+    padding: $space-6;
+  }
+}
+
+.cardOverline {
+  width: 25%;
+  height: $layout-skel-text;
+}
+
+.cardTitle {
+  width: 45%;
+  height: $layout-skel-title;
+}
+
+.cardSubtitle {
+  width: 30%;
+  height: $space-3;
+}
+
+// Grid: four metric columns, as in the last-dive card.
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: $space-4;
+  margin-top: $space-6;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.metricLabel {
+  width: 75%;
+  height: $space-2;
+}
+
+.metricValue {
+  width: 100%;
+  height: $layout-skel-title;
+}
+
+.bars {
+  display: flex;
+  flex: 1;
+  gap: $space-2;
+  align-items: flex-end;
+  min-height: $layout-chart-height;
+  margin-top: $space-6;
+}
+
+.barSlot {
+  display: flex;
+  flex: 1;
+}
+
+.bar {
+  height: 100%;
+}
