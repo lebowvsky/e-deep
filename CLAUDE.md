@@ -13,6 +13,7 @@ Front plongeur (`apps/web`) : design system DiveLog, règles dans **`apps/web/CL
 pnpm install
 docker compose up -d                # PostgreSQL de dev (lit .env)
 pnpm migration:run                  # migrations API (build puis CLI TypeORM)
+pnpm db:seed                        # données fictives de dev (vide puis remplit le carnet ; base locale seulement)
 pnpm dev                            # api :3000, web :5173, admin :5174
 pnpm dev:api | dev:web | dev:admin
 

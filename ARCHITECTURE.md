@@ -221,6 +221,13 @@ Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
   pas : fonctions et triggers `set_updated_at()` / `touch_participation_on_buddies_change()`, seed
   des 4 niveaux FFESSM, et l'ordre `(propriétaire, id)` des 3 FK composites (TypeORM les génère
   inversées, sans incidence sur le diff).
+- **Seed de développement** : `pnpm db:seed` (`src/database/seeds/`, lancé depuis `dist`). Il vide
+  les tables du carnet (le référentiel des niveaux est conservé) puis crée 3 plongeurs fictifs
+  (Marine Rousseau, comme dans les mocks du dashboard, avec 2 binômes liés aux deux autres comptes),
+  leurs sites, binômes et une cinquantaine de plongées sur les 12 derniers mois, dont une supprimée.
+  Il passe par les services (mêmes invariants que la synchronisation), est déterministe et rejouable,
+  et refuse toute base non locale. Le chargement d'env hors Nest est partagé
+  (`src/database/load-database-environment.ts`).
 - Colonnes `numeric` lues via `common/database/numeric.transformer.ts` (`pg` les renvoie en
   `string`). `updated_at` n'est jamais écrit par TypeORM (`insert: false, update: false`) : seul le
   trigger le pose.

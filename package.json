@@ -16,6 +16,7 @@
     "migration:revert": "pnpm --filter @e-deep/api run migration:revert",
     "migration:generate": "pnpm --filter @e-deep/api run migration:generate",
     "migration:create": "pnpm --filter @e-deep/api run migration:create",
+    "db:seed": "pnpm --filter @e-deep/api run db:seed",
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm -r run typecheck",
