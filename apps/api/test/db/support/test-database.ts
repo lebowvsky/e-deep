@@ -1,8 +1,8 @@
-import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { DataSource } from 'typeorm';
-import { DatabaseEnvironment, validateEnvironment } from '../../../src/config/environment';
+import type { DatabaseEnvironment } from '../../../src/config/environment';
 import { buildDataSourceOptions } from '../../../src/database/database.options';
+import { loadDatabaseEnvironment } from '../../../src/database/load-database-environment';
 import { Buddy } from '../../../src/modules/buddies/buddy.entity';
 import { CertificationLevel } from '../../../src/modules/certification-levels/certification-level.entity';
 import { DiveSite } from '../../../src/modules/dive-sites/dive-site.entity';
@@ -28,11 +28,7 @@ export const ENTITIES = [
 
 /** The dev database from `apps/api/.env` (the docker compose one). */
 export function loadDevDatabaseEnvironment(): DatabaseEnvironment {
-  const envFile = join(API_ROOT, '.env');
-  if (existsSync(envFile)) {
-    process.loadEnvFile(envFile);
-  }
-  return validateEnvironment(DatabaseEnvironment, process.env);
+  return loadDatabaseEnvironment();
 }
 
 /** Dedicated test database, next to the dev one: `<DATABASE_NAME>_test`, dropped and recreated. */
