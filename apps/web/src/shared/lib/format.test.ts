@@ -8,6 +8,7 @@ import {
   formatHeaderDate,
   formatInitials,
   formatMonthInitial,
+  formatMonthLabel,
   formatMonthShort,
   formatNameList,
   formatShortName,
@@ -47,6 +48,13 @@ describe('format', () => {
   it('formats header date, month and initials in French', () => {
     expect(formatHeaderDate(new Date(2026, 3, 23, 14, 8))).toBe('jeu. 23 avr.');
     expect(formatMonthShort('2025-09-08T12:00:00Z')).toBe('sept.');
+  });
+
+  it('labels calendar months (no abbreviation dot) and their initials', () => {
+    expect(formatMonthLabel('2025-09')).toBe('sept');
+    expect(formatMonthLabel('2026-05')).toBe('mai');
+    expect(formatMonthLabel('2026-02')).toBe('févr');
+    expect(formatMonthLabel('2026-12')).toBe('déc');
     expect(formatMonthInitial('août')).toBe('A');
     expect(formatMonthInitial('janv')).toBe('J');
   });

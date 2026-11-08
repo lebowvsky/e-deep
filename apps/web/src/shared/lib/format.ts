@@ -68,6 +68,14 @@ export function formatMonthShort(iso: string): string {
   return monthShort.format(new Date(iso));
 }
 
+/** "2025-09" (calendar month, no time zone involved) → "sept" · "2026-05" → "mai" */
+export function formatMonthLabel(yearMonth: string): string {
+  const [year = '1970', month = '01'] = yearMonth.split('-');
+  // Mid-month at noon UTC: the label never shifts to a neighbour month, whatever the time zone.
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, 15, 12));
+  return monthShort.format(date).replace(/\.$/, '');
+}
+
 /** "août" → "A" (mobile chart axis) */
 export function formatMonthInitial(month: string): string {
   return month

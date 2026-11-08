@@ -1,10 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { routes } from '@/app/routes';
+import { dashboardResponse } from '@/features/dashboard/api/dashboardResponse.fixture';
+import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
+import { ApiClientContext } from '@/shared/lib/apiClientContext';
 
-const renderAt = (path: string) =>
-  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+const renderAt = (path: string, get: ApiClient['get'] = vi.fn()) =>
+  render(
+    <ApiClientContext value={{ get }}>
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />
+    </ApiClientContext>,
+  );
 
 describe('DashboardPage', () => {
   it('shows the skeleton while loading', async () => {
@@ -34,5 +41,25 @@ describe('DashboardPage', () => {
     expect(await screen.findByRole('list', { name: 'Chiffres clés' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: '6 palanquées régulières' })).toBeTruthy();
     expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('shows the dashboard served by the API', async () => {
+    renderAt('/dashboard', vi.fn().mockResolvedValue(dashboardResponse()));
+    expect(await screen.findByRole('list', { name: 'Chiffres clés' })).toBeTruthy();
+    expect(screen.getByText('Température au fond non renseignée')).toBeTruthy();
+  });
+
+  it('offers a retry when the API fails', async () => {
+    const get = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError('timeout', 'The API did not answer within 10000 ms.'))
+      .mockResolvedValueOnce(dashboardResponse());
+    renderAt('/dashboard', get);
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Impossible de charger ton carnet pour l’instant.',
+    );
+    screen.getByRole('button', { name: 'Réessayer' }).click();
+    expect(await screen.findByRole('list', { name: 'Chiffres clés' })).toBeTruthy();
   });
 });

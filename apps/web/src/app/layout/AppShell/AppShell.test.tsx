@@ -3,10 +3,17 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { routes } from '@/app/routes';
+import { ApiClientContext } from '@/shared/lib/apiClientContext';
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(<RouterProvider router={router} />);
+  // These tests are about the shell: the dashboard stays loading (API call never settles).
+  const get = vi.fn(() => new Promise<never>(() => undefined));
+  render(
+    <ApiClientContext value={{ get }}>
+      <RouterProvider router={router} />
+    </ApiClientContext>,
+  );
   return router;
 }
 

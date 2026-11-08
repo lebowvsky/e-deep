@@ -1,4 +1,5 @@
 import { DashboardEmpty } from '@/features/dashboard/components/DashboardEmpty';
+import { DashboardError } from '@/features/dashboard/components/DashboardError';
 import { DashboardReady } from '@/features/dashboard/components/DashboardReady';
 import { DashboardSkeleton } from '@/features/dashboard/components/DashboardSkeleton';
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
@@ -20,6 +21,8 @@ function DashboardContent({ state }: { state: ReturnType<typeof useDashboard> })
   switch (state.status) {
     case 'ready':
       return <DashboardReady data={state.data} />;
+    case 'error':
+      return <DashboardError onRetry={state.retry} />;
     case 'empty':
       return <DashboardEmpty user={state.user} />;
     case 'loading':
