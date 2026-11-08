@@ -27,8 +27,9 @@ un monorepo pnpm de trois applications et deux paquets internes :
    packages/tsconfig : configs TypeScript de base
 ```
 
-Phase actuelle : **socle technique uniquement**, sans logique métier. La seule route est
-`GET /api/health`, affichée par les deux fronts.
+Phase actuelle : socle technique et **schéma initial du carnet de plongée** (entités, migration,
+services de synchronisation, sans endpoint métier). La seule route est `GET /api/health`, affichée
+par les deux fronts. Modèle de données : `docs/data-model/` (`schema.md`, `decisions.md`).
 
 ## 2. Arborescence
 
@@ -42,9 +43,11 @@ e-deep/
 │   │   │   ├── app.module.ts
 │   │   │   ├── config/           validation de l'environnement (class-validator)
 │   │   │   ├── database/         options DataSource partagées, data-source.ts (CLI), migrations/
-│   │   │   ├── common/           transverse : filtres, logging
-│   │   │   └── modules/<domaine>/ un module Nest par domaine métier (health)
-│   │   └── test/                 tests e2e (supertest)
+│   │   │   ├── common/           transverse : filtres, logging, database (transformer, upsert, pull),
+│   │   │   │                     errors (erreurs métier), sync (règles et réglages de synchronisation)
+│   │   │   └── modules/<domaine>/ un module Nest par domaine : health, certification-levels, divers,
+│   │   │                         dive-sites, buddies, dives (agrégat événement + participation + palanquée)
+│   │   └── test/                 tests e2e (supertest), db/ (tests sur PostgreSQL réel)
 │   ├── web/                      React 19 + Vite 8 + SCSS modules (design system DiveLog)
 │   │   ├── CLAUDE.md             règles du design system pour les agents
 │   │   ├── design/               handoff : README (spec), screenshots/, mockups/ (lecture seule)
@@ -210,17 +213,34 @@ Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
   - `pnpm migration:create src/database/migrations/<Nom>` (squelette vide)
 - Les migrations générées sont exclues de Prettier, car elles gardent le format de la CLI. Elles
   restent lintées.
+- **Migration initiale** `InitDiveLogSchema` : 7 tables (`certification_levels`, `divers`,
+  `dive_sites`, `buddies`, `dive_events`, `dive_participations`, `dive_buddies`). Toutes les
+  contraintes et tous les index sont **nommés** et déclarés dans les entités (`@Check`, `@Unique`,
+  `@Index` avec `where`, `primaryKeyConstraintName`, `foreignKeyConstraintName`), pour qu'un
+  `migration:generate` ne produise aucun diff. Le SQL brut ne contient que ce que TypeORM ne décrit
+  pas : fonctions et triggers `set_updated_at()` / `touch_participation_on_buddies_change()`, seed
+  des 4 niveaux FFESSM, et l'ordre `(propriétaire, id)` des 3 FK composites (TypeORM les génère
+  inversées, sans incidence sur le diff).
+- Colonnes `numeric` lues via `common/database/numeric.transformer.ts` (`pg` les renvoie en
+  `string`). `updated_at` n'est jamais écrit par TypeORM (`insert: false, update: false`) : seul le
+  trigger le pose.
 
 ## 8. Tests
 
-| App   | Outil                              | Commande                                                           | Contenu actuel                                                                             |
-| ----- | ---------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| api   | Jest 30 + ts-jest, supertest       | `pnpm --filter api run test` (unit + e2e), `test:unit`, `test:e2e` | `HealthService` (DB up/down), filtre d'exceptions, e2e `/api/health`                       |
-| web   | Vitest 5 + Testing Library (jsdom) | `pnpm --filter web run test`                                       | client API, guard `HealthResponse`, `HealthPanel` (chargement, ok, dégradé, erreur, retry) |
-| admin | Vitest 5 + Testing Library (jsdom) | `pnpm --filter admin run test`                                     | client API, guard, `HealthCard`, `AdminLayout`                                             |
+| App   | Outil                              | Commande                                                           | Contenu actuel                                                                                               |
+| ----- | ---------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| api   | Jest 30 + ts-jest, supertest       | `pnpm --filter api run test` (unit + e2e), `test:unit`, `test:e2e` | `HealthService`, filtre d'exceptions, e2e `/api/health`, transformer, règles de sync, mappings contrat front |
+| api   | Jest 30 + ts-jest, PostgreSQL 18   | `pnpm --filter api run test:db` (projet `db`, hors `test`)         | migration (noms, revert), contraintes, triggers, cascades, services de synchronisation et purge              |
+| web   | Vitest 5 + Testing Library (jsdom) | `pnpm --filter web run test`                                       | client API, guard `HealthResponse`, `HealthPanel` (chargement, ok, dégradé, erreur, retry)                   |
+| admin | Vitest 5 + Testing Library (jsdom) | `pnpm --filter admin run test`                                     | client API, guard, `HealthCard`, `AdminLayout`                                                               |
 
 - **`pnpm test` n'a besoin d'aucune base** : l'e2e de l'API monte `HealthModule` avec une
   `DataSource` simulée, via le même `configureApp` que `main.ts`.
+- **`test:db`** (`apps/api/test/db/*.db-spec.ts`) utilise la base du `docker compose`
+  (`docker compose up -d`) : son `globalSetup` recrée une base dédiée `<DATABASE_NAME>_test` puis y
+  joue les migrations **compilées** (le script fait `nest build` d'abord), en série
+  (`--runInBand`). Chaque test vide les tables et remet le référentiel à son seed. Pas de
+  Testcontainers.
 - Côté fronts, `fetch` est simulé avec `vi.stubGlobal` et le client API est injecté par contexte.
   Aucun test ne fait d'appel réseau.
 - Jest charge Nest 12 (ESM-only) via `--experimental-vm-modules`. L'avertissement
@@ -286,6 +306,13 @@ Décisions prises à l'installation du design system (**2026-11-07**).
 
 | D21 | **Corrections d'accessibilité des tokens** (audit du 2026-11-07) : `textLow` passe de `#6E819A` à `#889BB2` et `danger` de `#E06A70` à `#E47C81`, afin que le petit texte atteigne 4,5:1 sur toutes les surfaces (SC 1.4.3). Mixin `hit-area()` : zone tactile invisible de 44px autour des petites cibles (32px pour les marqueurs de carte, qui peuvent se chevaucher). | Les maquettes utilisaient `textLow` pour des libellés essentiels de 10 à 12px (3,25:1 sur `surface2`). La teinte est la plus proche de l'originale qui passe AA, et la hiérarchie avec `textMed` est conservée. |
 
+Décision prise à la création du schéma du carnet (**2026-11-08**). Détail : `docs/data-model/decisions.md`
+(D-02, D-03, D-08 à D-12).
+
+| #   | Décision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Raison                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D22 | **Stratégie offline-first du carnet** : identifiants **UUIDv7 générés par le client** (sauf `divers` et `certification_levels` : `DEFAULT uuidv7()`) ; `updated_at` **posé par trigger serveur** (curseur de pull `(updated_at, id)`, lu avec ses microsecondes) ; suppressions en **tombstones** (`deleted_at`), purgées physiquement après un **horizon de 90 jours** (`SYNC_PURGE_HORIZON_DAYS`), un client dont le dernier pull est plus ancien doit refaire une synchronisation complète ; **LWW par enregistrement** via un upsert sans prise de contrôle (`ON CONFLICT (id) … WHERE propriétaire = EXCLUDED.propriétaire`), sauf qu'un appareil en retard **ne peut pas annuler une suppression** (`baseUpdatedAt`) ; **plongée = événement + participation** (+ palanquée), écrite d'un bloc dans une transaction. | La PWA saisit hors ligne : les ids doivent exister avant la synchronisation, et seule l'horloge du serveur est fiable. Le découpage événement / participation est fait dès la migration initiale, car le changer plus tard imposerait de migrer IndexedDB sur chaque appareil. Les invariants MVP (un seul participant, le créateur) sont dans les services, pas en SQL, car ils seront levés avec le partage. |
+
 ## 11. Points ouverts
 
 Issus de la revue de l'initialisation (2026-11-06). Ils ne sont pas bloquants.
@@ -303,6 +330,18 @@ Issus de la revue de l'initialisation (2026-11-06). Ils ne sont pas bloquants.
   - logger de boot sans stack (voir §9.7).
 - **Tests à ajouter** : `validateEnvironment` (noms seulement dans le message), timeout
   d'`apiClient`, rejet CORS d'une origine non autorisée.
+
+Issus du schéma du carnet (2026-11-08) :
+
+- **Contrat front** : `UserLevel` (`'N1'…'N4'`) devra s'élargir dès qu'un niveau non FFESSM sera
+  inséré (`toUserLevel` refuse aujourd'hui ces niveaux) ; le contrat `Dive` devra exposer
+  `utcOffsetMinutes`, et `date` sera l'heure locale ISO avec décalage (`toLocalDateTime`).
+- **Endpoints** à venir : erreurs métier (`common/errors/domain-errors.ts`) à mapper en réponses HTTP ;
+  pour l'instant elles finiraient en 500 générique via `LogSafeExceptionFilter`.
+- **Purge** : `PurgeService.purge()` existe sans planificateur.
+- **Partage des plongées** (D-08) : transfert des événements partagés à insérer dans
+  `DiversService.deleteAccount`, avant le `DELETE`, et passage de `fk_dive_events__creator_id` en
+  `RESTRICT`.
 
 Issus du dashboard (phases 1 à 5, 2026-11-07) :
 
