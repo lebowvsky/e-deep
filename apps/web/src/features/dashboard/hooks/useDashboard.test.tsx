@@ -1,25 +1,67 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
+import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
+import { ApiClientContext } from '@/shared/lib/apiClientContext';
+import { dashboardResponse } from '../api/dashboardResponse.fixture';
 import { useDashboard } from './useDashboard';
 
-const at = (path: string) =>
+function fakeClient(get: ApiClient['get']): ApiClient {
+  return { get };
+}
+
+const at = (path: string, client: ApiClient) =>
   function Wrapper({ children }: { children: ReactNode }) {
-    return <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>;
+    return (
+      <ApiClientContext value={client}>
+        <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>
+      </ApiClientContext>
+    );
   };
 
 describe('useDashboard', () => {
-  it.each(['loading', 'empty', 'ready'] as const)('forces the %s state with ?state=', (state) => {
-    const { result } = renderHook(() => useDashboard(), {
-      wrapper: at(`/dashboard?state=${state}`),
-    });
-    expect(result.current.status).toBe(state);
-  });
+  it.each(['loading', 'empty', 'ready'] as const)(
+    'forces the %s state with ?state= in dev, without calling the API',
+    (state) => {
+      const get = vi.fn();
+      const { result } = renderHook(() => useDashboard(), {
+        wrapper: at(`/dashboard?state=${state}`, fakeClient(get)),
+      });
+      expect(result.current.status).toBe(state);
+      expect(get).not.toHaveBeenCalled();
+    },
+  );
 
-  it('starts loading then resolves to ready in dev', async () => {
-    const { result } = renderHook(() => useDashboard(), { wrapper: at('/dashboard') });
+  it('loads the dashboard from the API', async () => {
+    const get = vi.fn().mockResolvedValue(dashboardResponse());
+    const { result } = renderHook(() => useDashboard(), {
+      wrapper: at('/dashboard', fakeClient(get)),
+    });
+
     expect(result.current.status).toBe('loading');
     await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(get).toHaveBeenCalledWith('dashboard', expect.any(Function), {
+      signal: expect.any(AbortSignal) as unknown,
+    });
+  });
+
+  it('reports an error, then recovers on retry', async () => {
+    const get = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError('network', 'The API is unreachable.'))
+      .mockResolvedValueOnce(dashboardResponse());
+    const { result } = renderHook(() => useDashboard(), {
+      wrapper: at('/dashboard', fakeClient(get)),
+    });
+
+    await vi.waitFor(() => expect(result.current.status).toBe('error'));
+    const state = result.current;
+    if (state.status !== 'error') throw new Error('Expected the error state');
+    act(() => state.retry());
+
+    expect(result.current.status).toBe('loading');
+    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(get).toHaveBeenCalledTimes(2);
   });
 });

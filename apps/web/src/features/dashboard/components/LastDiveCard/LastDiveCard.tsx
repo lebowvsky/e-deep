@@ -77,17 +77,27 @@ export function LastDiveCard({ dive, level }: LastDiveCardProps) {
         <li>
           <Metric
             label={{ short: 'Temp', long: 'Temp. fond' }}
-            value={dive.temperatureC}
-            unit={{ short: '°', long: '°C' }}
-            srText={`Température au fond ${dive.temperatureC} degrés`}
+            value={dive.temperatureC ?? '—'}
+            unit={dive.temperatureC === null ? undefined : { short: '°', long: '°C' }}
+            tone={dive.temperatureC === null ? 'muted' : 'default'}
+            srText={
+              dive.temperatureC === null
+                ? 'Température au fond non renseignée'
+                : `Température au fond ${dive.temperatureC} degrés`
+            }
           />
         </li>
         <li>
           <Metric
             label={{ short: 'Vis', long: 'Visibilité' }}
-            value={dive.visibilityM}
-            unit="m"
-            srText={`Visibilité ${dive.visibilityM} mètres`}
+            value={dive.visibilityM ?? '—'}
+            unit={dive.visibilityM === null ? undefined : 'm'}
+            tone={dive.visibilityM === null ? 'muted' : 'default'}
+            srText={
+              dive.visibilityM === null
+                ? 'Visibilité non renseignée'
+                : `Visibilité ${dive.visibilityM} mètres`
+            }
           />
         </li>
       </ul>

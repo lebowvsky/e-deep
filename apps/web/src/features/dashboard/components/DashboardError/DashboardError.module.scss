@@ -1,0 +1,42 @@
+@use '@/styles/tokens' as *;
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  @include from($bp-tablet) {
+    gap: $space-6;
+  }
+}
+
+.title {
+  @include type($type-h-1);
+
+  @include from($bp-desktop) {
+    @include type($type-display);
+  }
+}
+
+.card {
+  display: flex;
+  max-width: $layout-empty-text-max;
+  flex-direction: column;
+  gap: $space-3;
+  align-items: flex-start;
+}
+
+.message {
+  @include type($type-body-lg);
+}
+
+.hint {
+  @include type($type-body-sm);
+
+  font-weight: 400;
+  color: $color-text-med;
+}
+
+.retry {
+  margin-top: $space-2;
+}

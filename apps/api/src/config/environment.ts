@@ -1,6 +1,7 @@
 import { Transform, plainToInstance, type ClassConstructor } from 'class-transformer';
 import {
   ArrayNotEmpty,
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsString,
@@ -66,6 +67,17 @@ export class EnvironmentVariables extends DatabaseEnvironment {
   @Min(1)
   @Max(MAX_PURGE_HORIZON_DAYS)
   SYNC_PURGE_HORIZON_DAYS: number = DEFAULT_PURGE_HORIZON_DAYS;
+
+  /**
+   * DEVELOPMENT ONLY, until authentication exists: when `true`, the current diver is the first one
+   * created (see `CurrentDiverGuard`). Any other value, or no value, disables it.
+   */
+  @Transform(({ obj }: { obj: Record<string, unknown> }) => {
+    const raw = obj['DEV_AUTH_STUB'];
+    return raw === true || raw === 'true';
+  })
+  @IsBoolean()
+  DEV_AUTH_STUB: boolean = false;
 }
 
 /** Thrown when the environment does not match its schema. Its message is safe to log. */

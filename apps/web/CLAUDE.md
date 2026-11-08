@@ -45,8 +45,10 @@ CSS-in-JS, pas de lib de composants UI.
   `React.FC`, pas de `any`.
 - Classes CSS Modules en camelCase (`styles.kpiValue`) ; variantes via `data-*` ou classes
   modificatrices (`styles.primary`), combinées avec `cx` (`@/shared/lib/classNames`, pas de clsx).
-- Données : types `@/features/dashboard/types`, mock `@/features/dashboard/mocks/dashboard`,
-  formatage via `@/shared/lib/format` (jamais de formatage inline).
+- Données : `GET /api/dashboard` (contrat `DashboardResponse` de `@e-deep/shared`, validé et converti
+  dans `features/dashboard/api/dashboardApi.ts`) ; types de vue `@/features/dashboard/types` ; mock
+  `@/features/dashboard/mocks/dashboard` pour `?state=` (dev) et les tests ; formatage via
+  `@/shared/lib/format` (jamais de formatage inline).
 - Un seul composant par écran pour desktop et mobile : le responsive passe par le SCSS, pas par
   des composants `Mobile*` ni par `window.innerWidth` (sauf pour le passage sidebar ↔ drawer, via
   un hook `useMediaQuery` dans `src/shared/hooks/`).
