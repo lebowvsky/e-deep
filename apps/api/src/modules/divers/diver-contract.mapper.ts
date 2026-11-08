@@ -1,15 +1,14 @@
+import type { Federation, UserLevel } from '@e-deep/shared';
 import { UnsupportedContractValueError } from '../../common/errors/domain-errors';
 import type { CertificationLevel } from '../certification-levels/certification-level.entity';
 
-/**
- * Values of the current front contract (`apps/web/src/features/dashboard/types.ts`), derived from
- * the certification level reference data now that `level` and `federation` are no longer columns.
+/*
+ * Values of the front contract (`@e-deep/shared`), derived from the certification level reference
+ * data now that `level` and `federation` are no longer columns.
  *
  * `UserLevel` only knows the FFESSM levels: it must be widened as soon as a non-FFESSM level is
  * inserted in `certification_levels` (D-09 complementary list).
  */
-export type UserLevel = 'N1' | 'N2' | 'N3' | 'N4';
-export type Federation = 'FFESSM' | 'CMAS' | 'OTHER';
 
 const USER_LEVELS: ReadonlySet<string> = new Set<UserLevel>(['N1', 'N2', 'N3', 'N4']);
 
