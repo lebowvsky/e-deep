@@ -11,9 +11,11 @@ import {
   validateSync,
   type ValidationError,
 } from 'class-validator';
+import { DEFAULT_PURGE_HORIZON_DAYS } from '../common/sync/sync-settings';
 
 const MIN_PORT = 1;
 const MAX_PORT = 65_535;
+const MAX_PURGE_HORIZON_DAYS = 3_650;
 
 /** Variables required to reach the database. Shared by the Nest app and the TypeORM CLI. */
 export class DatabaseEnvironment {
@@ -58,6 +60,12 @@ export class EnvironmentVariables extends DatabaseEnvironment {
   // The browser `Origin` header never has a path or a trailing slash: `cors` compares strings exactly.
   @Matches(/^https?:\/\/[^/?#]+$/, { each: true, message: 'each entry must be a bare origin' })
   CORS_ORIGINS: string[];
+
+  /** Purge horizon of the sync tombstones, in days (D-12). Optional. */
+  @IsInt()
+  @Min(1)
+  @Max(MAX_PURGE_HORIZON_DAYS)
+  SYNC_PURGE_HORIZON_DAYS: number = DEFAULT_PURGE_HORIZON_DAYS;
 }
 
 /** Thrown when the environment does not match its schema. Its message is safe to log. */
