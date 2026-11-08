@@ -20,9 +20,24 @@ export function formatDiveDate(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** Whole days between an ISO date and now. */
-export function daysSince(iso: string, now: Date = new Date()): number {
-  return Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000);
+/**
+ * Calendar days between a dive and today: yesterday is 1, whatever the hour.
+ *
+ * The dive's day is the one written in its ISO date (the API sends the dive's local time with its
+ * own offset, D-10), so a 23:30 dive stays on its day. Today is the device's calendar day.
+ */
+export function calendarDaysSince(iso: string, now: Date = new Date()): number {
+  const [year = 1970, month = 1, day = 1] = iso.slice(0, 10).split('-').map(Number);
+  const diveDay = Date.UTC(year, month - 1, day);
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.round((today - diveDay) / 86_400_000));
+}
+
+/** 0 → "Dernière plongée aujourd’hui." · 1 → "Dernière plongée hier." · 14 → "14 jours depuis ta dernière plongée." */
+export function formatSinceLastDive(days: number): string {
+  if (days === 0) return 'Dernière plongée aujourd’hui.';
+  if (days === 1) return 'Dernière plongée hier.';
+  return `${formatDayCount(days)} depuis ta dernière plongée.`;
 }
 
 /** ("Marine", "Rousseau") → "MR" */

@@ -358,10 +358,8 @@ Issus du dashboard (phases 1 à 5, 2026-11-07) :
 - **Carte** : placeholder SVG. MapLibre GL viendra ensuite : seule `projectToMap` (`features/dashboard/lib/mapProjection.ts`) et le rendu des marqueurs changeront. Les marqueurs proches se chevauchent (sites du Var) : il faudra un regroupement (clustering).
 - **Données** : le dashboard lit `GET /api/dashboard` (D23) ; les mocks ne servent plus qu'au forçage
   `?state=loading|empty|ready` en dev et aux tests. Le `UserCard` du shell (`app/routes.tsx`) affiche
-  encore `mockUser` : à brancher sur un futur `GET /api/me`. Avec de vraies données, « 0 jour depuis
-  ta dernière plongée » apparaît pour une plongée de la veille (`daysSince` compte des tranches de
-  24 h, pas des jours calendaires), et la carte placeholder place hors cadre les sites éloignés
-  (Lavezzi). Les captions sans donnée de la maquette (« pace stable », « +1h42 ce mois ») ne sont pas affichées. `stats.mainArea` a été ajouté aux types pour « Méditerranée occidentale ».
+  encore `mockUser` : à brancher sur un futur `GET /api/me`. La carte placeholder place hors cadre
+  les sites éloignés (Lavezzi). Les captions sans donnée de la maquette (« pace stable », « +1h42 ce mois ») ne sont pas affichées. `stats.mainArea` a été ajouté aux types pour « Méditerranée occidentale ».
 - **Filtres de période** de la carte : visuels uniquement (état local).
 - **i18n** : textes en français écrits dans les composants. Une lib i18n sera à prévoir si une deuxième langue arrive.
 - **Pages** : Mes plongées, Carte, Statistiques, Binômes, Recherche, Notifications et Paramètres sont des placeholders. La page Statistiques demandera une lib de graphiques (Visx ou ECharts, couleurs via `tokens.ts`).

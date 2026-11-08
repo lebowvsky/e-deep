@@ -1,9 +1,9 @@
 import {
-  daysSince,
+  calendarDaysSince,
   formatClock,
-  formatDayCount,
   formatHeaderDate,
   formatUtcOffset,
+  formatSinceLastDive,
 } from '@/shared/lib/format';
 import { ButtonLink } from '@/shared/ui/Button';
 import { IconLink } from '@/shared/ui/IconButton';
@@ -42,7 +42,7 @@ export function DashboardHeader({
           Bonjour {firstName}.{' '}
           {lastDiveDate && (
             <span className={styles.since}>
-              {formatDayCount(daysSince(lastDiveDate, now))} depuis ta dernière plongée.
+              {formatSinceLastDive(calendarDaysSince(lastDiveDate, now))}
             </span>
           )}
         </p>
