@@ -6,7 +6,9 @@
       "rootDir": "src",
       "testRegex": ".*\\.spec\\.ts$",
       "moduleFileExtensions": ["js", "json", "ts"],
-      "transform": { "^.+\\.ts$": "ts-jest" }
+      "transform": {
+        "^.+\\.ts$": "ts-jest"
+      }
     },
     {
       "displayName": "e2e",
@@ -14,7 +16,20 @@
       "rootDir": "test",
       "testRegex": ".*\\.e2e-spec\\.ts$",
       "moduleFileExtensions": ["js", "json", "ts"],
-      "transform": { "^.+\\.ts$": "ts-jest" }
+      "transform": {
+        "^.+\\.ts$": "ts-jest"
+      }
+    },
+    {
+      "displayName": "db",
+      "testEnvironment": "node",
+      "rootDir": "test/db",
+      "testRegex": ".*\\.db-spec\\.ts$",
+      "moduleFileExtensions": ["js", "json", "ts"],
+      "transform": {
+        "^.+\\.ts$": "ts-jest"
+      },
+      "globalSetup": "<rootDir>/support/global-setup.ts"
     }
   ]
 }
