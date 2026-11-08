@@ -28,8 +28,8 @@ un monorepo pnpm de trois applications et deux paquets internes :
 ```
 
 Phase actuelle : socle technique et **schéma initial du carnet de plongée** (entités, migration,
-services de synchronisation, sans endpoint métier). La seule route est `GET /api/health`, affichée
-par les deux fronts. Modèle de données : `docs/data-model/` (`schema.md`, `decisions.md`).
+services de synchronisation). Routes : `GET /api/health` (affichée par les deux fronts) et
+`GET /api/dashboard` (dashboard du plongeur courant, consommé par `apps/web`). Modèle de données : `docs/data-model/` (`schema.md`, `decisions.md`).
 
 ## 2. Arborescence
 
@@ -43,9 +43,9 @@ e-deep/
 │   │   │   ├── app.module.ts
 │   │   │   ├── config/           validation de l'environnement (class-validator)
 │   │   │   ├── database/         options DataSource partagées, data-source.ts (CLI), migrations/
-│   │   │   ├── common/           transverse : filtres, logging, database (transformer, upsert, pull),
+│   │   │   ├── common/           transverse : auth (plongeur courant), filtres, logging, database (transformer, upsert, pull),
 │   │   │   │                     errors (erreurs métier), sync (règles et réglages de synchronisation)
-│   │   │   └── modules/<domaine>/ un module Nest par domaine : health, certification-levels, divers,
+│   │   │   └── modules/<domaine>/ un module Nest par domaine : health, dashboard, certification-levels, divers,
 │   │   │                         dive-sites, buddies, dives (agrégat événement + participation + palanquée)
 │   │   └── test/                 tests e2e (supertest), db/ (tests sur PostgreSQL réel)
 │   ├── web/                      React 19 + Vite 8 + SCSS modules (design system DiveLog)
@@ -319,6 +319,7 @@ Décision prise à la création du schéma du carnet (**2026-11-08**). Détail :
 | #   | Décision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Raison                                                                                                                                                                                                                                                                                                                                                                                                         |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D22 | **Stratégie offline-first du carnet** : identifiants **UUIDv7 générés par le client** (sauf `divers` et `certification_levels` : `DEFAULT uuidv7()`) ; `updated_at` **posé par trigger serveur** (curseur de pull `(updated_at, id)`, lu avec ses microsecondes) ; suppressions en **tombstones** (`deleted_at`), purgées physiquement après un **horizon de 90 jours** (`SYNC_PURGE_HORIZON_DAYS`), un client dont le dernier pull est plus ancien doit refaire une synchronisation complète ; **LWW par enregistrement** via un upsert sans prise de contrôle (`ON CONFLICT (id) … WHERE propriétaire = EXCLUDED.propriétaire`), sauf qu'un appareil en retard **ne peut pas annuler une suppression** (`baseUpdatedAt`) ; **plongée = événement + participation** (+ palanquée), écrite d'un bloc dans une transaction. | La PWA saisit hors ligne : les ids doivent exister avant la synchronisation, et seule l'horloge du serveur est fiable. Le découpage événement / participation est fait dès la migration initiale, car le changer plus tard imposerait de migrer IndexedDB sur chaque appareil. Les invariants MVP (un seul participant, le créateur) sont dans les services, pas en SQL, car ils seront levés avec le partage. |
+| D23 | **`GET /api/dashboard`, premier endpoint métier** : statistiques calculées à la volée en SQL (une transaction `REPEATABLE READ`, plongées vivantes seulement, mois **locaux** de la plongée) ; contrat `DashboardResponse` dans `@e-deep/shared`, que le front valide (guard) puis convertit en son modèle de vue (`features/dashboard/api/dashboardApi.ts`). **Plongeur courant** résolu par `CurrentDiverGuard` : en attendant l'authentification, un **stub de développement** (`DEV_AUTH_STUB=true`) prend le premier plongeur créé ; sans lui, 401.                                                                                                                                                                                                                                                                   | Le volume (H-14) ne justifie aucun agrégat stocké. Le contrat partagé reste neutre (mois `YYYY-MM`, mesures `null` si non saisies) : libellés et initiales sont du ressort du front. Le garde est le point d'entrée unique de la future session, le reste ne changera pas.                                                                                                                                     |
 
 ## 11. Points ouverts
 
@@ -343,8 +344,10 @@ Issus du schéma du carnet (2026-11-08) :
 - **Contrat front** : `UserLevel` (`'N1'…'N4'`) devra s'élargir dès qu'un niveau non FFESSM sera
   inséré (`toUserLevel` refuse aujourd'hui ces niveaux) ; le contrat `Dive` devra exposer
   `utcOffsetMinutes`, et `date` sera l'heure locale ISO avec décalage (`toLocalDateTime`).
-- **Endpoints** à venir : erreurs métier (`common/errors/domain-errors.ts`) à mapper en réponses HTTP ;
-  pour l'instant elles finiraient en 500 générique via `LogSafeExceptionFilter`.
+- **Endpoints** : erreurs métier (`common/errors/domain-errors.ts`) à mapper en réponses HTTP ;
+  pour l'instant elles finissent en 500 générique via `LogSafeExceptionFilter`.
+- **Authentification** : à faire. `DEV_AUTH_STUB` ne doit jamais être activé hors du poste de dev ;
+  la session remplacera le stub dans `CurrentDiverGuard`.
 - **Purge** : `PurgeService.purge()` existe sans planificateur.
 - **Partage des plongées** (D-08) : transfert des événements partagés à insérer dans
   `DiversService.deleteAccount`, avant le `DELETE`, et passage de `fk_dive_events__creator_id` en
@@ -353,7 +356,12 @@ Issus du schéma du carnet (2026-11-08) :
 Issus du dashboard (phases 1 à 5, 2026-11-07) :
 
 - **Carte** : placeholder SVG. MapLibre GL viendra ensuite : seule `projectToMap` (`features/dashboard/lib/mapProjection.ts`) et le rendu des marqueurs changeront. Les marqueurs proches se chevauchent (sites du Var) : il faudra un regroupement (clustering).
-- **Données** : mocks seulement. `useDashboard()` garde sa signature quand l'API arrivera. Les captions sans donnée de la maquette (« pace stable », « +1h42 ce mois ») ne sont pas affichées. `stats.mainArea` a été ajouté aux types pour « Méditerranée occidentale ».
+- **Données** : le dashboard lit `GET /api/dashboard` (D23) ; les mocks ne servent plus qu'au forçage
+  `?state=loading|empty|ready` en dev et aux tests. Le `UserCard` du shell (`app/routes.tsx`) affiche
+  encore `mockUser` : à brancher sur un futur `GET /api/me`. Avec de vraies données, « 0 jour depuis
+  ta dernière plongée » apparaît pour une plongée de la veille (`daysSince` compte des tranches de
+  24 h, pas des jours calendaires), et la carte placeholder place hors cadre les sites éloignés
+  (Lavezzi). Les captions sans donnée de la maquette (« pace stable », « +1h42 ce mois ») ne sont pas affichées. `stats.mainArea` a été ajouté aux types pour « Méditerranée occidentale ».
 - **Filtres de période** de la carte : visuels uniquement (état local).
 - **i18n** : textes en français écrits dans les composants. Une lib i18n sera à prévoir si une deuxième langue arrive.
 - **Pages** : Mes plongées, Carte, Statistiques, Binômes, Recherche, Notifications et Paramètres sont des placeholders. La page Statistiques demandera une lib de graphiques (Visx ou ECharts, couleurs via `tokens.ts`).
