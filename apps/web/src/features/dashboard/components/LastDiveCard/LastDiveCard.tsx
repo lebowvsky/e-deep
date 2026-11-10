@@ -2,10 +2,10 @@ import { useId } from 'react';
 import {
   formatDayMonth,
   formatDiveDate,
-  formatInitials,
   formatNameList,
   formatShortName,
 } from '@/shared/lib/format';
+import { othersInTeam } from '@/shared/model/dive';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Badge } from '@/shared/ui/Badge';
 import { Overline } from '@/shared/ui/Overline';
@@ -24,7 +24,8 @@ export interface LastDiveCardProps {
 /** Summary of the most recent dive; « Voir le détail » leads to the logbook (progressive disclosure). */
 export function LastDiveCard({ dive, level }: LastDiveCardProps) {
   const titleId = useId();
-  const buddyNames = dive.buddies.map((buddy) => formatShortName(buddy.firstName, buddy.lastName));
+  const buddies = othersInTeam(dive.team);
+  const buddyNames = buddies.map((buddy) => formatShortName(buddy.firstName, buddy.lastName));
 
   return (
     <article className={styles.card} aria-labelledby={titleId}>
@@ -106,12 +107,12 @@ export function LastDiveCard({ dive, level }: LastDiveCardProps) {
         {buddyNames.length > 0 && (
           <div className={styles.buddies}>
             <span className={styles.avatars} aria-hidden="true">
-              {dive.buddies.map((buddy) => (
+              {buddies.map((buddy) => (
                 <Avatar
                   key={buddy.id}
                   className={styles.avatar}
-                  initials={formatInitials(buddy.firstName, buddy.lastName)}
-                  color={buddy.accentColor}
+                  initials={buddy.initials}
+                  color={buddy.color}
                   size="xs"
                 />
               ))}

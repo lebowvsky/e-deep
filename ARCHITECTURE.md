@@ -56,7 +56,8 @@ e-deep/
 │   │       ├── app/              App, providers, router + routes.tsx, routes/ (pages), layout/ (AppShell…)
 │   │       ├── design/tokens.ts  source unique des design tokens
 │   │       ├── features/<domaine>/{api,hooks,components} (+ types.ts, mocks/ si besoin)
-│   │       ├── shared/{ui,hooks,lib,config}  config/app.ts : APP_NAME
+│   │       ├── shared/{ui,hooks,lib,config,model}  config/app.ts : APP_NAME ; model/ : types de domaine
+│   │       │                     partagés entre features (ex. DiveMember, palanquée)
 │   │       └── styles/           global.scss, tokens/ (_index, _tokens & _vars générés, _mixins)
 │   └── admin/                    React 19 + Vite 8 + Tailwind v4 + shadcn/ui
 │       └── src/
