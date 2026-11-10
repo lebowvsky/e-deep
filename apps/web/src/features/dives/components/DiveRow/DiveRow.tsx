@@ -57,7 +57,7 @@ export function DiveRow({ dive, isPeak }: DiveRowProps) {
           srText={`${dive.durationMin} minutes`}
         />
       </td>
-      <td className={styles.numeric} data-optional="">
+      <td className={styles.numeric}>
         {dive.temperatureC === null ? (
           <Quantity size="cell" value="—" srText="Température non saisie" tone="empty" />
         ) : (
@@ -70,7 +70,7 @@ export function DiveRow({ dive, isPeak }: DiveRowProps) {
           />
         )}
       </td>
-      <td data-optional="">
+      <td>
         <span className={dive.gasMix === 'AIR' ? styles.gasAir : styles.gas} aria-hidden="true">
           {gasMixShort(dive.gasMix)}
         </span>

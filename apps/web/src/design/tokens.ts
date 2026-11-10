@@ -250,7 +250,6 @@ export const layout = {
   tableHeadHeight: 44,
   groupHeaderHeight: 40,
   colNumber: 64,
-  colSiteMin: 180, // tablet: the table scrolls rather than squeeze the site below this
   colDate: 100,
   colDepth: 132,
   colDuration: 84,

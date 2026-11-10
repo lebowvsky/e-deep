@@ -16,11 +16,19 @@ export interface DivesHeaderProps {
   federation: Federation;
   /** Whole log; `null` hides the subtitle (empty log). */
   log: DiveLogOverview | null;
+  /** Export and New dive; hidden on the empty log, whose card holds the CTAs. Default true. */
+  showActions?: boolean;
   onExport: () => void;
 }
 
 /** Page header: eyebrow, h1, log subtitle, Export and New dive (≥ 768px; FAB below). */
-export function DivesHeader({ level, federation, log, onExport }: DivesHeaderProps) {
+export function DivesHeader({
+  level,
+  federation,
+  log,
+  showActions = true,
+  onExport,
+}: DivesHeaderProps) {
   const firstDive = log?.firstDiveDate;
   return (
     <header className={styles.header}>
@@ -29,9 +37,9 @@ export function DivesHeader({ level, federation, log, onExport }: DivesHeaderPro
           <span className={styles.eyebrowLong}>
             Carnet de plongée · {formatDiverLevel(level, federation, ' ')}
           </span>
-          {log && (
-            <span className={styles.eyebrowShort}>Carnet · {formatDiveCount(log.totalDives)}</span>
-          )}
+          <span className={styles.eyebrowShort}>
+            Carnet{log && ` · ${formatDiveCount(log.totalDives)}`}
+          </span>
         </Overline>
         <h1 className={styles.title}>Mes plongées</h1>
         {log && firstDive && (
@@ -41,14 +49,16 @@ export function DivesHeader({ level, federation, log, onExport }: DivesHeaderPro
           </p>
         )}
       </div>
-      <div className={styles.actions}>
-        <Button icon="download" onClick={onExport}>
-          Exporter
-        </Button>
-        <ButtonLink to="/dives/new" variant="primary" icon="plus">
-          Nouvelle plongée
-        </ButtonLink>
-      </div>
+      {showActions && (
+        <div className={styles.actions}>
+          <Button icon="download" onClick={onExport}>
+            Exporter
+          </Button>
+          <ButtonLink to="/dives/new" variant="primary" icon="plus">
+            Nouvelle plongée
+          </ButtonLink>
+        </div>
+      )}
     </header>
   );
 }

@@ -202,6 +202,55 @@ describe('DivesPage', () => {
     expect(screen.getByRole('slider', { name: 'Profondeur minimale' })).toBeTruthy();
   });
 
+  it('shows a skeleton while loading', () => {
+    renderAt('/dives?state=loading');
+    expect(screen.getByText('Chargement du carnet').getAttribute('role')).toBe('status');
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('invites to log the first dive when the log is blank', async () => {
+    const user = userEvent.setup();
+    renderAt('/dives?state=empty');
+
+    expect(screen.getByRole('heading', { name: 'Ton carnet est vierge' })).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'Enregistrer ma première plongée' }).getAttribute('href'),
+    ).toBe('/dives/new');
+    // No toolbar, no summary, no header actions: the card holds the CTAs.
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Exporter' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Importer (UDDF, CSV)' }));
+    expect(screen.getByText('Bientôt disponible')).toBeTruthy();
+  });
+
+  it('reports a loading error with a retry button', () => {
+    renderAt('/dives?state=error');
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Impossible de charger tes plongées pour l’instant.',
+    );
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeTruthy();
+  });
+
+  it('suggests removing the most restrictive filter when nothing matches', async () => {
+    const user = userEvent.setup();
+    renderAt('/dives?q=%C3%A9pave&region=bretagne&depthMin=40');
+    await screen.findByRole('table');
+
+    expect(
+      first(screen.getAllByRole('heading', { name: 'Aucune plongée ne correspond' })),
+    ).toBeTruthy();
+    expect(screen.getAllByText('—')).toHaveLength(4);
+    expect(screen.queryByRole('navigation', { name: 'Pages' })).toBeNull();
+
+    await user.click(
+      first(screen.getAllByRole('button', { name: 'Retirer « ≥ 40 m » · 3 résultats' })),
+    );
+    expect(search()).toBe('?q=%C3%A9pave&region=bretagne');
+    expect(screen.getByText('3 plongées dans la sélection')).toBeTruthy();
+  });
+
   it('says that export is coming soon', async () => {
     const user = userEvent.setup();
     renderAt('/dives');

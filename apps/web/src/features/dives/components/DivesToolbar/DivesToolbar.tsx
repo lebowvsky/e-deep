@@ -97,7 +97,8 @@ export function DivesToolbar({
       </ul>
 
       <p className={styles.count}>
-        <span className={styles.figure}>{summary.count}</span> plongées
+        <span className={styles.figure}>{summary.count}</span>{' '}
+        {summary.count > 1 ? 'plongées' : 'plongée'}
         {summary.count > 0 && ` · ${formatHoursMinutes(summary.totalMinutes)}`}
       </p>
 

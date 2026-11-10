@@ -1,0 +1,78 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · DivesEmpty — card min 560, ghost dashed lines, centred message.
+.card {
+  position: relative;
+  overflow: hidden;
+}
+
+.lines {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: $space-6 0;
+  opacity: $opacity-ghost;
+}
+
+.line {
+  flex-shrink: 0;
+  height: $layout-row-height;
+
+  & + & {
+    border-top: 1px dashed $color-line;
+  }
+}
+
+.content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: $layout-empty-log-min-height;
+  padding: $space-8 $space-5;
+  text-align: center;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: $layout-empty-icon-lg;
+  height: $layout-empty-icon-lg;
+  margin-bottom: $space-5;
+  color: $color-accent;
+  background: $color-accent-soft;
+  border: 1px solid $color-accent-line;
+  border-radius: $radius-pill;
+}
+
+.title {
+  @include type($type-title);
+
+  margin-bottom: $space-2;
+}
+
+.text {
+  @include type($type-body-lg);
+
+  max-width: $layout-empty-text-max-lg;
+  margin-bottom: $space-7;
+  color: $color-text-med;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+  justify-content: center;
+}
+
+.note {
+  @include type($type-caption);
+
+  margin-top: $space-5;
+  font-weight: 400;
+  color: $color-text-low;
+}

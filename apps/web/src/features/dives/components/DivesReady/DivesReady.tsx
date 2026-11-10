@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { formatDiveCount } from '@/shared/lib/format';
 import { Card } from '@/shared/ui/Card';
+import { describeFilter } from '../../lib/labels';
 import { withoutFilter, withoutFilters } from '../../lib/query';
 import type { DivesQuery, DivesState } from '../../types';
 import { ActiveFilters } from '../ActiveFilters';
 import { DiveCardList } from '../DiveCardList';
+import { DivesNoResults } from '../DivesNoResults';
 import { DivesTable } from '../DivesTable';
 import { DivesToolbar } from '../DivesToolbar';
 import type { FilterChange, FilterSectionKey } from '../FilterSection';
@@ -24,13 +26,21 @@ type SheetState = { open: false } | { open: true; section: FilterSectionKey | un
 
 /**
  * Nominal dive log: toolbar, active filters, summary of the selection, then the dives — a table
- * from 768px, cards below — and the pagination.
+ * from 1024px, cards below — and the pagination.
  */
 export function DivesReady({ state, query, onChange, now }: DivesReadyProps) {
   const [sheet, setSheet] = useState<SheetState>({ open: false });
   const members = state.facets.members.map(({ member }) => member);
 
-  const pagination = (
+  const noResults = state.total === 0 && (
+    <DivesNoResults
+      relaxation={relaxationLabel(state, query, members)}
+      onRelax={() => state.relaxation && onChange(withoutFilter(query, state.relaxation.filter))}
+      onReset={() => onChange(withoutFilters(query))}
+    />
+  );
+
+  const pagination = state.total > 0 && (
     <Pagination
       page={state.page}
       pageCount={state.pageCount}
@@ -65,10 +75,13 @@ export function DivesReady({ state, query, onChange, now }: DivesReadyProps) {
 
       <Card padding="none" className={styles.tableCard}>
         <DivesTable dives={state.items} summary={state.summary} sort={query.sort} />
+        {noResults}
         {pagination}
       </Card>
       <div className={styles.cards}>
-        <DiveCardList dives={state.items} summary={state.summary} sort={query.sort} />
+        {noResults || (
+          <DiveCardList dives={state.items} summary={state.summary} sort={query.sort} />
+        )}
         {pagination}
       </div>
 
@@ -88,4 +101,16 @@ export function DivesReady({ state, query, onChange, now }: DivesReadyProps) {
       )}
     </div>
   );
+}
+
+/** « « ≥ 40 m » » — the filter to remove, quoted (the search value is already quoted). */
+function relaxationLabel(
+  state: DivesReadyProps['state'],
+  query: DivesQuery,
+  members: Parameters<typeof describeFilter>[2],
+): { label: string; total: number } | null {
+  if (!state.relaxation) return null;
+  const { filter, total } = state.relaxation;
+  const { value } = describeFilter(query, filter, members);
+  return { label: filter === 'q' ? value : `« ${value} »`, total };
 }

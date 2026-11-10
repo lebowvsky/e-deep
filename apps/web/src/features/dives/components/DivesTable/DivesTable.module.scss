@@ -1,24 +1,9 @@
 @use '@/styles/tokens' as *;
 
-.scroller {
-  position: relative; // clips the visually hidden texts of the cells with the table
-  overflow-x: auto;
-
-  &:focus-visible {
-    outline: 2px solid $color-accent;
-    outline-offset: -2px;
-  }
-}
-
 // dives-list.jsx · COLS = 64 100 1fr 132 84 76 84 168 24, gap 16, padding 0 20.
 .table {
+  position: relative; // containing block of the visually hidden caption
   width: 100%;
-  // Tablet: fixed columns (temperature and gas hidden) plus room for the site name.
-  min-width: calc(
-    #{$layout-col-number} + #{$layout-col-date} + #{$layout-col-depth} + #{$layout-col-duration} +
-      #{$layout-col-team} + #{$layout-col-chevron} + #{$layout-col-site-min} + 6 * #{$space-4} + 2 *
-      #{$space-5}
-  );
   table-layout: fixed;
   border-collapse: collapse;
 
@@ -37,17 +22,6 @@
 
     &:last-child {
       padding-right: $space-5;
-    }
-  }
-
-  // Tablet: no temperature nor gas (spec « Tablette »). The columns collapse to 0 instead of
-  // `display: none`, so that the month rows (colspan 9) keep the same column grid.
-  @include until($bp-desktop) {
-    [data-optional] {
-      width: 0;
-      padding: 0;
-      overflow: hidden;
-      visibility: hidden;
     }
   }
 }
