@@ -1,0 +1,12 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · SheetSection — padding 16 0, hairline on top.
+.section {
+  padding: $space-4 0;
+  border-top: 1px solid $color-line;
+  scroll-margin-top: $space-2;
+}
+
+.apply {
+  width: 100%;
+}

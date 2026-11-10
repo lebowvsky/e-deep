@@ -1,0 +1,47 @@
+@use '@/styles/tokens' as *;
+
+.quantity {
+  white-space: nowrap;
+}
+
+.value {
+  color: $color-text-high;
+}
+
+.unit {
+  color: $color-text-low;
+}
+
+.muted .value {
+  color: $color-text-med;
+}
+
+.empty .value {
+  color: $color-text-muted;
+}
+
+// dives-list.jsx · SummaryBand — mono 24/600, unit mono 12.
+.summary {
+  .value {
+    @include type($type-summary, $font: $font-mono, $tabular: true);
+  }
+
+  .unit {
+    @include type($type-unit-sm, $font: $font-mono);
+  }
+}
+
+// dives-list.jsx · Row — mono 14, unit mono 11.
+.cell {
+  .value {
+    @include type($type-body, $font: $font-mono, $tabular: true);
+  }
+
+  .unit {
+    @include type($type-caption-sm, $font: $font-mono);
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}

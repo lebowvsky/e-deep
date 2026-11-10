@@ -1,6 +1,7 @@
 // DiveLog — dashboard view model. The API contract is `DashboardResponse` (@e-deep/shared);
 // `api/dashboardApi.ts` maps it to these types, which the components consume.
 import type { Federation, GasMix, UserLevel } from '@e-deep/shared';
+import type { DiveMember } from '@/shared/model/dive';
 
 export type { UserLevel };
 
@@ -23,11 +24,8 @@ export interface DiveSite {
   maxDepthM: number;
 }
 
-export interface Buddy {
-  id: string;
-  initials: string;
-  firstName: string;
-  lastName: string;
+/** Frequent buddy (dashboard block): a dive team member plus the dives shared with the user. */
+export interface Buddy extends Omit<DiveMember, 'isSelf' | 'color'> {
   sharedDives: number;
   accentColor?: string; // for avatar bg
 }
@@ -45,7 +43,8 @@ export interface Dive {
   gasMix: GasMix;
   hadDecompression: boolean;
   stopsOk: boolean;
-  buddies: Buddy[];
+  /** Full dive team (palanquée), the user first (`isSelf`). */
+  team: DiveMember[];
   notes?: string;
 }
 

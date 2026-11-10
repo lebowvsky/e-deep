@@ -1,0 +1,77 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · Palanquee — overlapping avatars (-2px) ringed with the surface colour.
+.team {
+  --avatar-ring: #{$shadow-ring-surface};
+
+  position: relative;
+  z-index: 1; // above the stretched link of the row
+  display: inline-flex;
+  border-radius: $radius-pill;
+
+  &:focus-visible {
+    outline: 2px solid $color-accent;
+    outline-offset: 2px;
+  }
+}
+
+.avatars {
+  display: inline-flex;
+  align-items: center;
+}
+
+.avatar + .avatar,
+.avatar + .rest {
+  margin-left: -$layout-hairline;
+}
+
+.rest {
+  @include type($type-unit-xs, $font: $font-mono, $tabular: true);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 $layout-badge-gap;
+  font-weight: 600;
+  color: $color-text-high;
+  background: $color-surface-3;
+  border-radius: $radius-pill;
+  box-shadow: var(--avatar-ring);
+}
+
+.xs .rest {
+  min-width: $layout-avatar-xs;
+  height: $layout-avatar-xs;
+}
+
+.xxs .rest {
+  min-width: $layout-avatar-xxs;
+  height: $layout-avatar-xxs;
+}
+
+.tooltip {
+  @include type($type-caption);
+
+  position: absolute;
+  bottom: calc(100% + #{$space-2});
+  left: 0;
+  display: none;
+  width: max-content;
+  max-width: $layout-popover-width;
+  padding: $space-2 $space-3;
+  font-weight: 400;
+  color: $color-text-high;
+  pointer-events: none;
+  background: $color-surface-2;
+  border-radius: $radius-sm;
+  box-shadow: $shadow-popover;
+}
+
+.team:hover .tooltip,
+.team:focus-visible .tooltip {
+  display: block;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

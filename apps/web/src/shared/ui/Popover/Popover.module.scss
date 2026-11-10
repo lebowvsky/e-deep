@@ -1,0 +1,32 @@
+@use '@/styles/tokens' as *;
+
+.root {
+  position: relative;
+}
+
+// surface2 + popover shadow (visual-direction · popover).
+.panel {
+  position: absolute;
+  top: calc(100% + #{$space-2});
+  left: 0;
+  z-index: 20;
+  width: $layout-filter-popover-width;
+  max-width: calc(100vw - #{$space-8});
+  padding: $space-4;
+  background: $color-surface-2;
+  border-radius: $radius-md;
+  box-shadow: $shadow-popover;
+
+  &:focus {
+    outline: none;
+  }
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.end {
+  right: 0;
+  left: auto;
+}

@@ -1,6 +1,7 @@
 // DiveLog — Mock dashboard data (mirrors the mockups 1:1).
 // Same shape as the future GET /api/dashboard: swap the data source, keep the types.
 import type { Buddy, DashboardPayload, DashboardState, User } from '@/features/dashboard/types';
+import type { DiveMember } from '@/shared/model/dive';
 
 export const mockUser: User = {
   id: 'u1',
@@ -96,7 +97,19 @@ export const mockPayload: DashboardPayload = {
     gasMix: 'AIR',
     hadDecompression: false,
     stopsOk: true,
-    buddies: buddies.slice(0, 2),
+    team: [
+      { id: mockUser.id, firstName: 'Marine', lastName: 'Rousseau', initials: 'MR', isSelf: true },
+      ...buddies
+        .slice(0, 2)
+        .map(({ id, firstName, lastName, initials, accentColor }): DiveMember => ({
+          id,
+          firstName,
+          lastName,
+          initials,
+          ...(accentColor === undefined ? {} : { color: accentColor }),
+          isSelf: false,
+        })),
+    ],
   },
   // Positions are illustrative (map placeholder). Counts match the mockup markers.
   sites: [

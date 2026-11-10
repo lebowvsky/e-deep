@@ -11,6 +11,7 @@ import type {
 import type { ApiClient, RequestOptions } from '@/shared/lib/apiClient';
 import { formatInitials, formatMonthLabel } from '@/shared/lib/format';
 import { isOneOf, isRecord } from '@/shared/lib/guards';
+import type { DiveMember } from '@/shared/model/dive';
 import type { Buddy, DashboardState, Dive, User } from '../types';
 
 const USER_LEVELS = ['N1', 'N2', 'N3', 'N4'] as const satisfies readonly UserLevel[];
@@ -150,7 +151,18 @@ function toBuddy(buddy: DashboardBuddy): Buddy {
   };
 }
 
-function toDive(dive: DashboardDive): Dive {
+function toMember(person: DashboardUser | DashboardBuddy, isSelf: boolean): DiveMember {
+  return {
+    id: person.id,
+    firstName: person.firstName,
+    lastName: person.lastName,
+    initials: formatInitials(person.firstName, person.lastName),
+    isSelf,
+  };
+}
+
+/** The contract lists the buddies of the dive; the view model holds the whole team, user first. */
+function toDive(dive: DashboardDive, user: DashboardUser): Dive {
   return {
     id: dive.id,
     date: dive.date,
@@ -162,7 +174,7 @@ function toDive(dive: DashboardDive): Dive {
     gasMix: dive.gasMix,
     hadDecompression: dive.hadDecompression,
     stopsOk: dive.stopsOk,
-    buddies: dive.buddies.map(toBuddy),
+    team: [toMember(user, true), ...dive.buddies.map((buddy) => toMember(buddy, false))],
     ...(dive.notes === null ? {} : { notes: dive.notes }),
   };
 }
@@ -198,7 +210,7 @@ export function toDashboardState(response: DashboardResponse): DashboardState {
         recentMonthDelta: stats.divesThisMonth,
         mainArea: { name: stats.mainRegion, mapTitle: stats.mainRegion },
       },
-      lastDive: response.lastDive === null ? null : toDive(response.lastDive),
+      lastDive: response.lastDive === null ? null : toDive(response.lastDive, response.user),
       sites: response.sites,
       frequentBuddies: response.frequentBuddies.map(toBuddy),
     },

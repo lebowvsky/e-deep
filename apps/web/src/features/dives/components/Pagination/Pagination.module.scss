@@ -1,0 +1,80 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · Pagination — padding 14 20, hairline on top.
+.pagination {
+  @include type($type-body-sm);
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-3 $space-5;
+  font-weight: 400;
+  color: $color-text-low;
+  border-top: 1px solid $color-line;
+}
+
+.figure {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  color: $color-text-med;
+}
+
+.pages {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  display: flex;
+  gap: $space-1;
+  align-items: center;
+}
+
+// 36px visual buttons, 44px touch area.
+.page {
+  @include focus-ring;
+  @include hit-area;
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: $layout-page-button;
+  height: $layout-page-button;
+  padding: 0 $space-2;
+  color: $color-text-med;
+  cursor: pointer;
+  background: transparent;
+  border-radius: $radius-sm;
+
+  &:hover:not(:disabled) {
+    color: $color-text-high;
+  }
+
+  &:disabled {
+    color: $color-text-muted;
+    cursor: default;
+  }
+}
+
+.current {
+  color: $color-accent;
+  background: $color-accent-soft;
+  box-shadow: inset 0 0 0 1px $color-accent-line;
+
+  &:hover:not(:disabled) {
+    color: $color-accent;
+  }
+}
+
+.gap {
+  color: $color-text-muted;
+  cursor: default;
+}
+
+.size {
+  display: flex;
+  gap: $space-2;
+  align-items: center;
+}

@@ -39,6 +39,9 @@
   --dl-color-coast-muted: rgba(154, 186, 224, 0.08);
   --dl-color-coast-ghost: rgba(154, 186, 224, 0.05);
   --dl-color-skeleton-dot: rgba(154, 186, 224, 0.12);
+  --dl-color-depth-bar: rgba(154, 186, 224, 0.35);
+  --dl-color-track-fill: rgba(154, 186, 224, 0.14);
+  --dl-color-group-header: rgba(11, 26, 46, 0.55);
   --dl-font-sans: 'Geist Variable', 'Geist', -apple-system, system-ui, sans-serif;
   --dl-font-mono: 'Geist Mono Variable', 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
   --dl-space-0: 0;
@@ -53,6 +56,7 @@
   --dl-space-9: 48px;
   --dl-space-10: 64px;
   --dl-space-11: 80px;
+  --dl-radius-xxs: 2px;
   --dl-radius-xs: 4px;
   --dl-radius-sm: 6px;
   --dl-radius-md: 10px;
@@ -72,6 +76,9 @@
   --dl-shadow-marker-active: 0 0 0 3px rgba(79, 214, 201, 0.2), 0 6px 18px rgba(79, 214, 201, 0.35);
   --dl-shadow-popover: inset 0 0 0 1px rgba(154, 186, 224, 0.18), 0 12px 32px rgba(0, 0, 0, 0.5);
   --dl-shadow-peak: 0 0 16px rgba(79, 214, 201, 0.3);
+  --dl-shadow-ring-surface-2: 0 0 0 2px #1b3156;
+  --dl-shadow-thumb: 0 0 0 4px rgba(79, 214, 201, 0.14);
+  --dl-shadow-sheet: inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5);
   --dl-gradient-page-mobile:
     radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%),
     radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%);
@@ -97,11 +104,13 @@
   --dl-dur-fast: 120ms;
   --dl-dur-base: 180ms;
   --dl-dur-slow: 280ms;
+  --dl-dur-toast: 4000ms;
   --dl-opacity-busy: 0.6;
   --dl-opacity-map-grid: 0.6;
   --dl-opacity-map-grid-empty: 0.4;
   --dl-opacity-spark: 0.7;
   --dl-opacity-pulse: 0.35;
+  --dl-opacity-ghost: 0.5;
   --dl-layout-sidebar-width: 240px;
   --dl-layout-hit-target: 44px;
   --dl-layout-fab-size: 56px;
@@ -162,4 +171,32 @@
   --dl-layout-skel-kpi: 36px;
   --dl-layout-skel-filter-width: 38px;
   --dl-layout-skel-filter-height: 28px;
+  --dl-layout-row-height: 60px;
+  --dl-layout-table-head-height: 44px;
+  --dl-layout-group-header-height: 40px;
+  --dl-layout-col-number: 64px;
+  --dl-layout-col-date: 100px;
+  --dl-layout-col-depth: 132px;
+  --dl-layout-col-duration: 84px;
+  --dl-layout-col-temp: 76px;
+  --dl-layout-col-gas: 84px;
+  --dl-layout-col-team: 168px;
+  --dl-layout-col-chevron: 24px;
+  --dl-layout-depth-bar-width: 64px;
+  --dl-layout-depth-bar-height: 4px;
+  --dl-layout-depth-value-width: 44px;
+  --dl-layout-search-width: 340px;
+  --dl-layout-kbd-pad-y: 2px;
+  --dl-layout-page-button: 36px;
+  --dl-layout-select-height-sm: 32px;
+  --dl-layout-chip-height: 36px;
+  --dl-layout-avatar-xxs: 24px;
+  --dl-layout-sheet-top: 56px;
+  --dl-layout-sheet-handle: 36px;
+  --dl-layout-slider-thumb: 24px;
+  --dl-layout-segment-height: 36px;
+  --dl-layout-filter-popover-width: 320px;
+  --dl-layout-empty-log-min-height: 560px;
+  --dl-layout-empty-icon-lg: 56px;
+  --dl-layout-empty-text-max-lg: 460px;
 }

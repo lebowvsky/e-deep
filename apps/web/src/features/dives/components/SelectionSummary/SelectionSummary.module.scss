@@ -1,0 +1,61 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · SummaryBand — surface0, padding 16 24, separators 1 × 36.
+.band {
+  display: none;
+  flex-direction: column;
+  gap: $space-4;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: $space-4 $space-6;
+  background: $color-surface-0;
+  border-radius: $radius-lg;
+  box-shadow: inset 0 0 0 1px $color-line;
+
+  // Phones show « 127 plongées · 84 h 23 » in the list header instead (mockup 13).
+  @include from($bp-tablet) {
+    display: flex;
+  }
+
+  @include from($bp-desktop) {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-4 $space-6;
+  align-items: center;
+
+  @include from($bp-desktop) {
+    gap: 0;
+  }
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+
+  // Separators only on one line (desktop); the items wrap on tablets.
+  @include from($bp-desktop) {
+    & + & {
+      padding-left: $space-7;
+      margin-left: $space-7;
+      border-left: 1px solid $color-line;
+    }
+  }
+}
+
+.note {
+  @include type($type-caption);
+
+  font-weight: 400;
+  color: $color-text-low;
+
+  @include from($bp-desktop) {
+    text-align: right;
+  }
+}

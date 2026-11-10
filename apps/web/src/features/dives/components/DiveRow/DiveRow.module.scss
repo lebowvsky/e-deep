@@ -1,0 +1,142 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · Row — 60px, hairline on top, surface2 + accent rule on hover.
+.row {
+  position: relative; // containing block of the stretched link
+  height: $layout-row-height;
+  border-top: 1px solid $color-line;
+  transition: background-color $dur-fast $ease-out;
+
+  &:hover,
+  &:focus-within {
+    --avatar-ring: #{$shadow-ring-surface-2};
+
+    background: $color-surface-2;
+  }
+}
+
+.number {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  position: relative; // holds the accent rule (a pseudo-element on <tr> would add a cell)
+  color: $color-text-low;
+
+  // Accent rule on the left edge of the hovered row.
+  &::before {
+    position: absolute;
+    top: $space-3;
+    bottom: $space-3;
+    left: 0;
+    width: $layout-hairline;
+    content: '';
+    background: $color-accent;
+    border-radius: $radius-xxs;
+    opacity: 0;
+  }
+
+  .row:hover &::before,
+  .row:focus-within &::before {
+    opacity: 1;
+  }
+}
+
+.date {
+  display: flex;
+  flex-direction: column;
+}
+
+.day {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  color: $color-text-high;
+}
+
+.weekday {
+  @include type($type-caption-sm);
+
+  color: $color-text-low;
+}
+
+.site {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: $layout-row-height;
+  min-width: 0;
+}
+
+.link {
+  @include type($type-body-med);
+
+  overflow: hidden;
+  color: $color-text-high;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  // The whole row is the hit area of the link.
+  &::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+// The row shows the focus of its link.
+.row:has(.link:focus-visible) {
+  outline: 2px solid $color-accent;
+  outline-offset: -2px;
+}
+
+.place {
+  @include type($type-caption);
+
+  overflow: hidden;
+  font-weight: 400;
+  color: $color-text-low;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.depth {
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.depthValue {
+  min-width: $layout-depth-value-width;
+  text-align: right;
+}
+
+.numeric {
+  text-align: right;
+}
+
+.gas,
+.gasAir {
+  @include type($type-unit-sm, $font: $font-mono, $tabular: true);
+
+  color: $color-text-high;
+}
+
+.gasAir {
+  color: $color-text-med;
+}
+
+.chevron {
+  color: $color-text-muted;
+
+  .row:hover &,
+  .row:focus-within & {
+    color: $color-accent;
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}

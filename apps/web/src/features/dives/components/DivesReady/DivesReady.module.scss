@@ -1,0 +1,33 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · DivesDesktop — toolbar 12 · active filters 16 · band 16 · table.
+.ready {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+// One screen component: the table from 1024px, the cards below (CSS only, no width in JS).
+.tableCard {
+  display: none;
+  overflow: hidden;
+  margin-top: $space-1;
+
+  @include from($bp-desktop) {
+    display: block;
+  }
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  @include from($bp-desktop) {
+    display: none;
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}

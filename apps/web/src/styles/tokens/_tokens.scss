@@ -38,6 +38,9 @@ $color-coast-faint: rgba(154, 186, 224, 0.07);
 $color-coast-muted: rgba(154, 186, 224, 0.08);
 $color-coast-ghost: rgba(154, 186, 224, 0.05);
 $color-skeleton-dot: rgba(154, 186, 224, 0.12);
+$color-depth-bar: rgba(154, 186, 224, 0.35);
+$color-track-fill: rgba(154, 186, 224, 0.14);
+$color-group-header: rgba(11, 26, 46, 0.55);
 
 // Font
 $font-sans:
@@ -77,6 +80,11 @@ $type-meta: (10px, 14px, 400, 0.3px);
 $type-body-lg: (15px, 22px, 400, 0);
 $type-brand: (15px, 20px, 600, -0.2px);
 $type-brand-sm: (14px, 20px, 600, -0.1px);
+$type-summary: (24px, 28px, 600, -0.5px);
+$type-data: (13px, 18px, 400, 0);
+$type-label: (13px, 18px, 600, 0);
+$type-title: (24px, 30px, 600, -0.4px);
+$type-measure: (15px, 20px, 500, 0);
 
 // Space (4px scale)
 $space-0: 0;
@@ -93,6 +101,7 @@ $space-10: 64px;
 $space-11: 80px;
 
 // Radius
+$radius-xxs: 2px;
 $radius-xs: 4px;
 $radius-sm: 6px;
 $radius-md: 10px;
@@ -128,6 +137,11 @@ $shadow-popover:
   inset 0 0 0 1px rgba(154, 186, 224, 0.18),
   0 12px 32px rgba(0, 0, 0, 0.5);
 $shadow-peak: 0 0 16px rgba(79, 214, 201, 0.3);
+$shadow-ring-surface-2: 0 0 0 2px #1b3156;
+$shadow-thumb: 0 0 0 4px rgba(79, 214, 201, 0.14);
+$shadow-sheet:
+  inset 0 1px 0 rgba(154, 186, 224, 0.18),
+  0 -20px 50px rgba(0, 0, 0, 0.5);
 
 // Gradient
 $gradient-page-mobile:
@@ -157,6 +171,7 @@ $ease-std: cubic-bezier(0.4, 0, 0.2, 1);
 $dur-fast: 120ms;
 $dur-base: 180ms;
 $dur-slow: 280ms;
+$dur-toast: 4000ms;
 
 // Opacity
 $opacity-busy: 0.6;
@@ -164,6 +179,7 @@ $opacity-map-grid: 0.6;
 $opacity-map-grid-empty: 0.4;
 $opacity-spark: 0.7;
 $opacity-pulse: 0.35;
+$opacity-ghost: 0.5;
 
 // Breakpoints (SCSS only — CSS vars do not work in media queries)
 $bp-mobile: 375px;
@@ -233,3 +249,31 @@ $layout-skel-title: 22px;
 $layout-skel-kpi: 36px;
 $layout-skel-filter-width: 38px;
 $layout-skel-filter-height: 28px;
+$layout-row-height: 60px;
+$layout-table-head-height: 44px;
+$layout-group-header-height: 40px;
+$layout-col-number: 64px;
+$layout-col-date: 100px;
+$layout-col-depth: 132px;
+$layout-col-duration: 84px;
+$layout-col-temp: 76px;
+$layout-col-gas: 84px;
+$layout-col-team: 168px;
+$layout-col-chevron: 24px;
+$layout-depth-bar-width: 64px;
+$layout-depth-bar-height: 4px;
+$layout-depth-value-width: 44px;
+$layout-search-width: 340px;
+$layout-kbd-pad-y: 2px;
+$layout-page-button: 36px;
+$layout-select-height-sm: 32px;
+$layout-chip-height: 36px;
+$layout-avatar-xxs: 24px;
+$layout-sheet-top: 56px;
+$layout-sheet-handle: 36px;
+$layout-slider-thumb: 24px;
+$layout-segment-height: 36px;
+$layout-filter-popover-width: 320px;
+$layout-empty-log-min-height: 560px;
+$layout-empty-icon-lg: 56px;
+$layout-empty-text-max-lg: 460px;

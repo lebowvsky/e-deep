@@ -1,0 +1,1 @@
+export { DivesSkeleton } from './DivesSkeleton';

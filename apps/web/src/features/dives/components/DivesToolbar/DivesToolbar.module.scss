@@ -1,0 +1,77 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · Toolbar (desktop) / MobileList chips and count row (phones).
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3 $space-2;
+  align-items: center;
+}
+
+.separator {
+  display: none;
+  width: 1px;
+  height: $space-6;
+  margin: 0 $space-1;
+  background: $color-line;
+
+  @include from($bp-desktop) {
+    display: block;
+  }
+}
+
+.filters {
+  display: none;
+  flex-wrap: wrap;
+  gap: $space-2;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+}
+
+// Phones: chips scrolling horizontally, bleeding to the screen edges.
+.shortcuts {
+  display: flex;
+  flex-basis: 100%;
+  gap: $space-2;
+  padding: $layout-hairline $space-5;
+  margin: 0 (-$space-5);
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+// « 127 plongées · 84 h 23 » (phones; the summary band takes over above).
+.count {
+  @include type($type-caption);
+
+  flex: 1;
+  font-weight: 400;
+  color: $color-text-low;
+
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+.figure {
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
+  color: $color-text-med;
+}
+
+.sort {
+  margin-left: auto;
+}

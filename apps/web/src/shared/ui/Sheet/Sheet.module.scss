@@ -1,0 +1,90 @@
+@use '@/styles/tokens' as *;
+
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: $color-scrim;
+  backdrop-filter: blur($layout-blur-scrim);
+  animation: fade-in $dur-base $ease-out;
+}
+
+// Panel from 56px under the top to the bottom, rounded top corners.
+.panel {
+  position: absolute;
+  top: $layout-sheet-top;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  background: $color-surface-0;
+  border-radius: $radius-xl $radius-xl 0 0;
+  box-shadow: $shadow-sheet;
+  animation: slide-up $dur-slow $ease-out;
+}
+
+.handle {
+  align-self: center;
+  width: $layout-sheet-handle;
+  height: $layout-depth-bar-height;
+  margin: $space-3 0 $space-1;
+  background: $color-line-strong;
+  border-radius: $radius-xxs;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-1 $space-3 $space-2 $space-5;
+}
+
+.title {
+  @include type($type-h-2);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+}
+
+.close {
+  color: $color-text-low;
+}
+
+.body {
+  flex: 1;
+  padding: 0 $space-5;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.footer {
+  padding: $space-3 $space-5 $space-6;
+  border-top: 1px solid $color-line;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim,
+  .panel {
+    animation: none;
+  }
+}

@@ -1,0 +1,118 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · COLS = 64 100 1fr 132 84 76 84 168 24, gap 16, padding 0 20.
+.table {
+  position: relative; // containing block of the visually hidden caption
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+
+  th {
+    text-align: left;
+  }
+
+  th,
+  td {
+    padding: 0 $space-4 0 0;
+    vertical-align: middle;
+
+    &:first-child {
+      padding-left: $space-5;
+    }
+
+    &:last-child {
+      padding-right: $space-5;
+    }
+  }
+}
+
+// Widths of the header cells (fixed layout); they include the 16px gap and, at both ends, the
+// 20px side padding.
+.number {
+  width: calc(#{$layout-col-number} + #{$space-4} + #{$space-5});
+}
+
+.date {
+  width: calc(#{$layout-col-date} + #{$space-4});
+}
+
+.depth {
+  width: calc(#{$layout-col-depth} + #{$space-4});
+}
+
+.duration {
+  width: calc(#{$layout-col-duration} + #{$space-4});
+}
+
+.temp {
+  width: calc(#{$layout-col-temp} + #{$space-4});
+}
+
+.gas {
+  width: calc(#{$layout-col-gas} + #{$space-4});
+}
+
+.team {
+  width: calc(#{$layout-col-team} + #{$space-4});
+}
+
+.chevron {
+  width: calc(#{$layout-col-chevron} + #{$space-5});
+}
+
+.head {
+  height: $layout-table-head-height;
+}
+
+.headLabel {
+  @include overline;
+
+  display: inline-flex;
+  gap: $space-1;
+  align-items: center;
+}
+
+.table th.right {
+  text-align: right;
+}
+
+.sorted .headLabel {
+  color: $color-text-med;
+}
+
+.sortIcon {
+  color: $color-accent;
+}
+
+.up {
+  transform: rotate(180deg);
+}
+
+// dives-list.jsx · GroupHeader — 40px, translucent surface0, 13/600 + mono 11.
+.group th {
+  height: $layout-group-header-height;
+  background: $color-group-header;
+  border-top: 1px solid $color-line;
+}
+
+.groupInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.month {
+  @include type($type-label);
+
+  color: $color-text-high;
+}
+
+.monthTotal {
+  @include type($type-chip, $font: $font-mono, $tabular: true);
+
+  color: $color-text-low;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

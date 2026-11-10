@@ -45,9 +45,9 @@ export function formatInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
-/** ("N2", "FFESSM") → "N2 · FFESSM" · ("N1", "OTHER") → "N1 · Autre" */
-export function formatDiverLevel(level: string, federation: string): string {
-  return `${level} · ${federation === 'OTHER' ? 'Autre' : federation}`;
+/** ("N2", "FFESSM") → "N2 · FFESSM" · ("N1", "OTHER") → "N1 · Autre" · (…, " ") → "N2 FFESSM" */
+export function formatDiverLevel(level: string, federation: string, separator = ' · '): string {
+  return `${level}${separator}${federation === 'OTHER' ? 'Autre' : federation}`;
 }
 
 const headerDate = new Intl.DateTimeFormat('fr-FR', {
@@ -126,4 +126,66 @@ export function formatDayMonth(iso: string): string {
 /** 1 → "1 plongée" · 24 → "24 plongées" */
 export function formatDiveCount(count: number): string {
   return `${count} ${count > 1 ? 'plongées' : 'plongée'}`;
+}
+
+// ── Dive log ─────────────────────────────────────────────────────────────────────────────────
+// A dive date is the local time of the dive with its own offset (« 2026-04-08T10:30:00+02:00 »).
+// Its calendar day is the one written in the string, whatever the device time zone (D-10).
+
+/** "2026-04-08T…" → that calendar day at noon UTC, safe to format in any time zone. */
+function calendarDay(iso: string): Date {
+  const [year = 1970, month = 1, day = 1] = iso.slice(0, 10).split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 12));
+}
+
+const diveDayMonth = new Intl.DateTimeFormat('fr-FR', {
+  day: '2-digit',
+  month: 'short',
+  timeZone: 'UTC',
+});
+const weekdayShort = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', timeZone: 'UTC' });
+const monthYear = new Intl.DateTimeFormat('fr-FR', {
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+const oneDecimal = new Intl.NumberFormat('fr-FR', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+/** "2026-04-08T10:30:00+02:00" → "08 avr." (the dive's own calendar day) */
+export function formatDiveDayMonth(iso: string): string {
+  return diveDayMonth.format(calendarDay(iso));
+}
+
+/** "2026-04-08T10:30:00+02:00" → "mer." */
+export function formatWeekdayShort(iso: string): string {
+  return weekdayShort.format(calendarDay(iso));
+}
+
+/** "2026-04" → "avril 2026" */
+export function formatMonthYear(yearMonth: string): string {
+  return monthYear.format(calendarDay(`${yearMonth}-15`));
+}
+
+/** "avril 2026" → "Avril 2026" */
+export function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** 5063 → "84 h 23" · 44 → "0 h 44" */
+export function formatHoursMinutes(totalMinutes: number): string {
+  const { hours, minutes } = splitMinutes(totalMinutes);
+  return `${hours} h ${minutes.toString().padStart(2, '0')}`;
+}
+
+/** 24.598 → "24,6" */
+export function formatOneDecimal(value: number): string {
+  return oneDecimal.format(value);
+}
+
+/** 1 → "1 plongeur différent" · 14 → "14 plongeurs différents" */
+export function formatDiverCount(count: number): string {
+  return count > 1 ? `${count} plongeurs différents` : `${count} plongeur différent`;
 }

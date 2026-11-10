@@ -1,0 +1,91 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · DiveCard — surface1, radius md, padding 14, hairline frame.
+.card {
+  position: relative; // containing block of the stretched link
+  padding: $layout-tile-pad;
+  background: $color-surface-1;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line;
+
+  &:has(.link:focus-visible) {
+    outline: 2px solid $color-accent;
+    outline-offset: 2px;
+  }
+}
+
+.top {
+  display: flex;
+  gap: $space-2;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $space-2;
+}
+
+.meta {
+  @include type($type-chip, $font: $font-mono, $tabular: true);
+
+  color: $color-text-low;
+}
+
+.site {
+  @include type($type-h-3);
+}
+
+.link {
+  color: $color-text-high;
+
+  // The whole card is the hit area of the link.
+  &::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    border-radius: $radius-md;
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.place {
+  @include type($type-caption);
+
+  margin-bottom: $space-3;
+  font-weight: 400;
+  color: $color-text-low;
+}
+
+.measures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3 $layout-tile-pad;
+  align-items: baseline;
+}
+
+.value {
+  @include type($type-measure, $font: $font-mono, $tabular: true);
+
+  color: $color-text-high;
+}
+
+.peak {
+  color: $color-accent;
+}
+
+.unit {
+  @include type($type-unit-xs, $font: $font-mono);
+
+  color: $color-text-low;
+}
+
+.gas {
+  @include type($type-measure, $font: $font-mono);
+
+  font-weight: 400;
+  color: $color-text-med;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

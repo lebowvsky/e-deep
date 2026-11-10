@@ -1,0 +1,71 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · SearchField — 44px full width on phones, 340 × 40 above.
+.field {
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  width: 100%;
+  height: $layout-hit-target;
+  padding: 0 $space-3;
+  background: $color-surface-0;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+
+  &:focus-within {
+    outline: 2px solid $color-accent;
+    outline-offset: 2px;
+  }
+
+  @include from($bp-desktop) {
+    width: $layout-search-width;
+    height: $layout-control-height;
+  }
+}
+
+.icon {
+  flex-shrink: 0;
+  color: $color-text-low;
+}
+
+.input {
+  @include type($type-body);
+
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  color: $color-text-high;
+  background: transparent;
+  border: 0;
+
+  &::placeholder {
+    color: $color-text-low;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &::-webkit-search-cancel-button {
+    appearance: none;
+  }
+}
+
+// The shortcut hint is a desktop affordance.
+.kbd {
+  @include type($type-caption-sm, $font: $font-mono);
+
+  display: none;
+  padding: $layout-kbd-pad-y $space-2;
+  color: $color-text-low;
+  border-radius: $radius-xs;
+  box-shadow: inset 0 0 0 1px $color-line;
+
+  @include from($bp-desktop) {
+    display: inline;
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}

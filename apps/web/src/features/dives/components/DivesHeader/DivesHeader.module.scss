@@ -1,0 +1,66 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · PageHeader (desktop) / MobileList header.
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-4;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  min-width: 0;
+}
+
+// Phones: « Carnet · 127 plongées »; above: « Carnet de plongée · N2 FFESSM ».
+.eyebrowLong {
+  display: none;
+
+  @include from($bp-tablet) {
+    display: inline;
+  }
+}
+
+.eyebrowShort {
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+.title {
+  @include type($type-h-1);
+
+  @include from($bp-desktop) {
+    @include type($type-display);
+  }
+}
+
+.subtitle {
+  @include type($type-body-lg);
+
+  display: none;
+  color: $color-text-med;
+
+  @include from($bp-tablet) {
+    display: block;
+  }
+}
+
+.divers {
+  color: $color-text-low;
+}
+
+// Below 768px the FAB holds the CTA and export is not offered.
+.actions {
+  display: none;
+  gap: $space-3;
+  align-items: center;
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+}

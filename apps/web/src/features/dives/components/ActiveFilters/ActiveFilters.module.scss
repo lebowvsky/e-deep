@@ -1,0 +1,43 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · DivesNoResults — « Filtres actifs : » chips · Tout réinitialiser.
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  align-items: center;
+}
+
+.title {
+  @include type($type-body-sm);
+
+  font-weight: 400;
+  color: $color-text-low;
+}
+
+.chips {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.reset {
+  @include focus-ring;
+  @include hit-area;
+  @include type($type-body-sm);
+
+  margin-left: $space-2;
+  color: $color-text-med;
+  text-decoration: underline;
+  text-underline-offset: $space-1;
+  cursor: pointer;
+  background: transparent;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
