@@ -83,7 +83,8 @@ export function parseDivesQuery(params: URLSearchParams): DivesQuery {
   );
   const sort = params.get('sort');
   return {
-    q: params.get('q')?.trim() ?? '',
+    // Not trimmed: the search field writes every keystroke, trailing space included.
+    q: params.get('q') ?? '',
     period: parsePeriod(params.get('period')),
     regions: parseList(params.get('region'), REGION_KEYS),
     depthMin,
@@ -136,7 +137,7 @@ export function updateDivesQuery(query: DivesQuery, patch: Partial<DivesQuery>):
 /** Filters currently applied, in display order. */
 export function activeFilterKeys(query: DivesQuery): DivesFilterKey[] {
   const active: Record<DivesFilterKey, boolean> = {
-    q: query.q !== '',
+    q: query.q.trim() !== '',
     period: query.period !== 'all',
     regions: query.regions.length > 0,
     depth: query.depthMin !== null || query.depthMax !== null,

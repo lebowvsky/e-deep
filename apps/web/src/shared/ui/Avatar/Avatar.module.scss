@@ -11,7 +11,26 @@
   font-weight: 600;
   color: $color-text-high;
   border-radius: $radius-pill;
-  box-shadow: inset 0 0 0 1px $color-ring-subtle;
+  // `--avatar-ring`: optional outer ring set by a parent (overlapping avatars of a dive team).
+  box-shadow:
+    var(--avatar-ring, 0 0 transparent),
+    inset 0 0 0 1px var(--avatar-edge, #{$color-ring-subtle});
+}
+
+// The user inside a dive team (dives-list.jsx · Avatar self).
+.neutral {
+  --avatar-edge: #{$color-line-strong};
+
+  color: $color-text-med;
+  background: $color-surface-0;
+}
+
+.xxs {
+  @include type($type-unit-xs);
+
+  width: $layout-avatar-xxs;
+  height: $layout-avatar-xxs;
+  font-weight: 600;
 }
 
 // Current user (sidebar / drawer user card).

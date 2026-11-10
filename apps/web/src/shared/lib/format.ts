@@ -45,9 +45,9 @@ export function formatInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
-/** ("N2", "FFESSM") → "N2 · FFESSM" · ("N1", "OTHER") → "N1 · Autre" */
-export function formatDiverLevel(level: string, federation: string): string {
-  return `${level} · ${federation === 'OTHER' ? 'Autre' : federation}`;
+/** ("N2", "FFESSM") → "N2 · FFESSM" · ("N1", "OTHER") → "N1 · Autre" · (…, " ") → "N2 FFESSM" */
+export function formatDiverLevel(level: string, federation: string, separator = ' · '): string {
+  return `${level}${separator}${federation === 'OTHER' ? 'Autre' : federation}`;
 }
 
 const headerDate = new Intl.DateTimeFormat('fr-FR', {
@@ -183,4 +183,9 @@ export function formatHoursMinutes(totalMinutes: number): string {
 /** 24.598 → "24,6" */
 export function formatOneDecimal(value: number): string {
   return oneDecimal.format(value);
+}
+
+/** 1 → "1 plongeur différent" · 14 → "14 plongeurs différents" */
+export function formatDiverCount(count: number): string {
+  return count > 1 ? `${count} plongeurs différents` : `${count} plongeur différent`;
 }

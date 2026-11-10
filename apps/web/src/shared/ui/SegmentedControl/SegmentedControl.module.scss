@@ -1,0 +1,36 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · Période — abyss track, 36px segments, mono 12.
+.group {
+  display: flex;
+  padding: $layout-hairline;
+  background: $color-abyss;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line;
+}
+
+.segment {
+  @include focus-ring;
+  @include type($type-unit-sm, $font: $font-mono, $tabular: true);
+
+  flex: 1;
+  min-width: 0;
+  height: $layout-segment-height;
+  padding: 0 $space-2;
+  color: $color-text-low;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border-radius: $radius-sm;
+  transition: color $dur-fast $ease-out;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+.checked {
+  color: $color-text-high;
+  background: $color-surface-2;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+}

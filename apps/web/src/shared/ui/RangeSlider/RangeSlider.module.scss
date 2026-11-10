@@ -1,0 +1,91 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · Profondeur max — 4px rail, accent segment, 24px handles.
+.slider {
+  padding: 0 calc($layout-slider-thumb / 2);
+}
+
+// The rail and the filled segment are drawn behind the two inputs.
+.rail {
+  position: relative;
+  height: $layout-slider-thumb;
+
+  &::before,
+  &::after {
+    position: absolute;
+    top: 50%;
+    height: $layout-depth-bar-height;
+    content: '';
+    border-radius: $radius-xxs;
+    transform: translateY(-50%);
+  }
+
+  &::before {
+    right: 0;
+    left: 0;
+    background: $color-track-fill;
+  }
+
+  &::after {
+    right: calc(100% - var(--range-to));
+    left: var(--range-from);
+    background: $color-accent;
+  }
+}
+
+@mixin thumb {
+  width: $layout-slider-thumb;
+  height: $layout-slider-thumb;
+  pointer-events: auto;
+  cursor: grab;
+  background: $color-text-high;
+  border: 0;
+  border-radius: $radius-pill;
+  box-shadow: $shadow-thumb;
+}
+
+// Both inputs cover the rail; only their handles catch the pointer.
+.input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  pointer-events: none;
+  appearance: none;
+  background: transparent;
+
+  &::-webkit-slider-thumb {
+    @include thumb;
+
+    appearance: none;
+  }
+
+  &::-moz-range-thumb {
+    @include thumb;
+  }
+
+  &:focus-visible {
+    outline: none;
+
+    &::-webkit-slider-thumb {
+      outline: 2px solid $color-accent;
+      outline-offset: 2px;
+    }
+
+    &::-moz-range-thumb {
+      outline: 2px solid $color-accent;
+      outline-offset: 2px;
+    }
+  }
+}
+
+.ticks {
+  @include type($type-unit-xs, $font: $font-mono, $tabular: true);
+
+  display: flex;
+  justify-content: space-between;
+  margin: $space-1 calc($layout-slider-thumb / -2) 0;
+  color: $color-text-low;
+}

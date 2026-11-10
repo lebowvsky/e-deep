@@ -59,6 +59,11 @@ export const color = {
   coastMuted: 'rgba(154, 186, 224, 0.08)', // empty map
   coastGhost: 'rgba(154, 186, 224, 0.05)',
   skeletonDot: 'rgba(154, 186, 224, 0.12)', // marker placeholders while loading
+
+  // Dive log (dives-list.jsx)
+  depthBar: 'rgba(154, 186, 224, 0.35)', // depth mini-bar, non-peak
+  trackFill: 'rgba(154, 186, 224, 0.14)', // range slider rail
+  groupHeader: 'rgba(11, 26, 46, 0.55)', // month header row of the dive table
 } as const;
 
 export const font = {
@@ -96,6 +101,11 @@ export const type = {
   bodyLg: { size: 15, lh: 22, w: 400, ls: 0 }, // drawer nav, header subtitle
   brand: { size: 15, lh: 20, w: 600, ls: -0.2 },
   brandSm: { size: 14, lh: 20, w: 600, ls: -0.1 },
+  summary: { size: 24, lh: 28, w: 600, ls: -0.5 }, // mono — dive log summary band
+  data: { size: 13, lh: 18, w: 400, ls: 0 }, // mono — table numbers, dates, pagination
+  label: { size: 13, lh: 18, w: 600, ls: 0 }, // month group label
+  title: { size: 24, lh: 30, w: 600, ls: -0.4 }, // empty dive log title
+  measure: { size: 15, lh: 20, w: 500, ls: 0 }, // mono — mobile dive card measures
 } as const;
 
 // 4px scale
@@ -114,7 +124,7 @@ export const space = {
   11: 80,
 } as const;
 
-export const radius = { xs: 4, sm: 6, md: 10, lg: 14, xl: 20, pill: 999 } as const;
+export const radius = { xxs: 2, xs: 4, sm: 6, md: 10, lg: 14, xl: 20, pill: 999 } as const;
 
 export const shadow = {
   card: 'inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 6px 24px rgba(0, 0, 0, 0.35)',
@@ -130,6 +140,9 @@ export const shadow = {
   markerActive: '0 0 0 3px rgba(79, 214, 201, 0.2), 0 6px 18px rgba(79, 214, 201, 0.35)',
   popover: 'inset 0 0 0 1px rgba(154, 186, 224, 0.18), 0 12px 32px rgba(0, 0, 0, 0.5)',
   peak: '0 0 16px rgba(79, 214, 201, 0.3)',
+  ringSurface2: '0 0 0 2px #1B3156', // overlapping avatars on a hovered row (surface2)
+  thumb: '0 0 0 4px rgba(79, 214, 201, 0.14)', // range slider handle
+  sheet: 'inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5)',
 } as const;
 
 // Page backgrounds: abyss + two discreet radial glows (dashboard mockups).
@@ -150,7 +163,7 @@ export const motion = {
     in: 'cubic-bezier(.5, 0, .75, 0)',
     std: 'cubic-bezier(.4, 0, .2, 1)',
   },
-  dur: { fast: 120, base: 180, slow: 280 }, // ms
+  dur: { fast: 120, base: 180, slow: 280, toast: 4000 }, // ms (toast: time on screen)
 } as const;
 
 // Content dimmed while a refresh is in flight.
@@ -160,6 +173,7 @@ export const opacity = {
   mapGridEmpty: 0.4,
   spark: 0.7,
   pulse: 0.35,
+  ghost: 0.5, // ghost logbook lines of the empty dive log
 } as const;
 
 export const breakpoint = {
@@ -231,10 +245,39 @@ export const layout = {
   skelKpi: 36,
   skelFilterWidth: 38,
   skelFilterHeight: 28,
+  // Dive log (dives-list.jsx)
+  rowHeight: 60,
+  tableHeadHeight: 44,
+  groupHeaderHeight: 40,
+  colNumber: 64,
+  colDate: 100,
+  colDepth: 132,
+  colDuration: 84,
+  colTemp: 76,
+  colGas: 84,
+  colTeam: 168,
+  colChevron: 24,
+  depthBarWidth: 64,
+  depthBarHeight: 4,
+  depthValueWidth: 44,
+  searchWidth: 340,
+  kbdPadY: 2,
+  pageButton: 36,
+  selectHeightSm: 32,
+  chipHeight: 36,
+  avatarXxs: 24,
+  sheetTop: 56,
+  sheetHandle: 36,
+  sliderThumb: 24,
+  segmentHeight: 36,
+  filterPopoverWidth: 320,
+  emptyLogMinHeight: 560,
+  emptyIconLg: 56,
+  emptyTextMaxLg: 460,
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.
-export const iconSize = { sm: 14, md: 16, lg: 18, xl: 20, xxl: 22 } as const;
+export const iconSize = { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, xxl: 22 } as const;
 
 // Icon stroke widths — TS only (SVG attribute). `bold` = FAB plus.
 export const iconStroke = { regular: 1.5, bold: 2.2, brand: 1.6 } as const;

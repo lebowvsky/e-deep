@@ -82,6 +82,47 @@ export const ICON_PATHS = {
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
   arrowRight: <path d="M5 12h14M13 5l7 7-7 7" />,
+  chevronLeft: <path d="M15 6l-6 6 6 6" />,
+  check: <path d="m5 12 5 5 9-10" />,
+  download: (
+    <>
+      <path d="M12 4v11" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 20h14" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M12 15V4" />
+      <path d="m7 9 5-5 5 5" />
+      <path d="M5 20h14" />
+    </>
+  ),
+  sliders: (
+    <>
+      <path d="M4 7h10" />
+      <path d="M18 7h2" />
+      <circle cx="16" cy="7" r="2" />
+      <path d="M4 17h4" />
+      <path d="M12 17h8" />
+      <circle cx="10" cy="17" r="2" />
+    </>
+  ),
+  sort: (
+    <>
+      <path d="M7 4v16" />
+      <path d="m3 16 4 4 4-4" />
+      <path d="M17 20V4" />
+      <path d="m13 8 4-4 4 4" />
+    </>
+  ),
+  book: (
+    <>
+      <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z" />
+      <path d="M4 19a2 2 0 0 1 2-2h13" />
+      <path d="M9 7h6" />
+    </>
+  ),
   waves: (
     <>
       <path d="M2 8c2 0 2-1.5 4-1.5S8 8 10 8s2-1.5 4-1.5S16 8 18 8s2-1.5 4-1.5" />

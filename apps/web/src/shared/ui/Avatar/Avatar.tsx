@@ -1,7 +1,9 @@
 import { cx } from '@/shared/lib/classNames';
 import styles from './Avatar.module.scss';
 
-export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg';
+export type AvatarSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg';
+/** color: data colour or user gradient · neutral: the user inside a dive team. */
+export type AvatarTone = 'color' | 'neutral';
 
 export interface AvatarProps {
   /** Initials shown when there is no picture, e.g. "LB". */
@@ -10,18 +12,36 @@ export interface AvatarProps {
   src?: string | undefined;
   /** Background colour from the data (buddy accent). Default: the user gradient. */
   color?: string | undefined;
-  /** xs 26px · sm 32px · md 36px (default) · lg 40px */
+  /** xxs 24px · xs 26px · sm 32px · md 36px (default) · lg 40px */
   size?: AvatarSize;
+  /** `neutral`: surface0 with a strong outline (the user in a dive team). Default `color`. */
+  tone?: AvatarTone;
   className?: string | undefined;
 }
 
-/** Round avatar with initials. Decorative: always rendered next to the person's name. */
-export function Avatar({ initials, src, color, size = 'md', className }: AvatarProps) {
+/**
+ * Round avatar with initials. Decorative: always rendered next to the person's name.
+ * A parent can draw a ring around it (overlapping avatars) with `--avatar-ring`.
+ */
+export function Avatar({
+  initials,
+  src,
+  color,
+  size = 'md',
+  tone = 'color',
+  className,
+}: AvatarProps) {
+  const neutral = tone === 'neutral';
   return (
     <span
-      className={cx(styles.avatar, styles[size], !color && styles.gradient, className)}
+      className={cx(
+        styles.avatar,
+        styles[size],
+        neutral ? styles.neutral : !color && styles.gradient,
+        className,
+      )}
       // Data-driven colour: the only inline style allowed (see apps/web/CLAUDE.md).
-      style={color ? { backgroundColor: color } : undefined}
+      style={color && !neutral ? { backgroundColor: color } : undefined}
       aria-hidden="true"
     >
       {src ? <img className={styles.image} src={src} alt="" /> : initials}

@@ -1,0 +1,39 @@
+@use '@/styles/tokens' as *;
+
+.region {
+  position: fixed;
+  right: $space-4;
+  bottom: calc(#{$layout-fab-size} + #{$space-9});
+  left: $space-4;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+
+  @include from($bp-tablet) {
+    bottom: $space-7;
+  }
+}
+
+.toast {
+  @include type($type-body);
+
+  padding: $space-3 $space-4;
+  color: $color-text-high;
+  pointer-events: auto;
+  background: $color-surface-2;
+  border-radius: $radius-md;
+  box-shadow: $shadow-popover;
+  animation: toast-in $dur-base $ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY($space-2);
+  }
+}

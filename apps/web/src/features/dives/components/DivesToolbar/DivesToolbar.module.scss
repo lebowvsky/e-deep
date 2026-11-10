@@ -1,0 +1,35 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · Toolbar — gap 8, search · separator · filters · (spacer) · sort.
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  align-items: center;
+}
+
+.separator {
+  display: none;
+  width: 1px;
+  height: $space-6;
+  margin: 0 $space-1;
+  background: $color-line;
+
+  @include from($bp-desktop) {
+    display: block;
+  }
+}
+
+.filters {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.sort {
+  margin-left: auto;
+}

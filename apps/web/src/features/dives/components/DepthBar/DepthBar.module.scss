@@ -1,0 +1,24 @@
+@use '@/styles/tokens' as *;
+
+// dives-list.jsx · DepthCell — 64 × 4 gridline track.
+.track {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: $layout-depth-bar-width;
+  height: $layout-depth-bar-height;
+  background: $color-gridline;
+  border-radius: $radius-xxs;
+}
+
+.fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--depth-ratio) * 100%);
+  background: $color-depth-bar;
+  border-radius: $radius-xxs;
+}
+
+.peak .fill {
+  background: $color-accent;
+}

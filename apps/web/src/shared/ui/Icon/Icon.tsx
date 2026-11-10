@@ -8,7 +8,7 @@ export type IconWeight = Exclude<keyof typeof iconStroke, 'brand'>;
 
 export interface IconProps {
   name: IconName;
-  /** sm 14 · md 16 · lg 18 (default) · xl 20 · xxl 22 */
+  /** xs 12 · sm 14 · md 16 · lg 18 (default) · xl 20 · xxl 22 */
   size?: IconSize;
   /** Stroke: regular 1.5 (default) · bold 2.2 */
   weight?: IconWeight;
