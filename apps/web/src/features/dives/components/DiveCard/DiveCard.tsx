@@ -31,6 +31,8 @@ export function DiveCard({ dive, isPeak }: DiveCardProps) {
       <h3 className={styles.site}>
         <Link to={`/dives/${dive.id}`} className={styles.link}>
           {dive.site.name}
+          {/* Same site, several dives: the number makes each link unique (WCAG 2.4.4). */}
+          <span className={styles.srOnly}>, plongée n° {dive.number}</span>
         </Link>
       </h3>
       <p className={styles.place}>{dive.site.place}</p>

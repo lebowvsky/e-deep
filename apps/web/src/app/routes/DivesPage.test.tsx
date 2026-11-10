@@ -108,7 +108,9 @@ describe('DivesPage', () => {
     expect((field as HTMLInputElement).value).toBe('épave liban');
     const sites = within(screen.getByRole('table')).getAllByRole('link');
     expect(sites.length).toBeGreaterThan(0);
-    expect(sites.every((link) => link.textContent === 'Épave du Liban')).toBe(true);
+    expect(sites.every((link) => link.textContent?.startsWith('Épave du Liban,') === true)).toBe(
+      true,
+    );
     expect(screen.getByText('Recherche « épave liban »')).toBeTruthy();
   });
 
