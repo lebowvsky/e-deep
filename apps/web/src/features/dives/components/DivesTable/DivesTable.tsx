@@ -62,65 +62,70 @@ export function DivesTable({ dives, summary, sort }: DivesTableProps) {
     : [{ month: null, total: null, dives }];
 
   return (
-    <table className={styles.table}>
-      <caption className={styles.srOnly}>Plongées du carnet</caption>
-      <thead>
-        <tr className={styles.head}>
-          {COLUMNS.map((column) => {
-            const isSorted = column.sortable === sorted.column;
-            return (
-              <th
-                key={column.key}
-                scope="col"
-                aria-sort={isSorted ? sorted.direction : undefined}
-                data-optional={column.optional ? '' : undefined}
-                className={cx(
-                  styles[column.key],
-                  column.align === 'right' && styles.right,
-                  isSorted && styles.sorted,
-                )}
-              >
-                {column.label ? (
-                  <span className={styles.headLabel}>
-                    {column.label}
-                    {isSorted && (
-                      <Icon
-                        name="chevronDown"
-                        size="xs"
-                        className={cx(
-                          styles.sortIcon,
-                          sorted.direction === 'ascending' && styles.up,
-                        )}
-                      />
-                    )}
+    // Tablets: the columns do not fit next to the sidebar, the table scrolls sideways (keyboard
+    // included) instead of squeezing the site names.
+    <div className={styles.scroller} role="region" aria-label="Plongées du carnet" tabIndex={0}>
+      <table className={styles.table}>
+        <caption className={styles.srOnly}>Plongées du carnet</caption>
+        <thead>
+          <tr className={styles.head}>
+            {COLUMNS.map((column) => {
+              const isSorted = column.sortable === sorted.column;
+              return (
+                <th
+                  key={column.key}
+                  scope="col"
+                  aria-sort={isSorted ? sorted.direction : undefined}
+                  data-optional={column.optional ? '' : undefined}
+                  className={cx(
+                    styles[column.key],
+                    column.align === 'right' && styles.right,
+                    isSorted && styles.sorted,
+                  )}
+                >
+                  {column.label ? (
+                    <span className={styles.headLabel}>
+                      {column.label}
+                      {isSorted && (
+                        <Icon
+                          name="chevronDown"
+                          size="xs"
+                          className={cx(
+                            styles.sortIcon,
+                            sorted.direction === 'ascending' && styles.up,
+                          )}
+                        />
+                      )}
+                    </span>
+                  ) : (
+                    <span className={styles.srOnly}>Ouvrir</span>
+                  )}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        {groups.map((group) => (
+          <tbody key={group.month ?? 'all'}>
+            {group.month && group.total && (
+              <tr className={styles.group}>
+                <th scope="rowgroup" colSpan={COLUMNS.length}>
+                  <span className={styles.groupInner}>
+                    <span className={styles.month}>{capitalize(formatMonthYear(group.month))}</span>
+                    <span className={styles.monthTotal}>
+                      {formatDiveCount(group.total.count)} ·{' '}
+                      {formatHoursMinutes(group.total.minutes)}
+                    </span>
                   </span>
-                ) : (
-                  <span className={styles.srOnly}>Ouvrir</span>
-                )}
-              </th>
-            );
-          })}
-        </tr>
-      </thead>
-      {groups.map((group) => (
-        <tbody key={group.month ?? 'all'}>
-          {group.month && group.total && (
-            <tr className={styles.group}>
-              <th scope="rowgroup" colSpan={COLUMNS.length}>
-                <span className={styles.groupInner}>
-                  <span className={styles.month}>{capitalize(formatMonthYear(group.month))}</span>
-                  <span className={styles.monthTotal}>
-                    {formatDiveCount(group.total.count)} · {formatHoursMinutes(group.total.minutes)}
-                  </span>
-                </span>
-              </th>
-            </tr>
-          )}
-          {group.dives.map((dive) => (
-            <DiveRow key={dive.id} dive={dive} isPeak={dive.depthMaxM === summary.maxDepthM} />
-          ))}
-        </tbody>
-      ))}
-    </table>
+                </th>
+              </tr>
+            )}
+            {group.dives.map((dive) => (
+              <DiveRow key={dive.id} dive={dive} isPeak={dive.depthMaxM === summary.maxDepthM} />
+            ))}
+          </tbody>
+        ))}
+      </table>
+    </div>
   );
 }

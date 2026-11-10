@@ -2,6 +2,9 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_QUERY } from '@/features/dives/lib/query';
+import { selectDives } from '@/features/dives/lib/selectDives';
+import { mockDives } from '@/features/dives/mocks/dives';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { DivesPage } from './DivesPage';
 
@@ -32,6 +35,20 @@ function renderAt(path: string) {
 
 const search = () => screen.getByTestId('search').textContent;
 
+function first<T>(items: T[]): T {
+  const [item] = items;
+  if (item === undefined) throw new Error('No element');
+  return item;
+}
+
+/** The desktop filter button (the phone chip of the same name opens the sheet). */
+const filterButton = (name: string) =>
+  first(
+    screen
+      .getAllByRole('button', { name })
+      .filter((button) => button.hasAttribute('aria-expanded')),
+  );
+
 describe('DivesPage', () => {
   it('shows the first page of the log, grouped by month, most recent first', async () => {
     renderAt('/dives');
@@ -54,7 +71,8 @@ describe('DivesPage', () => {
       .filter((link) => link.closest('tbody'));
     expect(links).toHaveLength(10);
     expect(links[0]?.getAttribute('href')).toBe('/dives/d127');
-    expect(screen.getByText('1–10')).toBeTruthy();
+    // Desktop table and phone cards are both in the DOM (CSS picks one): two paginations.
+    expect(screen.getAllByText('1–10')).toHaveLength(2);
   });
 
   it('filters from a popover, announces the result and writes it in the URL', async () => {
@@ -62,19 +80,17 @@ describe('DivesPage', () => {
     renderAt('/dives?page=3');
     await screen.findByRole('table');
 
-    await user.click(screen.getByRole('button', { name: 'Région' }));
+    await user.click(filterButton('Région'));
     const popover = screen.getByRole('dialog', { name: 'Filtre Région' });
     await user.click(within(popover).getByRole('button', { name: /Corse/ }));
 
     expect(search()).toBe('?region=corse');
     expect(screen.getByText('31 plongées dans la sélection').getAttribute('role')).toBe('status');
-    expect(screen.getByRole('button', { name: 'Région, filtre actif' })).toBeTruthy();
+    expect(filterButton('Région, filtre actif')).toBeTruthy();
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'Filtre Région' })).toBeNull();
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Région, filtre actif' }),
-    );
+    expect(document.activeElement).toBe(filterButton('Région, filtre actif'));
 
     await user.click(screen.getByRole('button', { name: 'Retirer le filtre Région : Corse' }));
     expect(search()).toBe('');
@@ -90,7 +106,7 @@ describe('DivesPage', () => {
     expect(document.activeElement).toBe(field);
     await user.keyboard('épave liban');
     expect((field as HTMLInputElement).value).toBe('épave liban');
-    const sites = screen.getAllByRole('link').filter((link) => link.closest('tbody'));
+    const sites = within(screen.getByRole('table')).getAllByRole('link');
     expect(sites.length).toBeGreaterThan(0);
     expect(sites.every((link) => link.textContent === 'Épave du Liban')).toBe(true);
     expect(screen.getByText('Recherche « épave liban »')).toBeTruthy();
@@ -101,11 +117,11 @@ describe('DivesPage', () => {
     renderAt('/dives');
     await screen.findByRole('table');
 
-    await user.click(screen.getByRole('button', { name: 'Page suivante' }));
+    await user.click(first(screen.getAllByRole('button', { name: 'Page suivante' })));
     expect(search()).toBe('?page=2');
-    expect(screen.getByRole('button', { name: 'Page 2' }).getAttribute('aria-current')).toBe(
-      'page',
-    );
+    expect(
+      first(screen.getAllByRole('button', { name: 'Page 2' })).getAttribute('aria-current'),
+    ).toBe('page');
 
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Trier les plongées' }),
@@ -116,8 +132,74 @@ describe('DivesPage', () => {
     expect(depthHeader.getAttribute('aria-sort')).toBe('descending');
     expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Plongées par page' }), '20');
+    await user.selectOptions(
+      first(screen.getAllByRole('combobox', { name: 'Plongées par page' })),
+      '20',
+    );
     expect(search()).toBe('?sort=-depth&size=20');
+  });
+
+  it('filters on phones through the sheet: draft, live counter, apply', async () => {
+    const user = userEvent.setup();
+    renderAt('/dives?page=2');
+    await screen.findByRole('table');
+
+    await user.click(screen.getByRole('button', { name: 'Filtres' }));
+    const sheet = screen.getByRole('dialog', { name: 'Filtres' });
+    expect(within(sheet).getByRole('button', { name: 'Afficher 127 plongées' })).toBeTruthy();
+
+    await user.click(within(sheet).getByRole('button', { name: /Corse/ }));
+    await user.click(within(sheet).getByRole('button', { name: /Lucas Bernard/ }));
+    // Live counter, but nothing applied yet.
+    const expected = selectDives(mockDives, {
+      ...DEFAULT_QUERY,
+      regions: ['corse'],
+      with: ['b1'],
+    }).total;
+    const apply = within(sheet).getByRole('button', { name: `Afficher ${expected} plongées` });
+    expect(search()).toBe('?page=2');
+
+    await user.click(apply);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(search()).toBe('?region=corse&with=b1');
+  });
+
+  it('resets only the draft of the sheet and closes it with Esc without applying', async () => {
+    const user = userEvent.setup();
+    renderAt('/dives?region=bretagne');
+    await screen.findByRole('table');
+
+    const opener = screen.getByRole('button', { name: /^Filtres/ });
+    await user.click(opener);
+    const sheet = screen.getByRole('dialog', { name: 'Filtres' });
+    expect(sheet.getAttribute('aria-modal')).toBe('true');
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(within(sheet).getByRole('button', { name: 'Afficher 17 plongées' })).toBeTruthy();
+
+    await user.click(within(sheet).getByRole('button', { name: 'Réinitialiser' }));
+    expect(within(sheet).getByRole('button', { name: 'Afficher 127 plongées' })).toBeTruthy();
+    expect(search()).toBe('?region=bretagne');
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(search()).toBe('?region=bretagne');
+    expect(document.body.style.overflow).toBe('');
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('opens the sheet from a shortcut chip', async () => {
+    const user = userEvent.setup();
+    renderAt('/dives');
+    await screen.findByRole('table');
+
+    const chip = first(
+      screen
+        .getAllByRole('button', { name: 'Profondeur' })
+        .filter((button) => !button.hasAttribute('aria-expanded')),
+    );
+    await user.click(chip);
+    expect(screen.getByRole('dialog', { name: 'Filtres' })).toBeTruthy();
+    expect(screen.getByRole('slider', { name: 'Profondeur minimale' })).toBeTruthy();
   });
 
   it('says that export is coming soon', async () => {

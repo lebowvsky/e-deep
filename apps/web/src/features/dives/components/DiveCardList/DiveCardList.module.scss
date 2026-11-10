@@ -1,0 +1,40 @@
+@use '@/styles/tokens' as *;
+
+.groups {
+  display: flex;
+  flex-direction: column;
+}
+
+// dives-list.jsx · MobileList group header — padding 20 0 10, 14/600 + mono 11.
+.heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: $space-5 0 $space-3;
+}
+
+.month {
+  @include type($type-body-med);
+
+  font-weight: 600;
+  color: $color-text-high;
+}
+
+.total {
+  @include type($type-chip, $font: $font-mono, $tabular: true);
+
+  color: $color-text-low;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

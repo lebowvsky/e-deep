@@ -3,8 +3,9 @@
 // dives-list.jsx · SummaryBand — surface0, padding 16 24, separators 1 × 36.
 .band {
   display: none;
+  flex-direction: column;
   gap: $space-4;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: $space-4 $space-6;
   background: $color-surface-0;
@@ -15,12 +16,22 @@
   @include from($bp-tablet) {
     display: flex;
   }
+
+  @include from($bp-desktop) {
+    flex-direction: row;
+    align-items: center;
+  }
 }
 
 .items {
   display: flex;
   flex-wrap: wrap;
+  gap: $space-4 $space-6;
   align-items: center;
+
+  @include from($bp-desktop) {
+    gap: 0;
+  }
 }
 
 .item {
@@ -28,10 +39,13 @@
   flex-direction: column;
   gap: $space-1;
 
-  & + & {
-    padding-left: $space-7;
-    margin-left: $space-7;
-    border-left: 1px solid $color-line;
+  // Separators only on one line (desktop); the items wrap on tablets.
+  @include from($bp-desktop) {
+    & + & {
+      padding-left: $space-7;
+      margin-left: $space-7;
+      border-left: 1px solid $color-line;
+    }
   }
 }
 
@@ -40,5 +54,8 @@
 
   font-weight: 400;
   color: $color-text-low;
-  text-align: right;
+
+  @include from($bp-desktop) {
+    text-align: right;
+  }
 }

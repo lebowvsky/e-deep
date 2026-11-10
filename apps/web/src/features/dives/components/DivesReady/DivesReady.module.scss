@@ -7,9 +7,25 @@
   gap: $space-3;
 }
 
-.card {
+// One screen component: the table from 768px, the cards below (CSS only, no width in JS).
+.tableCard {
+  display: none;
   overflow: hidden;
   margin-top: $space-1;
+
+  @include from($bp-tablet) {
+    display: block;
+  }
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  @include from($bp-tablet) {
+    display: none;
+  }
 }
 
 .srOnly {

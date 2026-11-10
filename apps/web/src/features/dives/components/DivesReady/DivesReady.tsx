@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { formatDiveCount } from '@/shared/lib/format';
 import { Card } from '@/shared/ui/Card';
 import { withoutFilter, withoutFilters } from '../../lib/query';
 import type { DivesQuery, DivesState } from '../../types';
 import { ActiveFilters } from '../ActiveFilters';
+import { DiveCardList } from '../DiveCardList';
 import { DivesTable } from '../DivesTable';
 import { DivesToolbar } from '../DivesToolbar';
-import type { FilterChange } from '../FilterSection';
+import type { FilterChange, FilterSectionKey } from '../FilterSection';
+import { FiltersSheet } from '../FiltersSheet';
 import { Pagination } from '../Pagination';
 import { SelectionSummary } from '../SelectionSummary';
 import styles from './DivesReady.module.scss';
@@ -17,13 +20,37 @@ export interface DivesReadyProps {
   now: Date;
 }
 
-/** Nominal dive log: toolbar, active filters, summary of the selection, table and pagination. */
+type SheetState = { open: false } | { open: true; section: FilterSectionKey | undefined };
+
+/**
+ * Nominal dive log: toolbar, active filters, summary of the selection, then the dives — a table
+ * from 768px, cards below — and the pagination.
+ */
 export function DivesReady({ state, query, onChange, now }: DivesReadyProps) {
+  const [sheet, setSheet] = useState<SheetState>({ open: false });
   const members = state.facets.members.map(({ member }) => member);
+
+  const pagination = (
+    <Pagination
+      page={state.page}
+      pageCount={state.pageCount}
+      size={query.size}
+      total={state.total}
+      onPage={(page) => onChange({ page })}
+      onSize={(size) => onChange({ size })}
+    />
+  );
 
   return (
     <div className={styles.ready}>
-      <DivesToolbar query={query} onChange={onChange} facets={state.facets} now={now} />
+      <DivesToolbar
+        query={query}
+        onChange={onChange}
+        facets={state.facets}
+        summary={state.summary}
+        now={now}
+        onOpenFilters={(section) => setSheet({ open: true, section })}
+      />
       <ActiveFilters
         query={query}
         members={members}
@@ -35,17 +62,30 @@ export function DivesReady({ state, query, onChange, now }: DivesReadyProps) {
       <p className={styles.srOnly} role="status">
         {formatDiveCount(state.total)} dans la sélection
       </p>
-      <Card padding="none" className={styles.card}>
+
+      <Card padding="none" className={styles.tableCard}>
         <DivesTable dives={state.items} summary={state.summary} sort={query.sort} />
-        <Pagination
-          page={state.page}
-          pageCount={state.pageCount}
-          size={query.size}
-          total={state.total}
-          onPage={(page) => onChange({ page })}
-          onSize={(size) => onChange({ size })}
-        />
+        {pagination}
       </Card>
+      <div className={styles.cards}>
+        <DiveCardList dives={state.items} summary={state.summary} sort={query.sort} />
+        {pagination}
+      </div>
+
+      {sheet.open && (
+        <FiltersSheet
+          query={query}
+          facets={state.facets}
+          now={now}
+          count={state.count}
+          initialSection={sheet.section}
+          onApply={(draft) => {
+            onChange(draft);
+            setSheet({ open: false });
+          }}
+          onClose={() => setSheet({ open: false })}
+        />
+      )}
     </div>
   );
 }

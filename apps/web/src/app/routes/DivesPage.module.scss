@@ -3,5 +3,9 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: $space-6;
+  gap: $space-4;
+
+  @include from($bp-tablet) {
+    gap: $space-6;
+  }
 }

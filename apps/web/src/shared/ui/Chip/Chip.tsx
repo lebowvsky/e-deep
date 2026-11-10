@@ -6,18 +6,28 @@ import styles from './Chip.module.scss';
 export interface ChipProps extends Omit<ComponentProps<'button'>, 'aria-pressed'> {
   /** Toggle state, announced with `aria-pressed`. Omit for a chip that only opens something. */
   selected?: boolean;
+  /** Accent look without toggle semantics (a shortcut to a filter that is applied). */
+  active?: boolean;
   /** Leading visual (icon, avatar). A selected chip shows a check mark instead when absent. */
   icon?: ReactNode;
   children: ReactNode;
 }
 
 /** Pill button, 36px high (dives-list.jsx · MChip): multi-choice filters, filter shortcuts. */
-export function Chip({ selected, icon, className, type = 'button', children, ...rest }: ChipProps) {
+export function Chip({
+  selected,
+  active = false,
+  icon,
+  className,
+  type = 'button',
+  children,
+  ...rest
+}: ChipProps) {
   const leading = icon ?? (selected ? <Icon name="check" size="sm" weight="bold" /> : null);
   return (
     <button
       type={type}
-      className={cx(styles.chip, selected && styles.selected, className)}
+      className={cx(styles.chip, (selected || active) && styles.selected, className)}
       aria-pressed={selected}
       {...rest}
     >
