@@ -16,12 +16,14 @@ function config(stub: boolean): AppConfigService {
 
 describe('CurrentDiverGuard', () => {
   const request: { currentDiverId?: string } = {};
+  const setHeader = jest.fn<void, [string, string]>();
   const context = {
-    switchToHttp: () => ({ getRequest: () => request }),
+    switchToHttp: () => ({ getRequest: () => request, getResponse: () => ({ setHeader }) }),
   } as unknown as ExecutionContext;
 
   beforeEach(() => {
     find.mockReset();
+    setHeader.mockReset();
     delete request.currentDiverId;
   });
 
@@ -31,6 +33,8 @@ describe('CurrentDiverGuard', () => {
     ).rejects.toThrow(UnauthorizedException);
     expect(find).not.toHaveBeenCalled();
     expect(request.currentDiverId).toBeUndefined();
+    // Even refused, the response must not be cached (GDPR art. 9).
+    expect(setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
   });
 
   it('acts for the first diver created when the stub is enabled', async () => {
@@ -40,6 +44,7 @@ describe('CurrentDiverGuard', () => {
       new CurrentDiverGuard(config(true), dataSource).canActivate(context),
     ).resolves.toBe(true);
     expect(request.currentDiverId).toBe(DIVER_ID);
+    expect(setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
     expect(find).toHaveBeenCalledWith(Diver, {
       select: { id: true },
       order: { createdAt: 'ASC', id: 'ASC' },

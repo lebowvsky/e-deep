@@ -21,8 +21,10 @@ export const DIVE_LOG_MAX = 5000;
 /**
  * Live dives of the diver ($1), numbered chronologically over the whole live log (oldest = 1), so
  * a dive keeps the same number in the list and in its detail. Participation and event both alive
- * (D-08), as in the dashboard. Uses the partial index `idx_dive_participations__diver_id_dive_event_id`;
- * the event is joined by primary key.
+ * (D-08), as in the dashboard. The participations are read through the partial index
+ * `idx_dive_participations__diver_id_dive_event_id`; with the default cost settings the planner
+ * joins the events by Seq Scan + Hash Join (observed on 204k events), not by primary key, which it
+ * only picks with a low `random_page_cost` (~1.1, SSD).
  */
 const NUMBERED_LIVE_DIVES = `
   numbered AS (
@@ -37,9 +39,10 @@ const NUMBERED_LIVE_DIVES = `
   )`;
 
 /**
- * The site is joined through the event's composite FK, without a `deleted_at` filter, like the
- * dashboard: a site used by a live event cannot be tombstoned, and a live dive restores its site
- * (D-12 b).
+ * The site is joined through the event's composite FK (owner = the event's creator), without a
+ * `deleted_at` filter: a site used by a live event cannot be tombstoned, and a live dive restores
+ * its site (D-12 b). The dashboard joins sites on `s.owner_id = $1` (the diver) instead: same result
+ * in the MVP, where the creator is the only participant, but they diverge with shared dives (D-08).
  */
 const SITE_JOIN = 'JOIN dive_sites s ON s.owner_id = n.creator_id AND s.id = n.site_id';
 

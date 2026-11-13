@@ -105,6 +105,7 @@ describe('/api/dives (e2e)', () => {
       const response = await request(app.getHttpServer()).get('/api/dives').expect(200);
 
       expect(response.body).toStrictEqual({ dives: [SUMMARY] } satisfies DiveLogResponse);
+      expect(response.headers['cache-control']).toBe('no-store');
       // The owner comes from the guard, never from the request.
       expect(query.mock.calls[0]?.[1]).toStrictEqual([DIVER_ID, DIVE_LOG_MAX]);
     });
@@ -123,6 +124,7 @@ describe('/api/dives (e2e)', () => {
       const response = await request(app.getHttpServer()).get('/api/dives').expect(401);
 
       expect(response.body).toStrictEqual({ message: 'Unauthorized', statusCode: 401 });
+      expect(response.headers['cache-control']).toBe('no-store');
       expect(query).not.toHaveBeenCalled();
     });
   });
@@ -141,6 +143,7 @@ describe('/api/dives (e2e)', () => {
         stopsOk: true,
       } satisfies DiveDetail);
       expect(query.mock.calls[0]?.[1]).toStrictEqual([DIVER_ID, EVENT_ID]);
+      expect(response.headers['cache-control']).toBe('no-store');
     });
 
     it('returns a generic 404 for a dive that is not a live dive of the diver', async () => {
@@ -156,12 +159,14 @@ describe('/api/dives (e2e)', () => {
         statusCode: 404,
       });
       expect(JSON.stringify(response.body)).not.toContain(UNKNOWN_ID);
+      expect(response.headers['cache-control']).toBe('no-store');
     });
 
     it('returns 400 for an id that is not a UUID, without querying', async () => {
       const response = await request(app.getHttpServer()).get('/api/dives/abc').expect(400);
 
       expect(response.body).toMatchObject({ statusCode: 400 });
+      expect(response.headers['cache-control']).toBe('no-store');
       expect(query).not.toHaveBeenCalled();
     });
 
