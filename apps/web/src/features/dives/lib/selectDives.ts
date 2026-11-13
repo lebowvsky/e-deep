@@ -1,19 +1,20 @@
 // Client-side selection of the dive log: filter → sort → summary → page.
-// Pure functions: the future paginated API will do the same work server side.
+// Pure functions: the API serves the whole log (one request), the selection stays client side.
 import type { GasMix } from '@e-deep/shared';
 import { activeFilterKeys, withoutFilter } from './query';
-import {
-  REGION_KEYS,
-  type DiveLogOverview,
-  type DivesFacets,
-  type DivesQuery,
-  type DivesSelection,
-  type DivesSort,
-  type DivesSummary,
-  type GasFamily,
-  type LoggedDive,
-  type MonthTotal,
-  type Relaxation,
+import { normalizeText } from './text';
+import type {
+  DiveLogOverview,
+  DivesFacets,
+  DivesQuery,
+  DivesSelection,
+  DivesSort,
+  DivesSummary,
+  GasFamily,
+  LoggedDive,
+  MonthTotal,
+  RegionFacet,
+  Relaxation,
 } from '../types';
 
 const GAS_FAMILY: Record<GasMix, GasFamily> = {
@@ -30,14 +31,6 @@ export function gasFamily(gasMix: GasMix): GasFamily {
 /** "2026-04-08T10:30:00+02:00" → "2026-04" (the dive's own calendar month). */
 export function yearMonthOf(iso: string): string {
   return iso.slice(0, 7);
-}
-
-/** Lower case, without accents: « Épave » and « epave » match. */
-export function normalizeText(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase();
 }
 
 function searchableText(dive: LoggedDive): string {
@@ -169,11 +162,14 @@ export function selectDives(
 }
 
 export function computeFacets(dives: readonly LoggedDive[]): DivesFacets {
-  const regions = Object.fromEntries(REGION_KEYS.map((key) => [key, 0])) as DivesFacets['regions'];
+  const regions = new Map<string, RegionFacet>();
   const members = new Map<string, DivesFacets['members'][number]>();
 
   for (const dive of dives) {
-    regions[dive.site.region] += 1;
+    const { region: key, regionName: name } = dive.site;
+    const region = regions.get(key);
+    if (region) region.count += 1;
+    else regions.set(key, { key, name, count: 1 });
     for (const member of dive.team) {
       if (member.isSelf) continue;
       const entry = members.get(member.id);
@@ -183,7 +179,9 @@ export function computeFacets(dives: readonly LoggedDive[]): DivesFacets {
   }
 
   return {
-    regions,
+    regions: [...regions.values()].sort(
+      (a, b) => b.count - a.count || a.name.localeCompare(b.name, 'fr'),
+    ),
     members: [...members.values()].sort(
       (a, b) => b.count - a.count || a.member.firstName.localeCompare(b.member.firstName, 'fr'),
     ),

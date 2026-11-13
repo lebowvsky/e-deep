@@ -1,22 +1,22 @@
 import { useId } from 'react';
-import type { DiveMember } from '@/shared/model/dive';
 import { RemovableChip } from '@/shared/ui/Chip';
-import { describeFilter } from '../../lib/labels';
+import { describeFilter, type FilterNames } from '../../lib/labels';
 import { activeFilterKeys } from '../../lib/query';
 import type { DivesFilterKey, DivesQuery } from '../../types';
 import styles from './ActiveFilters.module.scss';
 
 export interface ActiveFiltersProps {
   query: DivesQuery;
-  members: readonly DiveMember[];
+  /** Names of the regions and members of the log (the query only holds their keys). */
+  names: FilterNames;
   onRemove: (filter: DivesFilterKey) => void;
   onReset: () => void;
 }
 
 /** Applied filters as removable chips, plus « Tout réinitialiser » (dives-list.jsx · capture 11). */
-export function ActiveFilters({ query, members, onRemove, onReset }: ActiveFiltersProps) {
+export function ActiveFilters({ query, names, onRemove, onReset }: ActiveFiltersProps) {
   const titleId = useId();
-  const filters = activeFilterKeys(query).map((key) => describeFilter(query, key, members));
+  const filters = activeFilterKeys(query).map((key) => describeFilter(query, key, names));
   if (filters.length === 0) return null;
 
   return (

@@ -1,11 +1,14 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_QUERY } from '@/features/dives/lib/query';
 import { selectDives } from '@/features/dives/lib/selectDives';
+import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
 import { mockDives } from '@/features/dives/mocks/dives';
+import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { ToastProvider } from '@/shared/ui/Toast';
+import { TestProviders } from '@/test/TestProviders';
 import { DivesPage } from './DivesPage';
 
 function Location() {
@@ -13,27 +16,36 @@ function Location() {
   return <output data-testid="search">{search}</output>;
 }
 
-function renderAt(path: string) {
+function renderAt(
+  path: string,
+  get: ApiClient['get'] = vi.fn().mockResolvedValue(mockDiveLogResponse),
+) {
   return render(
-    <ToastProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route
-            path="/dives"
-            element={
-              <>
-                <DivesPage />
-                <Location />
-              </>
-            }
-          />
-        </Routes>
-      </MemoryRouter>
-    </ToastProvider>,
+    <TestProviders client={{ get }}>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route
+              path="/dives"
+              element={
+                <>
+                  <DivesPage />
+                  <Location />
+                </>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+    </TestProviders>,
   );
 }
 
 const search = () => screen.getByTestId('search').textContent;
+
+/** The page live region (the toasts have their own). */
+const liveRegion = () =>
+  first(screen.getAllByRole('status').filter((region) => region.tagName === 'P'));
 
 function first<T>(items: T[]): T {
   const [item] = items;
@@ -227,11 +239,31 @@ describe('DivesPage', () => {
     expect(screen.getByText('Bientôt disponible')).toBeTruthy();
   });
 
-  it('reports a loading error with a retry button', () => {
+  it('announces a loading error and keeps the focus in the page on retry', async () => {
+    const user = userEvent.setup();
+    const get = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError('network', 'The API is unreachable.'))
+      .mockResolvedValueOnce(mockDiveLogResponse);
+    renderAt('/dives', get);
+
+    // One persistent live region, from the first render to the result.
+    const status = liveRegion();
+    expect(status.textContent).toBe('Chargement du carnet');
+    const retry = await screen.findByRole('button', { name: 'Réessayer' });
+    expect(status.textContent).toBe('Impossible de charger tes plongées pour l’instant.');
+    await user.click(retry);
+    // The button is gone: the focus is on the content container, not lost on <body>.
+    expect(document.activeElement?.getAttribute('tabindex')).toBe('-1');
+
+    expect(await screen.findByRole('table')).toBeTruthy();
+    expect(liveRegion()).toBe(status);
+    expect(status.textContent).toBe('127 plongées dans la sélection');
+  });
+
+  it('announces the forced error state with a retry button', () => {
     renderAt('/dives?state=error');
-    expect(screen.getByRole('alert').textContent).toBe(
-      'Impossible de charger tes plongées pour l’instant.',
-    );
+    expect(liveRegion().textContent).toBe('Impossible de charger tes plongées pour l’instant.');
     expect(screen.getByRole('button', { name: 'Réessayer' })).toBeTruthy();
   });
 

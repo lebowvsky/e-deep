@@ -9,3 +9,19 @@
     gap: $space-6;
   }
 }
+
+// Wrapper of the swapped content: a flex item like the content it holds (min-width for the table).
+.content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+
+  // Programmatic focus target only (retry), out of the tab order: no ring around the whole content.
+  &:focus {
+    outline: none;
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}
