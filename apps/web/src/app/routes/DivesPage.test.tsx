@@ -344,6 +344,62 @@ describe('DivesPage', () => {
     expect(get).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the focus on the step buttons when they reach either end of the log', async () => {
+    const user = userEvent.setup();
+    renderAt('/dives?page=12');
+    await screen.findByRole('table');
+
+    const next = first(screen.getAllByRole('button', { name: 'Page suivante' }));
+    await user.click(next);
+    expect(search()).toBe('?page=13');
+    expect(next.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(next);
+
+    await user.keyboard('{Enter}');
+    expect(search()).toBe('?page=13');
+    expect(document.activeElement).toBe(next);
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Page 1' })));
+    const previous = first(screen.getAllByRole('button', { name: 'Page précédente' }));
+    expect(previous.getAttribute('aria-disabled')).toBe('true');
+    await user.click(previous);
+    expect(search()).toBe('');
+    expect(document.activeElement).toBe(previous);
+  });
+
+  it('filters on a region with a non-Latin name, through the URL and back', async () => {
+    const user = userEvent.setup();
+    const [greek, egyptian, ...rest] = mockDiveLogResponse.dives;
+    if (!greek || !egyptian) throw new Error('No dive');
+    const response = {
+      dives: [
+        { ...greek, site: { ...greek.site, locality: null, region: 'Ελλάδα' } },
+        { ...egyptian, site: { ...egyptian.site, locality: null, region: 'مصر' } },
+        ...rest,
+      ],
+    };
+    const get = vi.fn().mockResolvedValue(response);
+    const { unmount } = renderAt('/dives', get);
+    await screen.findByRole('table');
+
+    await user.click(filterButton('Région'));
+    const popover = screen.getByRole('dialog', { name: 'Filtre Région' });
+    await user.click(within(popover).getByRole('button', { name: /Ελλάδα/ }));
+    const url = search() ?? '';
+    expect(url).toMatch(/^\?region=r-[a-z0-9]+$/);
+    expect(liveRegion().textContent).toBe('1 plongée dans la sélection');
+    unmount();
+
+    renderAt(`/dives${url}`, get);
+    const table = await screen.findByRole('table');
+    expect(
+      within(table)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual([`/dives/${greek.id}`]);
+    expect(screen.getByRole('button', { name: 'Retirer le filtre Région : Ελλάδα' })).toBeTruthy();
+  });
+
   it('shows page 2 when the URL says so', async () => {
     renderAt('/dives?page=2');
     const table = await screen.findByRole('table');

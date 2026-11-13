@@ -19,6 +19,7 @@ import {
   isRecord,
   isString,
 } from '@/shared/lib/guards';
+import { hashOf } from '@/shared/lib/hash';
 import type { DiveMember } from '@/shared/model/dive';
 import { toRegionKey } from '../lib/region';
 import type { DiveSiteRef, LoggedDive } from '../types';
@@ -101,16 +102,10 @@ export function fetchDive(
 /** Who the user is: the contract leaves them out of the dive teams. */
 export type DiveLogOwner = Pick<DiveMember, 'id' | 'firstName' | 'lastName'>;
 
-/** FNV-1a: a cheap, stable hash, so that a buddy keeps the same colour on every screen. */
-function hashOf(text: string): number {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < text.length; index += 1) {
-    hash = Math.imul(hash ^ text.charCodeAt(index), 0x01000193);
-  }
-  return hash >>> 0;
-}
-
-/** Buddy colours are not stored: one is derived from the id, among the avatar palette. */
+/**
+ * Buddy colours are not stored: one is derived from the id, among the avatar palette (a stable
+ * hash, so that a buddy keeps the same colour on every screen).
+ */
 export function avatarColorOf(id: string): string {
   return avatarPalette[hashOf(id) % avatarPalette.length] ?? avatarPalette[0];
 }
