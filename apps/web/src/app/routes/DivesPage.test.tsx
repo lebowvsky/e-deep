@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
@@ -65,21 +65,25 @@ describe('DivesPage', () => {
   it('shows the first page of the log, grouped by month, most recent first', async () => {
     renderAt('/dives');
 
-    expect(await screen.findByRole('table')).toBeTruthy();
+    // Role queries are scoped to the table: the phone cards hold the same dives (both in jsdom),
+    // and a role query over the whole page is slow enough to matter when the machine is loaded.
+    const table = await screen.findByRole('table');
     expect(screen.getByRole('heading', { level: 1, name: 'Mes plongées' })).toBeTruthy();
     expect(screen.getByText(/127 plongées depuis juin 2019/)).toBeTruthy();
 
-    const dateHeader = screen.getByRole('columnheader', { name: /Date/ });
+    const dateHeader = within(table).getByRole('columnheader', { name: /Date/ });
     expect(dateHeader.getAttribute('aria-sort')).toBe('descending');
-    const months = screen.getAllByRole('rowheader').map((cell) => cell.textContent);
-    expect(months).toEqual([
+    const months = within(table)
+      .getAllByRole('rowheader')
+      .map((cell) => cell.textContent);
+    expect(months).toStrictEqual([
       'Avril 20264 plongées · 2 h 57',
       'Mars 20263 plongées · 1 h 57',
       'Février 20262 plongées · 1 h 09',
       'Décembre 20251 plongée · 0 h 44',
     ]);
-    const links = screen
-      .getAllByRole('link', { name: /./ })
+    const links = within(table)
+      .getAllByRole('link')
       .filter((link) => link.closest('tbody'));
     expect(links).toHaveLength(10);
     expect(links[0]?.getAttribute('href')).toBe('/dives/d127');
@@ -129,7 +133,7 @@ describe('DivesPage', () => {
   it('pages, sorts and changes the page size', async () => {
     const user = userEvent.setup();
     renderAt('/dives');
-    await screen.findByRole('table');
+    const table = await screen.findByRole('table');
 
     await user.click(first(screen.getAllByRole('button', { name: 'Page suivante' })));
     expect(search()).toBe('?page=2');
@@ -142,9 +146,9 @@ describe('DivesPage', () => {
       'Plus profondes',
     );
     expect(search()).toBe('?sort=-depth');
-    const depthHeader = screen.getByRole('columnheader', { name: /Prof\. max/ });
+    const depthHeader = within(table).getByRole('columnheader', { name: /Prof\. max/ });
     expect(depthHeader.getAttribute('aria-sort')).toBe('descending');
-    expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
+    expect(within(table).queryAllByRole('rowheader')).toHaveLength(0);
 
     await user.selectOptions(
       first(screen.getAllByRole('combobox', { name: 'Plongées par page' })),
@@ -367,6 +371,33 @@ describe('DivesPage', () => {
     expect(document.activeElement).toBe(previous);
   });
 
+  it('keeps the focus on the page buttons used in the middle of the log', async () => {
+    const user = userEvent.setup();
+    renderAt('/dives?page=6');
+    const table = await screen.findByRole('table');
+    const pages = within(first(screen.getAllByRole('navigation', { name: 'Pages' })));
+    const firstLink = () => within(table).getAllByRole('link')[0]?.getAttribute('href');
+
+    const next = pages.getByRole('button', { name: 'Page suivante' });
+    await user.click(next);
+    expect(search()).toBe('?page=7');
+    expect(firstLink()).toBe('/dives/d67');
+    expect(next.hasAttribute('aria-disabled')).toBe(false);
+    expect(document.activeElement).toBe(next);
+
+    // Still focused, so the keyboard carries on from there.
+    await user.keyboard('{Enter}');
+    expect(search()).toBe('?page=8');
+    expect(document.activeElement).toBe(next);
+
+    const page9 = pages.getByRole('button', { name: 'Page 9' });
+    await user.click(page9);
+    expect(search()).toBe('?page=9');
+    expect(firstLink()).toBe('/dives/d47');
+    expect(page9.getAttribute('aria-current')).toBe('page');
+    expect(document.activeElement).toBe(page9);
+  });
+
   it('filters on a region with a non-Latin name, through the URL and back', async () => {
     const user = userEvent.setup();
     const [greek, egyptian, ...rest] = mockDiveLogResponse.dives;
@@ -426,11 +457,21 @@ describe('DivesPage', () => {
     expect(get).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['loading', 'empty', 'error'] as const)(
+  it.each([
+    ['loading', 'Chargement du carnet'],
+    ['empty', 'Ton carnet est vierge'],
+    ['error', 'Impossible de charger tes plongées pour l’instant.'],
+  ] as const)(
     'forces the %s state with ?state= without calling the API',
-    (state) => {
-      const get = vi.fn();
+    async (state, announcement) => {
+      const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
       renderAt(`/dives?state=${state}`, get);
+      expect(liveRegion().textContent).toBe(announcement);
+
+      // A request, had one started, would have settled by now and replaced the forced state.
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+      expect(liveRegion().textContent).toBe(announcement);
+      expect(screen.queryByRole('table')).toBeNull();
       expect(get).not.toHaveBeenCalled();
     },
   );
