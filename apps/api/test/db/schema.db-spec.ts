@@ -89,7 +89,7 @@ interface NameRow {
   name: string;
 }
 
-describe('InitDiveLogSchema migration', () => {
+describe('dive log schema migrations', () => {
   let dataSource: DataSource;
 
   beforeAll(async () => {
