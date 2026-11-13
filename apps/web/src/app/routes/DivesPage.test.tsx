@@ -254,9 +254,14 @@ describe('DivesPage', () => {
     expect(status.textContent).toBe('Impossible de charger tes plongées pour l’instant.');
     await user.click(retry);
     // The button is gone: the focus is on the content container, not lost on <body>.
-    expect(document.activeElement?.getAttribute('tabindex')).toBe('-1');
+    const focused = document.activeElement;
+    expect(focused?.getAttribute('tabindex')).toBe('-1');
+    expect(get).toHaveBeenCalledTimes(2);
 
-    expect(await screen.findByRole('table')).toBeTruthy();
+    const table = await screen.findByRole('table');
+    // The same container now holds the loaded log, and keeps the focus.
+    expect(focused?.contains(table)).toBe(true);
+    expect(document.activeElement).toBe(focused);
     expect(liveRegion()).toBe(status);
     expect(status.textContent).toBe('127 plongées dans la sélection');
   });
@@ -293,4 +298,84 @@ describe('DivesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Exporter' }));
     expect(screen.getByText('Bientôt disponible')).toBeTruthy();
   });
+
+  it('announces the loading from the first render, then the size of the log, in one region', async () => {
+    const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
+    renderAt('/dives', get);
+
+    const status = liveRegion();
+    expect(status.textContent).toBe('Chargement du carnet');
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+
+    await screen.findByRole('table');
+    expect(liveRegion()).toBe(status);
+    expect(status.textContent).toBe('127 plongées dans la sélection');
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces a blank log served by the API', async () => {
+    renderAt('/dives', vi.fn().mockResolvedValue({ dives: [] }));
+    const status = liveRegion();
+
+    expect(await screen.findByRole('heading', { name: 'Ton carnet est vierge' })).toBeTruthy();
+    expect(liveRegion()).toBe(status);
+    expect(status.textContent).toBe('Ton carnet est vierge');
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('opens on the page of the URL and shows the next dives without calling the API again', async () => {
+    const user = userEvent.setup();
+    const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
+    renderAt('/dives', get);
+    await screen.findByRole('table');
+
+    const tableLinks = () =>
+      within(screen.getByRole('table'))
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href'));
+    expect(tableLinks()[0]).toBe('/dives/d127');
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Page suivante' })));
+    expect(search()).toBe('?page=2');
+    expect(tableLinks()[0]).toBe('/dives/d117');
+    expect(tableLinks()).not.toContain('/dives/d127');
+    expect(screen.getAllByText('11–20')).toHaveLength(2);
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows page 2 when the URL says so', async () => {
+    renderAt('/dives?page=2');
+    const table = await screen.findByRole('table');
+    expect(within(table).getAllByRole('link')[0]?.getAttribute('href')).toBe('/dives/d117');
+  });
+
+  it('filters the loaded log client side, without calling the API again', async () => {
+    const user = userEvent.setup();
+    const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
+    renderAt('/dives', get);
+    await screen.findByRole('table');
+
+    await user.click(filterButton('Région'));
+    const popover = screen.getByRole('dialog', { name: 'Filtre Région' });
+    await user.click(within(popover).getByRole('button', { name: /Corse/ }));
+    expect(liveRegion().textContent).toBe('31 plongées dans la sélection');
+
+    await user.keyboard('{Escape}');
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Trier les plongées' }),
+      'Plus profondes',
+    );
+    expect(search()).toBe('?region=corse&sort=-depth');
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['loading', 'empty', 'error'] as const)(
+    'forces the %s state with ?state= without calling the API',
+    (state) => {
+      const get = vi.fn();
+      renderAt(`/dives?state=${state}`, get);
+      expect(get).not.toHaveBeenCalled();
+    },
+  );
 });

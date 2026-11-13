@@ -81,4 +81,63 @@ describe('useDives', () => {
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(get).toHaveBeenCalledTimes(2);
   });
+
+  it('changes page from the cached log, without calling the API again', async () => {
+    const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
+    const { result, rerender } = renderHook(
+      ({ query }: { query: DivesQuery }) => useDives(query, now, mockOwner),
+      { wrapper: at('/dives', get), initialProps: { query: DEFAULT_QUERY } },
+    );
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    if (result.current.status !== 'ready') return;
+    const firstPage = result.current.items.map((dive) => dive.id);
+    expect(firstPage[0]).toBe('d127');
+
+    rerender({ query: { ...DEFAULT_QUERY, page: 2 } });
+    if (result.current.status !== 'ready') throw new Error('Expected the ready state');
+    const secondPage = result.current.items.map((dive) => dive.id);
+    expect(secondPage).toHaveLength(DEFAULT_QUERY.size);
+    // The next dives, latest first: page 2 starts right after the last one of page 1.
+    expect(Number(secondPage[0]?.slice(1))).toBe(127 - DEFAULT_QUERY.size);
+    expect(secondPage.some((id) => firstPage.includes(id))).toBe(false);
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('filters the cached log client side, without calling the API again', async () => {
+    const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
+    const { result, rerender } = renderHook(
+      ({ query }: { query: DivesQuery }) => useDives(query, now, mockOwner),
+      { wrapper: at('/dives', get), initialProps: { query: DEFAULT_QUERY } },
+    );
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    if (result.current.status !== 'ready') return;
+    expect(result.current.total).toBe(127);
+
+    rerender({ query: { ...DEFAULT_QUERY, regions: ['corse'] } });
+    if (result.current.status !== 'ready') throw new Error('Expected the ready state');
+    expect(result.current.total).toBe(31);
+    expect(result.current.items.every((dive) => dive.site.region === 'corse')).toBe(true);
+    // The log overview does not depend on the filters.
+    expect(result.current.log.totalDives).toBe(127);
+
+    rerender({ query: { ...DEFAULT_QUERY, gases: ['nitrox'], depthMin: 30 } });
+    if (result.current.status !== 'ready') throw new Error('Expected the ready state');
+    expect(
+      result.current.items.every(
+        (dive) => dive.gasMix.startsWith('NITROX') && dive.depthMaxM >= 30,
+      ),
+    ).toBe(true);
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts the owner first in every team, as the user', async () => {
+    const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
+    const { result } = render(DEFAULT_QUERY, '/dives', get);
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    if (result.current.status !== 'ready') return;
+
+    for (const dive of result.current.items) {
+      expect(dive.team[0]).toMatchObject({ id: mockOwner.id, isSelf: true });
+    }
+  });
 });
