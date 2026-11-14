@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { formatDiveCount } from '@/shared/lib/format';
 import { Card } from '@/shared/ui/Card';
-import { describeFilter } from '../../lib/labels';
+import { describeFilter, type FilterNames } from '../../lib/labels';
 import { withoutFilter, withoutFilters } from '../../lib/query';
 import type { DivesQuery, DivesState } from '../../types';
 import { ActiveFilters } from '../ActiveFilters';
@@ -30,11 +29,10 @@ type SheetState = { open: false } | { open: true; section: FilterSectionKey | un
  */
 export function DivesReady({ state, query, onChange, now }: DivesReadyProps) {
   const [sheet, setSheet] = useState<SheetState>({ open: false });
-  const members = state.facets.members.map(({ member }) => member);
 
   const noResults = state.total === 0 && (
     <DivesNoResults
-      relaxation={relaxationLabel(state, query, members)}
+      relaxation={relaxationLabel(state, query, state.facets)}
       onRelax={() => state.relaxation && onChange(withoutFilter(query, state.relaxation.filter))}
       onReset={() => onChange(withoutFilters(query))}
     />
@@ -63,15 +61,11 @@ export function DivesReady({ state, query, onChange, now }: DivesReadyProps) {
       />
       <ActiveFilters
         query={query}
-        members={members}
+        names={state.facets}
         onRemove={(filter) => onChange(withoutFilter(query, filter))}
         onReset={() => onChange(withoutFilters(query))}
       />
       <SelectionSummary summary={state.summary} />
-      {/* Announces the size of the selection after each change of the filters or the search. */}
-      <p className={styles.srOnly} role="status">
-        {formatDiveCount(state.total)} dans la sélection
-      </p>
 
       <Card padding="none" className={styles.tableCard}>
         <DivesTable dives={state.items} summary={state.summary} sort={query.sort} />
@@ -107,10 +101,10 @@ export function DivesReady({ state, query, onChange, now }: DivesReadyProps) {
 function relaxationLabel(
   state: DivesReadyProps['state'],
   query: DivesQuery,
-  members: Parameters<typeof describeFilter>[2],
+  names: FilterNames,
 ): { label: string; total: number } | null {
   if (!state.relaxation) return null;
   const { filter, total } = state.relaxation;
-  const { value } = describeFilter(query, filter, members);
+  const { value } = describeFilter(query, filter, names);
   return { label: filter === 'q' ? value : `« ${value} »`, total };
 }

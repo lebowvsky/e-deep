@@ -5,8 +5,11 @@
 import type { GasMix } from '@e-deep/shared';
 import type { DiveMember } from '@/shared/model/dive';
 
-export const REGION_KEYS = ['corse', 'var', 'marseille', 'esterel', 'bretagne'] as const;
-export type RegionKey = (typeof REGION_KEYS)[number];
+/**
+ * Filter and URL key of a region: its name normalised (« Côte Vermeille » → `cote-vermeille`).
+ * Regions are free text in the data, so the set of keys comes from the log itself.
+ */
+export type RegionKey = string;
 
 /** Gas families of the filter: AIR · NITROX32 / NITROX36 · OTHER. */
 export const GAS_FAMILIES = ['air', 'nitrox', 'other'] as const;
@@ -15,10 +18,12 @@ export type GasFamily = (typeof GAS_FAMILIES)[number];
 export interface DiveSiteRef {
   id: string;
   name: string;
-  /** Display label: « Calvi · Corse ». */
+  /** Display label: « Calvi · Corse », or the region alone when the locality is unknown. */
   place: string;
-  /** Filter key; independent from `place` (« Esterel · Var » is in the `esterel` region). */
+  /** Filter key, derived from `regionName`. */
   region: RegionKey;
+  /** The region as entered: « Corse ». */
+  regionName: string;
 }
 
 export interface LoggedDive {
@@ -93,9 +98,16 @@ export interface DivesSummary {
   byMonth: Record<string, MonthTotal>;
 }
 
+export interface RegionFacet {
+  key: RegionKey;
+  name: string;
+  count: number;
+}
+
 /** Counters on the whole log, for the filter choices (« Corse · 31 », « Lucas · 24 »). */
 export interface DivesFacets {
-  regions: Record<RegionKey, number>;
+  /** Regions of the log, most dived first (ties: by name). */
+  regions: RegionFacet[];
   /** Members other than the user, most frequent first. */
   members: { member: DiveMember; count: number }[];
 }

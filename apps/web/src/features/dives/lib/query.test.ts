@@ -49,9 +49,13 @@ describe('parseDivesQuery', () => {
   it('ignores invalid values', () => {
     expect(
       parse(
-        'region=atlantis,corse,corse&gas=trimix&sort=name&page=-3&size=15&period=demain&depthMin=abc',
+        'region=corse,corse,C%C3%B4te%20Bleue,-var&gas=trimix&sort=name&page=-3&size=15&period=demain&depthMin=abc',
       ),
     ).toEqual({ ...DEFAULT_QUERY, regions: ['corse'] });
+  });
+
+  it('keeps any well-formed region key: regions come from the data', () => {
+    expect(parse('region=atlantis,cote-bleue').regions).toEqual(['atlantis', 'cote-bleue']);
   });
 
   it('treats the ends of the depth scale as no bound and swaps reversed bounds', () => {
