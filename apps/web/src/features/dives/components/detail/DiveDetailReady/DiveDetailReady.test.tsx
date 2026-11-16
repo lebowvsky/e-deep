@@ -157,6 +157,24 @@ describe('DiveDetailReady, nothing entered', () => {
     }
   });
 
+  it('keeps the Conditions card empty with the bottom temperature alone (a KPI already)', () => {
+    const dive = { ...empty(), temperatureC: 17 };
+    render(<DiveDetailReady dive={dive} insights={null} />);
+    expect(within(card(/Conditions/)).getByText('Rien de renseigné')).toBeTruthy();
+  });
+
+  it('shows the bottom temperature under « Eau » once a condition is entered', () => {
+    const base = empty();
+    const dive = {
+      ...base,
+      temperatureC: 17,
+      conditions: { ...base.conditions, seaState: 'CALM' as const },
+    };
+    render(<DiveDetailReady dive={dive} insights={null} />);
+    const water = valueOf(card(/Conditions/), 'Eau');
+    expect(within(water).getByText('17 degrés au fond')).toBeTruthy();
+  });
+
   it('shows neither area nor entry type, nor a surface caption, nor a buddy level', () => {
     const dive = empty();
     render(<DiveDetailReady dive={dive} insights={null} />);

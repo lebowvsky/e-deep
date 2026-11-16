@@ -14,7 +14,8 @@ export interface DiveConditionsCardProps {
 
 /**
  * « Conditions » (dive-detail.jsx · ConditionsCard): type, weather and air, sea, current, water
- * from the surface to the bottom, dive centre. « Rien de renseigné » when nothing was entered.
+ * from the surface to the bottom, dive centre. « Rien de renseigné » when none of the conditions
+ * was entered: the bottom temperature alone does not count (it is a KPI of the page already).
  */
 export function DiveConditionsCard({
   conditions,
@@ -23,6 +24,11 @@ export function DiveConditionsCard({
   className,
 }: DiveConditionsCardProps) {
   const { seaState, currentStrength, diveCenter } = conditions;
+  const water = contentFact(
+    'Eau',
+    waterFact(surfaceTemperatureC, bottomTemperatureC),
+    MISSING_LABELS.feminine,
+  );
   const facts: Fact[] = [
     contentFact('Type', entryFact(conditions)),
     contentFact(
@@ -39,12 +45,14 @@ export function DiveConditionsCard({
       term: 'Courant',
       value: currentStrength === null ? null : CURRENT_STRENGTH_LABELS[currentStrength],
     },
-    contentFact('Eau', waterFact(surfaceTemperatureC, bottomTemperatureC), MISSING_LABELS.feminine),
+    water,
     { term: 'Structure', value: diveCenter, missingLabel: MISSING_LABELS.feminine },
   ];
+  const empty =
+    surfaceTemperatureC === null && isAllMissing(facts.filter((fact) => fact !== water));
 
   return (
-    <DetailSection title="Conditions" icon="sun" className={className} empty={isAllMissing(facts)}>
+    <DetailSection title="Conditions" icon="sun" className={className} empty={empty}>
       <FactList layout="rows" facts={facts} />
     </DetailSection>
   );

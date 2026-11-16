@@ -574,7 +574,9 @@ Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
     « Non renseigné(e) » en `textLow` (AA) ; la mention des dates est en `textLow`, pas en
     `textMuted` ;
   - la zone (« Méditerranée ») s'affiche aussi sur mobile, où la maquette l'omet ;
-  - la carte Conditions n'est jamais « vide » si la température de fond est saisie (ligne « Eau ») ;
+  - la carte Conditions est « vide » (« Rien de renseigné ») tant qu'aucune condition n'est
+    saisie : la température de fond seule ne compte pas (c'est déjà un KPI). Une fois une
+    condition saisie, la ligne « Eau » l'affiche (« 14 °C · fond ») ;
   - icônes du Déroulé et des Notes : `clock` et `book` (maquette : profil et note) ;
   - à 375 px, le titre « Déroulé de la plongée » passe sur deux lignes et « — Non renseigné(e) »
     se replie dans les cellules étroites du Déroulé.
