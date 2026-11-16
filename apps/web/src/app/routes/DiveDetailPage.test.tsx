@@ -90,8 +90,13 @@ describe('DiveDetailPage', () => {
     renderAt('/dives/d127');
     await screen.findAllByRole('link', { name: /^Plongée précédente/ });
     expect(screen.queryByRole('link', { name: /^Plongée suivante/ })).toBeNull();
-    const ends = screen.getAllByText('Dernière plongée');
-    expect(ends.every((end) => end.closest('[aria-disabled="true"]') !== null)).toBe(true);
+    // Disabled links (buttons and phone tile): announced as dimmed links, out of the tab order.
+    const ends = screen.getAllByRole('link', { name: 'Dernière plongée' });
+    expect(ends).toHaveLength(2);
+    for (const end of ends) {
+      expect(end.getAttribute('aria-disabled')).toBe('true');
+      expect(end.hasAttribute('href')).toBe(false);
+    }
   });
 
   it('goes back to the list with the selection the user left, even after paging', async () => {

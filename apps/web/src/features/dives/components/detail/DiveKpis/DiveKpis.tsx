@@ -23,7 +23,8 @@ export function DiveKpis({ dive, isPersonalBest }: DiveKpisProps) {
         value={dive.depthMaxM}
         unit="m"
         srText={`${dive.depthMaxM} mètres`}
-        tone="accent"
+        // Accent stays rare (apps/web/CLAUDE.md): only the deepest dive of the log.
+        tone={isPersonalBest ? 'accent' : 'default'}
         caption={isPersonalBest ? 'Ton record personnel' : undefined}
       />
       <KpiCard

@@ -70,10 +70,13 @@ export function useDive(id: string, owner: DiveLogOwner): DiveDetailState {
   if (forced === 'error') return { status: 'error', retry };
   if (forced === 'not-found') return { status: 'not-found' };
   if (forced === 'loading') return { status: 'loading', preview: null };
+  // A retry keeps the error flag until it settles: show the loading or cached state meanwhile.
+  const settledError = detailQuery.isError && !detailQuery.isFetching ? detailQuery.error : null;
+  // Checked before the data: a refetch that gets a 404 keeps the cached dive in `data` (TanStack
+  // Query v5), and a deleted or no longer owned dive must not stay on screen.
+  if (settledError && isDiveNotFound(settledError)) return { status: 'not-found' };
+  // Any other failed refetch keeps showing the cached dive.
   if (dive) return { status: 'ready', dive, insights };
-  // A retry keeps the error flag until it settles: show the loading state meanwhile.
-  if (detailQuery.isError && !detailQuery.isFetching) {
-    return isDiveNotFound(detailQuery.error) ? { status: 'not-found' } : { status: 'error', retry };
-  }
+  if (settledError) return { status: 'error', retry };
   return { status: 'loading', preview };
 }

@@ -70,13 +70,28 @@ describe('describeDiveInLog', () => {
     expect(sharedDives.has(elise.id)).toBe(false);
   });
 
+  it('reads the fresh detail, not the stale copy of the dive in the cached log', () => {
+    // The log still has d4 at 50 m with Élise; the detail says 18 m with Lucas and Thao.
+    const stale = log.map((entry) =>
+      entry.number === 4 ? { ...entry, depthMaxM: 50, team: [SELF, elise] } : entry,
+    );
+    const insights = describeDiveInLog(stale, at(4));
+    expect(insights.isPersonalBest).toBe(false);
+    expect(insights.site).toStrictEqual({ diveCount: 3, maxDepthM: 30 });
+    expect(insights.sharedDives.get(lucas.id)).toBe(2);
+    expect(insights.sharedDives.get(thao.id)).toBe(2);
+    expect(insights.sharedDives.has(elise.id)).toBe(false);
+  });
+
   it('still counts the dive itself when the cached log does not have it yet', () => {
-    const fresh = makeDive({ number: 5, depthMaxM: 50, team: [SELF, elise] });
+    const fresh = makeDive({ number: 5, depthMaxM: 50, team: [SELF, lucas, elise] });
     const insights = describeDiveInLog(log, fresh);
     expect(insights.previous?.number).toBe(4);
     expect(insights.next).toBeNull();
     expect(insights.isPersonalBest).toBe(true);
-    expect(insights.site).toStrictEqual({ diveCount: 3, maxDepthM: 50 });
+    // Three Revellata dives in the log, plus this one.
+    expect(insights.site).toStrictEqual({ diveCount: 4, maxDepthM: 50 });
+    expect(insights.sharedDives.get(lucas.id)).toBe(3);
     expect(insights.sharedDives.get(elise.id)).toBe(1);
   });
 });

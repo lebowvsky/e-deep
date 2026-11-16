@@ -56,7 +56,7 @@ export function oxygenLabel(gasMix: GasMix): string | null {
   return percent === null ? null : `${percent} % O₂`;
 }
 
-/** Badge and dive run: same wording as the dashboard (« Palier OK » / « Paliers à vérifier »). */
+/** Dive run « Paliers »: « Respectés » / « À vérifier » (the header badge says « Palier OK »). */
 export function stopsLabel(stopsOk: boolean): string {
   return stopsOk ? 'Respectés' : 'À vérifier';
 }

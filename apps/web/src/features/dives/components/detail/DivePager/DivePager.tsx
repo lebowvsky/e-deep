@@ -67,11 +67,12 @@ function NeighbourLink({ direction, neighbour, linkState }: NeighbourLinkProps) 
   );
 
   if (!neighbour) {
-    // No href: out of the tab order, still found (and said dimmed) by a screen reader.
+    // A disabled link: out of the tab order (no tabindex), still found and said dimmed by a
+    // screen reader (`aria-disabled` needs the link role; an `<a>` without href has none).
     return (
-      <a className={className} aria-disabled="true">
+      <span role="link" className={className} aria-disabled="true">
         {content}
-      </a>
+      </span>
     );
   }
 

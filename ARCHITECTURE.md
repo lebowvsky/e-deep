@@ -506,6 +506,11 @@ Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
   « N plongées ensemble ». Une API dédiée (voisins, compteurs) éviterait de charger tout le carnet
   sur un accès direct ; à revoir avec la PWA (D22), où le carnet sera local.
 - **404 et 400** donnent le même état `not-found` (message neutre, sans l'id).
+- **Date locale d'une plongée** : deux mécanismes coexistent. La liste lit le jour dans la chaîne
+  ISO (`calendarDay`, `shared/lib/format.ts`), le détail décale l'instant de `utcOffsetMinutes`
+  (`features/dives/lib/diveTime.ts`). Ils divergeraient si le décalage de `date` et
+  `utcOffsetMinutes` ne concordaient plus : à unifier dans `shared/lib/format`. `teamSizeLabel`
+  double en partie `formatDiverCount` (libellés différents).
 - **Mobile** : la barre du haut est celle de l'application, pas la barre dédiée de la spec (retour,
   modifier, « … »), qui demanderait un slot de page dans `AppShell` ; le FAB est masqué sur
   `/dives/:id`. La maquette met le h1 mobile en 26/30 et les KPI desktop en 40 : on garde `h1` et le

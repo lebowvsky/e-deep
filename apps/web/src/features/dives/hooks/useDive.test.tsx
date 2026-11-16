@@ -1,4 +1,4 @@
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -166,6 +166,49 @@ describe('useDive', () => {
     });
     const { result } = render(get);
     await waitFor(() => expect(result.current).toStrictEqual({ status: 'not-found' }));
+  });
+
+  it('is not-found when a refetch of a cached dive gets a 404 (deleted meanwhile)', async () => {
+    const { get } = fakeClient({
+      [DETAIL_PATH]: [resolve(mockDiveDetail(DIVE_ID)), reject(http(404))],
+      [LOG_PATH]: [resolve(mockDiveLogResponse)],
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useDive(DIVE_ID, mockOwner), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <ApiClientContext value={{ get }}>
+          <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={[`/dives/${DIVE_ID}`]}>{children}</MemoryRouter>
+          </QueryClientProvider>
+        </ApiClientContext>
+      ),
+    });
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    // TanStack Query keeps the cached dive in `data` next to the 404 error.
+    await act(() => queryClient.refetchQueries());
+    await waitFor(() => expect(result.current).toStrictEqual({ status: 'not-found' }));
+  });
+
+  it('keeps showing the cached dive when a refetch fails for another reason', async () => {
+    const { get } = fakeClient({
+      [DETAIL_PATH]: [resolve(mockDiveDetail(DIVE_ID)), reject(http(500))],
+      [LOG_PATH]: [resolve(mockDiveLogResponse)],
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useDive(DIVE_ID, mockOwner), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <ApiClientContext value={{ get }}>
+          <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={[`/dives/${DIVE_ID}`]}>{children}</MemoryRouter>
+          </QueryClientProvider>
+        </ApiClientContext>
+      ),
+    });
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    await act(() => queryClient.refetchQueries());
+    expect(result.current.status).toBe('ready');
   });
 
   it('reports an error, then recovers on retry', async () => {

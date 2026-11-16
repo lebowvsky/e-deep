@@ -1,15 +1,16 @@
 // Dive detail — what the rest of the log says about one dive (paging, record, site, team).
 import type { DiveLogInsights, DiveNeighbour, LoggedDive } from '../types';
 
-type InsightSubject = Pick<LoggedDive, 'number' | 'depthMaxM' | 'site' | 'team'>;
+type InsightSubject = Pick<LoggedDive, 'id' | 'number' | 'depthMaxM' | 'site' | 'team'>;
 
 function toNeighbour(dive: LoggedDive): DiveNeighbour {
   return { id: dive.id, number: dive.number, siteName: dive.site.name };
 }
 
 /**
- * One pass over the log. `dive` is the detail being read: the log may lag behind it (stale cache),
- * so the record compares with the dive itself too, and the counters never drop below 1.
+ * One pass over the log. `dive` is the fresh detail being read; the cached log may lag behind it
+ * (missing dive, or an older copy of it). So the log's own copy of the dive is skipped and the
+ * detail is counted instead: the dive always counts once, with its current values.
  */
 export function describeDiveInLog(
   log: readonly LoggedDive[],
@@ -18,12 +19,13 @@ export function describeDiveInLog(
   let previous: LoggedDive | null = null;
   let next: LoggedDive | null = null;
   let deepestM = dive.depthMaxM;
-  let siteDiveCount = 0;
+  let siteDiveCount = 1;
   let siteMaxDepthM = dive.depthMaxM;
-  const buddyIds = new Set(dive.team.filter((member) => !member.isSelf).map(({ id }) => id));
-  const sharedDives = new Map<string, number>();
+  const buddyIds = dive.team.filter((member) => !member.isSelf).map(({ id }) => id);
+  const sharedDives = new Map(buddyIds.map((id) => [id, 1]));
 
   for (const entry of log) {
+    if (entry.id === dive.id) continue;
     deepestM = Math.max(deepestM, entry.depthMaxM);
     if (entry.number < dive.number && (previous === null || entry.number > previous.number)) {
       previous = entry;
@@ -36,20 +38,16 @@ export function describeDiveInLog(
       siteMaxDepthM = Math.max(siteMaxDepthM, entry.depthMaxM);
     }
     for (const member of entry.team) {
-      if (buddyIds.has(member.id))
-        sharedDives.set(member.id, (sharedDives.get(member.id) ?? 0) + 1);
+      const shared = sharedDives.get(member.id);
+      if (shared !== undefined) sharedDives.set(member.id, shared + 1);
     }
-  }
-
-  for (const id of buddyIds) {
-    if (!sharedDives.has(id)) sharedDives.set(id, 1);
   }
 
   return {
     previous: previous && toNeighbour(previous),
     next: next && toNeighbour(next),
     isPersonalBest: dive.depthMaxM >= deepestM,
-    site: { diveCount: Math.max(siteDiveCount, 1), maxDepthM: siteMaxDepthM },
+    site: { diveCount: siteDiveCount, maxDepthM: siteMaxDepthM },
     sharedDives,
   };
 }
