@@ -511,6 +511,9 @@ Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
   (`features/dives/lib/diveTime.ts`). Ils divergeraient si le décalage de `date` et
   `utcOffsetMinutes` ne concordaient plus : à unifier dans `shared/lib/format`. `teamSizeLabel`
   double en partie `formatDiverCount` (libellés différents).
+- **Carnet converti deux fois** : `useDive` refait `toDiveLog` sur tout le carnet, déjà converti
+  par `useDives` (memo distincts, `toSelfMember` recalculé). Négligeable à 127 plongées ; un
+  `select` partagé sur `divesKeys.log()` mutualiserait la conversion entre la liste et le détail.
 - **Mobile** : la barre du haut est celle de l'application, pas la barre dédiée de la spec (retour,
   modifier, « … »), qui demanderait un slot de page dans `AppShell` ; le FAB est masqué sur
   `/dives/:id`. La maquette met le h1 mobile en 26/30 et les KPI desktop en 40 : on garde `h1` et le

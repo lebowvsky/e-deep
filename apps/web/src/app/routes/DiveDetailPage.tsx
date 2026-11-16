@@ -6,14 +6,11 @@ import { DiveDetailNav } from '@/features/dives/components/detail/DiveDetailNav'
 import { DiveDetailReady } from '@/features/dives/components/detail/DiveDetailReady';
 import { DiveDetailSkeleton } from '@/features/dives/components/detail/DiveDetailSkeleton';
 import { DiveNotFound } from '@/features/dives/components/detail/DiveNotFound';
+import { DivePager } from '@/features/dives/components/detail/DivePager';
 import { useDive } from '@/features/dives/hooks/useDive';
-import {
-  backToLogHref,
-  forwardLinkState,
-  type DiveDetailLinkState,
-} from '@/features/dives/lib/backLink';
+import { backToLogHref, forwardLinkState } from '@/features/dives/lib/backLink';
 import { DIVE_LOAD_ERROR_MESSAGE, diveDetailAnnouncement } from '@/features/dives/lib/labels';
-import type { DiveDetailState } from '@/features/dives/types';
+import type { DiveDetailState, DiveNeighbours } from '@/features/dives/types';
 import { pageTitle } from '@/shared/config/app';
 import styles from './DiveDetailPage.module.scss';
 
@@ -21,6 +18,13 @@ import styles from './DiveDetailPage.module.scss';
 function diveNumberOf(state: DiveDetailState): number | null {
   if (state.status === 'ready') return state.dive.number;
   if (state.status === 'loading') return state.preview?.number ?? null;
+  return null;
+}
+
+/** Previous / next dives: from the log insights, or the preview while the detail loads. */
+function neighboursOf(state: DiveDetailState): DiveNeighbours | null {
+  if (state.status === 'ready') return state.insights;
+  if (state.status === 'loading') return state.neighbours;
   return null;
 }
 
@@ -49,6 +53,7 @@ export function DiveDetailPage() {
   const backHref = backToLogHref(location.state);
   const linkState = forwardLinkState(location.state);
   const number = diveNumberOf(state);
+  const neighbours = neighboursOf(state);
 
   // The retry button is about to be replaced by the skeleton: focus its persistent container
   // first, so that keyboard and reader users are not sent back to the top of the document.
@@ -64,7 +69,7 @@ export function DiveDetailPage() {
       <DiveDetailNav
         backHref={backHref}
         number={number}
-        neighbours={state.status === 'ready' ? state.insights : null}
+        neighbours={neighbours}
         linkState={linkState}
       />
       {/* Rendered from the first render and never swapped, so that each state is announced. */}
@@ -72,13 +77,18 @@ export function DiveDetailPage() {
         {diveDetailAnnouncement(state)}
       </p>
       <div ref={contentRef} className={styles.content} tabIndex={-1}>
-        <DiveDetailContent
-          state={state}
-          backHref={backHref}
-          linkState={linkState}
-          onRetry={handleRetry}
-        />
+        <DiveDetailContent state={state} backHref={backHref} onRetry={handleRetry} />
       </div>
+      {/* Phones leaf through with tiles at the bottom; larger screens with the bar buttons. */}
+      {neighbours && (
+        <DivePager
+          previous={neighbours.previous}
+          next={neighbours.next}
+          linkState={linkState}
+          variant="tiles"
+          className={styles.tiles}
+        />
+      )}
     </div>
   );
 }
@@ -86,14 +96,13 @@ export function DiveDetailPage() {
 interface DiveDetailContentProps {
   state: DiveDetailState;
   backHref: string;
-  linkState: DiveDetailLinkState;
   onRetry: () => void;
 }
 
-function DiveDetailContent({ state, backHref, linkState, onRetry }: DiveDetailContentProps) {
+function DiveDetailContent({ state, backHref, onRetry }: DiveDetailContentProps) {
   switch (state.status) {
     case 'ready':
-      return <DiveDetailReady dive={state.dive} insights={state.insights} linkState={linkState} />;
+      return <DiveDetailReady dive={state.dive} insights={state.insights} />;
     case 'loading':
       return <DiveDetailSkeleton preview={state.preview} />;
     case 'not-found':

@@ -79,13 +79,6 @@
   color: $color-text-low;
 }
 
-// Larger screens leaf through with the buttons of the navigation bar.
-.tiles {
-  @include from($bp-tablet) {
-    display: none;
-  }
-}
-
 @include from($bp-large) {
   .run,
   .team,

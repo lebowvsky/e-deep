@@ -192,9 +192,15 @@ export interface DiveLogInsights {
   sharedDives: ReadonlyMap<string, number>;
 }
 
+/** Previous / next dives of the pagers. */
+export type DiveNeighbours = Pick<DiveLogInsights, 'previous' | 'next'>;
+
 export type DiveDetailState =
-  /** `preview`: the dive as the cached log already knows it, to show the header at once. */
-  | { status: 'loading'; preview: LoggedDive | null }
+  /**
+   * `preview`: the dive as the cached log already knows it, to show the header at once;
+   * `neighbours`: its previous / next dives, so that the pagers stay in place while paging.
+   */
+  | { status: 'loading'; preview: LoggedDive | null; neighbours: DiveNeighbours | null }
   /** Unknown id, another diver's dive or a malformed id: one neutral message for all. */
   | { status: 'not-found' }
   | { status: 'error'; retry: () => void }

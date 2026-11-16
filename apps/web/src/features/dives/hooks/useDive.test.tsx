@@ -95,7 +95,7 @@ describe('useDive', () => {
   it('has no preview when the loading state is forced', () => {
     const { get } = fakeClient({});
     const { result } = render(get, `/dives/${DIVE_ID}?state=loading`);
-    expect(result.current).toStrictEqual({ status: 'loading', preview: null });
+    expect(result.current).toStrictEqual({ status: 'loading', preview: null, neighbours: null });
   });
 
   it('loads the detail with a cancellable request, then gives the dive and its log insights', async () => {
@@ -130,6 +130,9 @@ describe('useDive', () => {
       const state = result.current;
       if (state.status !== 'loading') throw new Error('Expected the loading state');
       expect(state.preview?.number).toBe(100);
+      // The pagers keep their links while the detail loads.
+      expect(state.neighbours?.previous?.number).toBe(99);
+      expect(state.neighbours?.next?.number).toBe(101);
     });
     detail.release(mockDiveDetail(DIVE_ID));
     await waitFor(() => expect(result.current.status).toBe('ready'));

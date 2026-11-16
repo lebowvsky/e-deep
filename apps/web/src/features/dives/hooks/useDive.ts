@@ -62,6 +62,11 @@ export function useDive(id: string, owner: DiveLogOwner): DiveDetailState {
   );
   const insights = useMemo(() => (log && dive ? describeDiveInLog(log, dive) : null), [log, dive]);
   const preview = useMemo(() => log?.find((entry) => entry.id === id) ?? null, [log, id]);
+  const previewNeighbours = useMemo(() => {
+    if (!log || !preview) return null;
+    const { previous, next } = describeDiveInLog(log, preview);
+    return { previous, next };
+  }, [log, preview]);
 
   const { refetch } = detailQuery;
   // The outcome of the new attempt replaces the error state; details stay out of the UI.
@@ -69,7 +74,7 @@ export function useDive(id: string, owner: DiveLogOwner): DiveDetailState {
 
   if (forced === 'error') return { status: 'error', retry };
   if (forced === 'not-found') return { status: 'not-found' };
-  if (forced === 'loading') return { status: 'loading', preview: null };
+  if (forced === 'loading') return { status: 'loading', preview: null, neighbours: null };
   // A retry keeps the error flag until it settles: show the loading or cached state meanwhile.
   const settledError = detailQuery.isError && !detailQuery.isFetching ? detailQuery.error : null;
   // Checked before the data: a refetch that gets a 404 keeps the cached dive in `data` (TanStack
@@ -78,5 +83,5 @@ export function useDive(id: string, owner: DiveLogOwner): DiveDetailState {
   // Any other failed refetch keeps showing the cached dive.
   if (dive) return { status: 'ready', dive, insights };
   if (settledError) return { status: 'error', retry };
-  return { status: 'loading', preview };
+  return { status: 'loading', preview, neighbours: previewNeighbours };
 }

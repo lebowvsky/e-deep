@@ -7,8 +7,8 @@ describe('site coordinates', () => {
     expect(formatCoordinates(-8.1, -34.9)).toBe('8.100° S · 34.900° W');
   });
 
-  it('spells the hemispheres out for screen readers', () => {
-    expect(spokenCoordinates(42.58, 8.725)).toBe('Latitude 42.580 nord, longitude 8.725 est');
-    expect(spokenCoordinates(-8.1, -34.9)).toBe('Latitude 8.100 sud, longitude 34.900 ouest');
+  it('spells the hemispheres out for screen readers, with a French decimal comma', () => {
+    expect(spokenCoordinates(42.58, 8.725)).toBe('Latitude 42,580 nord, longitude 8,725 est');
+    expect(spokenCoordinates(-8.1, -34.9)).toBe('Latitude 8,100 sud, longitude 34,900 ouest');
   });
 });

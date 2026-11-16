@@ -1,9 +1,7 @@
-import type { DiveDetailLinkState } from '../../../lib/backLink';
 import type { DiveDetailView, DiveLogInsights } from '../../../types';
 import { DiveDetailHeader } from '../DiveDetailHeader';
 import { DiveKpis } from '../DiveKpis';
 import { DiveNotesCard } from '../DiveNotesCard';
-import { DivePager } from '../DivePager';
 import { DiveRunCard } from '../DiveRunCard';
 import { DiveSiteCard } from '../DiveSiteCard';
 import { DiveTeamCard } from '../DiveTeamCard';
@@ -13,14 +11,13 @@ export interface DiveDetailReadyProps {
   dive: DiveDetailView;
   /** `null` while the log loads or when it failed: the dive is shown without them. */
   insights: DiveLogInsights | null;
-  linkState: DiveDetailLinkState;
 }
 
 /**
  * The dive: header, KPI, then the main column (run, notes) and the side column (site, team). On
  * phones and tablets a single column, the team moved up right after the run (spec order).
  */
-export function DiveDetailReady({ dive, insights, linkState }: DiveDetailReadyProps) {
+export function DiveDetailReady({ dive, insights }: DiveDetailReadyProps) {
   return (
     <div className={styles.ready}>
       <DiveDetailHeader dive={dive} stopsOk={dive.stopsOk} />
@@ -43,15 +40,6 @@ export function DiveDetailReady({ dive, insights, linkState }: DiveDetailReadyPr
           </p>
         </div>
       </div>
-      {insights && (
-        <DivePager
-          previous={insights.previous}
-          next={insights.next}
-          linkState={linkState}
-          variant="tiles"
-          className={styles.tiles}
-        />
-      )}
     </div>
   );
 }
