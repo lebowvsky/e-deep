@@ -273,7 +273,7 @@ Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
     `trg_dive_observations__touch_participation`, qui réutilise `touch_participation_on_buddies_change()` ;
     le `down()` ne supprime pas cette fonction (elle appartient à `InitDiveLogSchema`).
 
-  Listes fermées en `text` + `CHECK` (`modules/dives/dive-detail-lists.ts`, valeurs H-18 à valider).
+  Listes fermées en `text` + `CHECK` (`modules/dives/dive-detail-lists.ts`, valeurs H-18 validées le 2026-11-17).
   **Écriture** (D-22) : les types d'écriture des services (`DiveEventWrite`,
   `DiveParticipationWrite`, `DiveSiteWrite`, `BuddyWrite`) exigent chaque champ synchronisé, `null`
   compris (`locality` aussi) : un champ omis par un client périmé effacerait la donnée dans
@@ -523,9 +523,10 @@ Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
   passe par `DiveDetailMember` (propre au détail) : `DiveMember` ne change pas, le dashboard et la
   liste non plus. Dérivés calculés par le front, **jamais servis** : heure de sortie, bar consommés
   (rien si fin > début), % O₂ d'Air ou de Nitrox (21, 32, 36), segment « palier » de la barre de
-  temps. Les lignes composées viennent de `features/dives/lib/diveFacts.ts`. Reste ouvert :
-  - **qualificatif de visibilité** (« Bonne ») : non affiché, faute de barème (il dépend du milieu) ;
-  - **libellés des unions** provisoires (H-18 du modèle) ;
+  temps. Les lignes composées viennent de `features/dives/lib/diveFacts.ts`. Décisions et reste :
+  - **qualificatif de visibilité** (« Bonne ») : **décidé, non affiché** (2026-11-17) ; aucun
+    barème, la perception dépend du milieu ;
+  - **libellés des unions** : valeurs et libellés H-18 **validés** (2026-11-17) ;
   - un palier saisi à moitié (contraire au contrat) est traité comme non saisi, et non rejeté ;
   - non modélisés : détail des paliers de déco. (reporté, D-16), hélium, plusieurs blocs.
 - **Actions non rendues** : « Modifier ma plongée », menu « … » (Dupliquer, Exporter, Supprimer),

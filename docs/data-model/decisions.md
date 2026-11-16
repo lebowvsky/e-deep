@@ -52,7 +52,7 @@
 | H-15 | ~~Le niveau snapshot d'une participation peut référencer un niveau désactivé ; seul le niveau courant doit être actif~~                                                                                                                                                                                                                                                                             | —                                                                                | **Résolue par D-09** (révision : niveau fixé à la saisie, désactivé ou supérieur admis) |
 | H-16 | En MVP, supprimer une plongée tombstone à la fois l'événement et la participation (le créateur est l'unique participant)                                                                                                                                                                                                                                                                            | Avec le partage : retirer sa participation sans toucher à l'événement des autres | Produit                                                                                 |
 | H-17 | Bornes des champs du détail : air -40–60 °C, eau en surface -5–45 °C, palier de sécurité 1–60 min et 0–20 m, bloc 0–30 L et 0–350 bar, combinaison 0–15 mm, lest 0–40 kg, O₂ 0–100 %, effectif 1–9999, étiquette 1–80 caractères, structure et zone 1–120 caractères                                                                                                                                | Ajuster les `CHECK` (migration)                                                  | Produit                                                                                 |
-| H-18 | Valeurs des listes fermées, dont la maquette ne montre qu'un exemple : météo `SUNNY` (Ensoleillé), `CLOUDY` (Nuageux), `OVERCAST` (Couvert), `RAIN` (Pluie) ; mer `CALM` (Calme), `SLIGHT` (Peu agitée), `MODERATE` (Agitée), `ROUGH` (Forte) ; courant `NONE` (Nul), `WEAK` (Faible), `MODERATE` (Moyen), `STRONG` (Fort) ; combinaison `WET` (Humide), `SEMI_DRY` (Semi-étanche), `DRY` (Étanche) | Modifier les `CHECK` et les unions avant la première saisie réelle (D-14)        | Produit                                                                                 |
+| H-18 | Valeurs des listes fermées, dont la maquette ne montre qu'un exemple : météo `SUNNY` (Ensoleillé), `CLOUDY` (Nuageux), `OVERCAST` (Couvert), `RAIN` (Pluie) ; mer `CALM` (Calme), `SLIGHT` (Peu agitée), `MODERATE` (Agitée), `ROUGH` (Forte) ; courant `NONE` (Nul), `WEAK` (Faible), `MODERATE` (Moyen), `STRONG` (Fort) ; combinaison `WET` (Humide), `SEMI_DRY` (Semi-étanche), `DRY` (Étanche) | Modifier les `CHECK` et les unions avant la première saisie réelle (D-14)        | **Validée** (2026-11-17) : valeurs et libellés retenus tels quels                       |
 
 ## Décisions
 
@@ -756,8 +756,8 @@ Données de plongée absentes des sources, **non ajoutées** :
     niveaux FFESSM intermédiaires et d'encadrement ?
 16. ~~**Niveau snapshot corrigé**~~ : résolue par D-09 (niveau désactivé ou supérieur au niveau
     courant accepté sur une participation).
-17. **Valeurs des listes fermées** du détail (météo, mer, courant, combinaison) : à valider avant la
-    première saisie réelle (H-18, D-14).
+17. ~~**Valeurs des listes fermées** du détail (météo, mer, courant, combinaison)~~ : validées le
+    2026-11-17, valeurs et libellés H-18 retenus tels quels.
 18. **Écarts entre la spec du détail et le modèle** (spec en lecture seule) : son tableau « Modèle »
     range la palanquée dans l'événement partagé et les heures d'immersion et de sortie dans la
     participation, alors que D-04 / D-08 font l'inverse ; la mention « Site, date et palanquée sont
