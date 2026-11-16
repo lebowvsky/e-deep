@@ -515,21 +515,18 @@ Issus du carnet « Mes plongées » (revue et audits, 2026-11-13) :
 
 Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
 
-- **Champs du détail** : modélisés (D-13 à D-22) et **servis par l'API** depuis
-  `AddDiveDetailFields` (contrat `DiveDetail`, §6) : type, conditions et structure, zone du site,
-  température de surface, palier de sécurité, successive, % O₂ (mélange « Autre »), bloc et
-  pressions, combinaison, lest, espèces, niveau des binômes, niveau du plongeur à la plongée, dates
-  de création et de modification. **Reste côté front** (la page n'affiche encore que les anciens
-  champs) :
-  - guards des nouveaux champs : ensembles de littéraux pour chaque union (comme `GAS_MIXES`),
-    `isCertificationLevelRef`, `isDiveObservation`, guard de binôme du détail (`level`) ; une fois
-    en place, toute valeur ajoutée à une union se déploie front d'abord (D-14) ;
-  - affichage par carte (en-tête, KPI, Déroulé, Équipement & gaz, Conditions, Notes, Palanquée,
-    mention des dates) ; les fixtures de test (`mockDiveDetail`, `detail()` de `divesApi.test.ts`)
-    portent déjà les nouveaux champs à `null` ;
-  - dérivés calculés par le front, **jamais servis** : heure de sortie, bar consommés, % O₂ d'Air
-    ou de Nitrox (21, 32, 36), segment « palier » de la barre de temps, qualificatif de visibilité
-    (pas de barème) ;
+- **Champs du détail** : modélisés (D-13 à D-22), servis par l'API (`AddDiveDetailFields`) et
+  **rendus** par la page (2026-11-17). Le guard `isDiveDetail` vérifie chaque champ : un ensemble de
+  littéraux par union (`satisfies readonly X[]`), `isCertificationLevelRef`, `isDiveObservation` et
+  le niveau des binômes. Toute valeur ajoutée à une union se déploie donc **front d'abord** (D-14).
+  `DiveDetailView` groupe les champs par carte (`conditions`, `equipment`, `safetyStop`). Le niveau
+  passe par `DiveDetailMember` (propre au détail) : `DiveMember` ne change pas, le dashboard et la
+  liste non plus. Dérivés calculés par le front, **jamais servis** : heure de sortie, bar consommés
+  (rien si fin > début), % O₂ d'Air ou de Nitrox (21, 32, 36), segment « palier » de la barre de
+  temps. Les lignes composées viennent de `features/dives/lib/diveFacts.ts`. Reste ouvert :
+  - **qualificatif de visibilité** (« Bonne ») : non affiché, faute de barème (il dépend du milieu) ;
+  - **libellés des unions** provisoires (H-18 du modèle) ;
+  - un palier saisi à moitié (contraire au contrat) est traité comme non saisi, et non rejeté ;
   - non modélisés : détail des paliers de déco. (reporté, D-16), hélium, plusieurs blocs.
 - **Actions non rendues** : « Modifier ma plongée », menu « … » (Dupliquer, Exporter, Supprimer),
   faute de formulaire d'édition et d'endpoint d'écriture ; les champs vides n'ont donc pas de lien
@@ -555,10 +552,10 @@ Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
   double en partie `formatDiverCount` (libellés différents).
 - **Ordre de lecture sous 1280 px** (écart accepté) : la spec fait remonter la palanquée juste
   après le Déroulé sur mobile et tablette ; les colonnes passent en `display: contents` et `order`
-  réordonne les cartes, donc l'ordre visuel (Déroulé, Palanquée, Notes, Site) diffère de l'ordre
-  du DOM (Déroulé, Notes, Site, Palanquée). Les cartes n'ont aucun élément focalisable (ordre du
-  focus intact) et sont des sections indépendantes ; une grille à aires couplerait les hauteurs des
-  deux colonnes sur desktop.
+  réordonne les cartes, donc l'ordre visuel (Déroulé, Palanquée, Équipement & gaz, Conditions,
+  Notes, Site) diffère de l'ordre du DOM (Déroulé, Équipement & gaz, Conditions, Notes, Site,
+  Palanquée). Les cartes n'ont aucun élément focalisable (ordre du focus intact) et sont des
+  sections indépendantes ; une grille à aires couplerait les hauteurs des deux colonnes sur desktop.
 - **FAB** : masqué dans `AppShell` par `useMatch('/dives/:diveId')` (qui couvre aussi
   `/dives/new`). Un `handle: { fab: false }` sur les routes, lu par `useMatches()`, éviterait un cas
   particulier par page.
@@ -570,6 +567,15 @@ Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
   `/dives/:id`. La maquette met le h1 mobile en 26/30 et les KPI desktop en 40 : on garde `h1` et le
   `KpiCard` partagé (44).
 - **Bundle** : +4,5 kB gzip de JS et +1,8 kB gzip de CSS (route non chargée à la demande, comme les
-  autres pages).
+  autres pages) ; les sections du détail ajoutent +3,0 kB gzip de JS et +0,2 kB gzip de CSS.
+- **Écarts visuels acceptés des sections du détail** :
+  - « — » reste en `textMuted` (≈ 2:1) mais en `aria-hidden` : l'information passe par
+    « Non renseigné(e) » en `textLow` (AA) ; la mention des dates est en `textLow`, pas en
+    `textMuted` ;
+  - la zone (« Méditerranée ») s'affiche aussi sur mobile, où la maquette l'omet ;
+  - la carte Conditions n'est jamais « vide » si la température de fond est saisie (ligne « Eau ») ;
+  - icônes du Déroulé et des Notes : `clock` et `book` (maquette : profil et note) ;
+  - à 375 px, le titre « Déroulé de la plongée » passe sur deux lignes et « — Non renseigné(e) »
+    se replie dans les cellules étroites du Déroulé.
 - **Doc design** : `apps/web/design/README.md` (lecture seule) situe encore `KpiCard` dans
   `features/dashboard`.
