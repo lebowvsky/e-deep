@@ -138,7 +138,11 @@ describe('dashboard', () => {
   describe('CurrentDiverGuard (development stub)', () => {
     const request: { currentDiverId?: string } = {};
     const context = {
-      switchToHttp: () => ({ getRequest: () => request }),
+      // The guard marks every response `no-store` (D28): the response only needs `setHeader`.
+      switchToHttp: () => ({
+        getRequest: () => request,
+        getResponse: () => ({ setHeader: () => undefined }),
+      }),
     } as unknown as ExecutionContext;
     const config = (stub: boolean) => ({ get: () => stub }) as unknown as AppConfigService;
 
