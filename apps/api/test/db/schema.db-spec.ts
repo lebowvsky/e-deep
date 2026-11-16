@@ -22,6 +22,7 @@ const CONSTRAINTS = [
   'ck_dive_sites__region',
   'ck_dive_sites__latitude',
   'ck_dive_sites__longitude',
+  'ck_dive_sites__area',
   'pk_buddies',
   'fk_buddies__owner_id',
   'fk_buddies__linked_diver_id',
@@ -29,10 +30,18 @@ const CONSTRAINTS = [
   'ck_buddies__first_name',
   'ck_buddies__last_name',
   'ck_buddies__not_self',
+  'fk_buddies__certification_level_id',
   'pk_dive_events',
   'fk_dive_events__creator_id',
   'fk_dive_events__creator_id_site_id',
   'ck_dive_events__utc_offset_minutes',
+  'ck_dive_events__entry_type',
+  'ck_dive_events__time_of_day',
+  'ck_dive_events__weather',
+  'ck_dive_events__air_temperature_c',
+  'ck_dive_events__sea_state',
+  'ck_dive_events__current_strength',
+  'ck_dive_events__dive_center',
   'pk_dive_participations',
   'fk_dive_participations__dive_event_id',
   'fk_dive_participations__diver_id',
@@ -45,10 +54,28 @@ const CONSTRAINTS = [
   'ck_dive_participations__visibility_m',
   'ck_dive_participations__gas_mix',
   'ck_dive_participations__notes',
+  'ck_dive_participations__surface_water_temperature_c',
+  'ck_dive_participations__safety_stop_duration_min',
+  'ck_dive_participations__safety_stop_depth_m',
+  'ck_dive_participations__safety_stop',
+  'ck_dive_participations__o2_percent',
+  'ck_dive_participations__tank_volume_l',
+  'ck_dive_participations__tank_material',
+  'ck_dive_participations__start_pressure_bar',
+  'ck_dive_participations__end_pressure_bar',
+  'ck_dive_participations__suit_type',
+  'ck_dive_participations__suit_thickness_mm',
+  'ck_dive_participations__weight_kg',
   'pk_dive_buddies',
   'fk_dive_buddies__owner_id',
   'fk_dive_buddies__owner_id_participation_id',
   'fk_dive_buddies__owner_id_buddy_id',
+  'pk_dive_observations',
+  'fk_dive_observations__participation_id',
+  'uq_dive_observations__participation_id_label',
+  'ck_dive_observations__position',
+  'ck_dive_observations__label',
+  'ck_dive_observations__count',
 ];
 
 const INDEXES: Record<string, string> = {
@@ -70,12 +97,38 @@ const TRIGGERS = [
   'trg_certification_levels__set_updated_at',
   'trg_dive_buddies__touch_participation',
   'trg_dive_events__set_updated_at',
+  'trg_dive_observations__touch_participation',
   'trg_dive_participations__set_updated_at',
   'trg_dive_sites__set_updated_at',
   'trg_divers__set_updated_at',
 ];
 
 /** Composite FKs: exact column order and delete rule, as specified. */
+/** Columns added by `AddDiveDetailFields`: all nullable, none with a default (D-22, RG-30). */
+const DETAIL_COLUMNS: Record<string, string> = {
+  'dive_sites.area': 'text',
+  'buddies.certification_level_id': 'uuid',
+  'dive_events.entry_type': 'text',
+  'dive_events.time_of_day': 'text',
+  'dive_events.weather': 'text',
+  'dive_events.air_temperature_c': 'numeric(3,1)',
+  'dive_events.sea_state': 'text',
+  'dive_events.current_strength': 'text',
+  'dive_events.dive_center': 'text',
+  'dive_participations.surface_water_temperature_c': 'numeric(3,1)',
+  'dive_participations.safety_stop_duration_min': 'smallint',
+  'dive_participations.safety_stop_depth_m': 'numeric(3,1)',
+  'dive_participations.is_repetitive': 'boolean',
+  'dive_participations.o2_percent': 'numeric(4,1)',
+  'dive_participations.tank_volume_l': 'numeric(3,1)',
+  'dive_participations.tank_material': 'text',
+  'dive_participations.start_pressure_bar': 'smallint',
+  'dive_participations.end_pressure_bar': 'smallint',
+  'dive_participations.suit_type': 'text',
+  'dive_participations.suit_thickness_mm': 'numeric(3,1)',
+  'dive_participations.weight_kg': 'numeric(3,1)',
+};
+
 const COMPOSITE_FOREIGN_KEYS: Record<string, string> = {
   fk_dive_events__creator_id_site_id:
     'FOREIGN KEY (creator_id, site_id) REFERENCES dive_sites(owner_id, id) ON DELETE RESTRICT',
@@ -162,6 +215,54 @@ describe('dive log schema migrations', () => {
     });
   });
 
+  it('adds the detail columns nullable, without default', async () => {
+    const rows = await selectRows<{
+      column: string;
+      type: string;
+      nullable: boolean;
+      default: string | null;
+    }>(
+      dataSource,
+      `SELECT c.relname || '.' || a.attname AS column, format_type(a.atttypid, a.atttypmod) AS type,
+              NOT a.attnotnull AS nullable, pg_get_expr(d.adbin, d.adrelid) AS default
+         FROM pg_attribute a
+         JOIN pg_class c ON c.oid = a.attrelid
+         LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+        WHERE c.relname || '.' || a.attname = ANY($1)`,
+      [Object.keys(DETAIL_COLUMNS)],
+    );
+    expect(
+      Object.fromEntries(rows.map((row) => [row.column, [row.type, row.nullable, row.default]])),
+    ).toEqual(
+      Object.fromEntries(
+        Object.entries(DETAIL_COLUMNS).map(([column, type]) => [column, [type, true, null]]),
+      ),
+    );
+  });
+
+  it('defines the observation keys and FKs as specified', async () => {
+    const rows = await selectRows<{ name: string; definition: string }>(
+      dataSource,
+      'SELECT conname AS name, pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = ANY($1)',
+      [
+        [
+          'pk_dive_observations',
+          'uq_dive_observations__participation_id_label',
+          'fk_dive_observations__participation_id',
+          'fk_buddies__certification_level_id',
+        ],
+      ],
+    );
+    expect(Object.fromEntries(rows.map((row) => [row.name, row.definition]))).toEqual({
+      pk_dive_observations: 'PRIMARY KEY (participation_id, "position")',
+      uq_dive_observations__participation_id_label: 'UNIQUE (participation_id, label)',
+      fk_dive_observations__participation_id:
+        'FOREIGN KEY (participation_id) REFERENCES dive_participations(id) ON DELETE CASCADE',
+      fk_buddies__certification_level_id:
+        'FOREIGN KEY (certification_level_id) REFERENCES certification_levels(id) ON DELETE RESTRICT',
+    });
+  });
+
   it('seeds exactly the four FFESSM levels', async () => {
     const levels = await selectRows<unknown>(
       dataSource,
@@ -173,6 +274,38 @@ describe('dive log schema migrations', () => {
       { agency: 'FFESSM', code: 'N3', label: 'Niveau 3', rank: 30, is_active: true },
       { agency: 'FFESSM', code: 'N4', label: 'Niveau 4', rank: 40, is_active: true },
     ]);
+  });
+
+  it('reverts AddDiveDetailFields alone, keeping the shared trigger function, then migrates again', async () => {
+    await dataSource.undoLastMigration({ transaction: 'all' });
+
+    expect(
+      await names(
+        "SELECT tablename AS name FROM pg_tables WHERE schemaname = 'public' AND tablename = 'dive_observations'",
+      ),
+    ).toEqual([]);
+    expect(
+      await selectRows<NameRow>(
+        dataSource,
+        `SELECT table_name || '.' || column_name AS name FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name || '.' || column_name = ANY($1)`,
+        [Object.keys(DETAIL_COLUMNS)],
+      ),
+    ).toEqual([]);
+    // The function belongs to InitDiveLogSchema: still there, still used by the dive team.
+    expect(
+      await names(
+        "SELECT proname AS name FROM pg_proc WHERE pronamespace = 'public'::regnamespace",
+      ),
+    ).toEqual(['set_updated_at', 'touch_participation_on_buddies_change']);
+    expect(await names('SELECT tgname AS name FROM pg_trigger WHERE NOT tgisinternal')).toEqual(
+      TRIGGERS.filter((trigger) => trigger !== 'trg_dive_observations__touch_participation'),
+    );
+
+    await dataSource.runMigrations({ transaction: 'each' });
+    expect(await names('SELECT tgname AS name FROM pg_trigger WHERE NOT tgisinternal')).toEqual(
+      TRIGGERS,
+    );
   });
 
   // Last: leaves the schema migrated again.

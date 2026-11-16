@@ -21,6 +21,7 @@ import { BuddiesService } from '../../modules/buddies/buddies.service';
 import { CertificationLevel } from '../../modules/certification-levels/certification-level.entity';
 import { DiveSitesService } from '../../modules/dive-sites/dive-sites.service';
 import { DiversService } from '../../modules/divers/divers.service';
+import { NO_EVENT_CONDITIONS, NO_PARTICIPATION_DETAIL } from '../../modules/dives/dive.types';
 import { DivesService } from '../../modules/dives/dives.service';
 import { buildDataSourceOptions } from '../database.options';
 import { loadDatabaseEnvironment } from '../load-database-environment';
@@ -104,7 +105,7 @@ class DevSeeder {
   /** Empties the dive log; `certification_levels` (migration seed) is kept. */
   private async reset(): Promise<void> {
     await this.dataSource.query(
-      'TRUNCATE dive_buddies, dive_participations, dive_events, buddies, dive_sites, divers',
+      'TRUNCATE dive_observations, dive_buddies, dive_participations, dive_events, buddies, dive_sites, divers',
     );
   }
 
@@ -130,6 +131,7 @@ class DevSeeder {
           name: site.name,
           locality: site.locality,
           region: site.region,
+          area: site.area,
           latitude: site.latitude,
           longitude: site.longitude,
           baseUpdatedAt: null,
@@ -153,6 +155,8 @@ class DevSeeder {
             buddy.linkedDiverKey === undefined
               ? null
               : this.required(this.diverIds, buddy.linkedDiverKey),
+          certificationLevelId:
+            buddy.levelCode === undefined ? null : this.levelId(buddy.levelCode),
           baseUpdatedAt: null,
           deletedAt: null,
         },
@@ -175,6 +179,8 @@ class DevSeeder {
             id: eventId,
             siteId: this.required(siteIds, dive.siteKey),
             ...parseLocalDate(dive),
+            ...NO_EVENT_CONDITIONS,
+            ...dive.detail?.conditions,
             baseUpdatedAt: null,
             deletedAt: null,
           },
@@ -189,10 +195,13 @@ class DevSeeder {
             hasDecompression: dive.hasDecompression,
             stopsOk: dive.stopsOk,
             notes: dive.notes,
+            ...NO_PARTICIPATION_DETAIL,
+            ...dive.detail?.participation,
             baseUpdatedAt: null,
             deletedAt: null,
           },
           buddyIds: dive.buddyKeys.map((key) => this.required(buddyIds, key)),
+          observations: dive.detail?.observations ?? [],
         },
         lastPulledAt,
       );

@@ -7,7 +7,12 @@ import type { App } from 'supertest/types';
 import { DataSource, type EntityManager } from 'typeorm';
 import { CurrentDiverGuard } from '../src/common/auth/current-diver.guard';
 import { configureApp } from '../src/configure-app';
-import type { DiveDetailRow, DiveTeamRow } from '../src/modules/dives/dive-contract.mapper';
+import type {
+  DiveDetailRow,
+  DiveDetailTeamRow,
+  DiveObservationRow,
+  DiveTeamRow,
+} from '../src/modules/dives/dive-contract.mapper';
 import { DIVE_LOG_MAX, DiveLogService } from '../src/modules/dives/dive-log.service';
 import { DivesController } from '../src/modules/dives/dives.controller';
 
@@ -35,7 +40,49 @@ const ROW: DiveDetailRow = {
   stops_ok: true,
   site_latitude: '27.734100',
   site_longitude: '34.256400',
+  site_area: 'Mer Rouge',
+  level_agency: 'FFESSM',
+  level_code: 'N2',
+  level_label: 'Niveau 2',
+  entry_type: 'BOAT',
+  time_of_day: 'NIGHT',
+  weather: 'SUNNY',
+  air_temperature_c: '28.5',
+  sea_state: 'SLIGHT',
+  current_strength: 'MODERATE',
+  dive_center: 'Ras Diving',
+  surface_water_temperature_c: '26.0',
+  safety_stop_duration_min: 3,
+  safety_stop_depth_m: '5.0',
+  is_repetitive: false,
+  o2_percent: null,
+  tank_volume_l: '12.0',
+  tank_material: 'ALUMINIUM',
+  start_pressure_bar: 200,
+  end_pressure_bar: 60,
+  suit_type: 'WET',
+  suit_thickness_mm: '5.0',
+  weight_kg: null,
+  created_at: new Date('2026-07-14T20:00:00.000Z'),
+  updated_at: new Date('2026-07-16T07:30:00.000Z'),
 };
+
+const DETAIL_TEAM: DiveDetailTeamRow[] = [
+  {
+    participation_id: 'participation-1',
+    id: 'buddy-1',
+    first_name: 'Lucas',
+    last_name: 'Moreau',
+    level_agency: 'FFESSM',
+    level_code: 'N3',
+    level_label: 'Niveau 3',
+  },
+];
+
+const OBSERVATIONS: DiveObservationRow[] = [
+  { position: 0, label: 'Napoléon', count: 1 },
+  { position: 1, label: 'Raies pastenague', count: null },
+];
 
 const TEAM: DiveTeamRow[] = [
   { participation_id: 'participation-1', id: 'buddy-1', first_name: 'Lucas', last_name: 'Moreau' },
@@ -130,17 +177,54 @@ describe('/api/dives (e2e)', () => {
   });
 
   describe('GET /api/dives/:id', () => {
-    it('returns the dive of the current diver', async () => {
-      query.mockResolvedValueOnce([ROW]).mockResolvedValueOnce(TEAM);
+    it('returns the dive of the current diver with every detail field', async () => {
+      query
+        .mockResolvedValueOnce([ROW])
+        .mockResolvedValueOnce(DETAIL_TEAM)
+        .mockResolvedValueOnce(OBSERVATIONS);
 
       const response = await request(app.getHttpServer()).get(`/api/dives/${EVENT_ID}`).expect(200);
 
       expect(response.body).toStrictEqual({
         ...SUMMARY,
-        site: { ...SUMMARY.site, latitude: 27.7341, longitude: 34.2564 },
+        site: { ...SUMMARY.site, latitude: 27.7341, longitude: 34.2564, area: 'Mer Rouge' },
+        buddies: [
+          {
+            id: 'buddy-1',
+            firstName: 'Lucas',
+            lastName: 'Moreau',
+            level: { agency: 'FFESSM', code: 'N3', label: 'Niveau 3' },
+          },
+        ],
         visibilityM: 25,
         hadDecompression: false,
         stopsOk: true,
+        diverLevel: { agency: 'FFESSM', code: 'N2', label: 'Niveau 2' },
+        entryType: 'BOAT',
+        timeOfDay: 'NIGHT',
+        weather: 'SUNNY',
+        airTemperatureC: 28.5,
+        seaState: 'SLIGHT',
+        currentStrength: 'MODERATE',
+        diveCenter: 'Ras Diving',
+        surfaceTemperatureC: 26,
+        safetyStopDurationMin: 3,
+        safetyStopDepthM: 5,
+        isRepetitive: false,
+        o2Percent: null,
+        tankVolumeL: 12,
+        tankMaterial: 'ALUMINIUM',
+        startPressureBar: 200,
+        endPressureBar: 60,
+        suitType: 'WET',
+        suitThicknessMm: 5,
+        weightKg: null,
+        observations: [
+          { label: 'Napoléon', count: 1 },
+          { label: 'Raies pastenague', count: null },
+        ],
+        createdAt: '2026-07-14T20:00:00.000Z',
+        updatedAt: '2026-07-16T07:30:00.000Z',
       } satisfies DiveDetail);
       expect(query.mock.calls[0]?.[1]).toStrictEqual([DIVER_ID, EVENT_ID]);
       expect(response.headers['cache-control']).toBe('no-store');

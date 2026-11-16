@@ -9,8 +9,13 @@ import type { DiveSiteWrite } from '../../../src/modules/dive-sites/dive-sites.s
 import { Diver } from '../../../src/modules/divers/diver.entity';
 import { DiveBuddy } from '../../../src/modules/dives/dive-buddy.entity';
 import { DiveEvent } from '../../../src/modules/dives/dive-event.entity';
+import { DiveObservation } from '../../../src/modules/dives/dive-observation.entity';
 import { DiveParticipation } from '../../../src/modules/dives/dive-participation.entity';
-import type { DiveWrite } from '../../../src/modules/dives/dive.types';
+import {
+  NO_EVENT_CONDITIONS,
+  NO_PARTICIPATION_DETAIL,
+  type DiveWrite,
+} from '../../../src/modules/dives/dive.types';
 
 export const SYNC_SETTINGS_90_DAYS: SyncSettings = { purgeHorizonDays: 90 };
 
@@ -127,6 +132,15 @@ export class Fixtures {
     await this.manager.insert(DiveBuddy, { ownerId, participationId, buddyId });
   }
 
+  async observation(
+    participationId: string,
+    position: number,
+    label: string,
+    count: number | null = null,
+  ): Promise<void> {
+    await this.manager.insert(DiveObservation, { participationId, position, label, count });
+  }
+
   /** Site + event + participation (+ dive team) of one diver, as the MVP writes them. */
   async dive(diverId: string, buddyIds: readonly string[] = []) {
     const site = await this.site(diverId);
@@ -151,7 +165,9 @@ export function siteWrite(values: Partial<DiveSiteWrite> = {}): DiveSiteWrite {
   return {
     id: randomUUID(),
     name: 'Les Impériaux',
+    locality: null,
     region: 'Marseille',
+    area: null,
     latitude: 43.2,
     longitude: 5.33,
     baseUpdatedAt: null,
@@ -166,6 +182,7 @@ export function buddyWrite(values: Partial<BuddyWrite> = {}): BuddyWrite {
     firstName: 'Camille',
     lastName: 'Bernard',
     linkedDiverId: null,
+    certificationLevelId: null,
     baseUpdatedAt: null,
     deletedAt: null,
     ...values,
@@ -178,6 +195,7 @@ export function diveWrite(
     event?: Partial<DiveWrite['event']>;
     participation?: Partial<DiveWrite['participation']>;
     buddyIds?: readonly string[];
+    observations?: DiveWrite['observations'];
   } = {},
 ): DiveWrite {
   return {
@@ -186,6 +204,7 @@ export function diveWrite(
       siteId,
       startedAt: new Date('2026-08-01T07:30:00.000Z'),
       utcOffsetMinutes: 120,
+      ...NO_EVENT_CONDITIONS,
       baseUpdatedAt: null,
       deletedAt: null,
       ...values.event,
@@ -200,10 +219,12 @@ export function diveWrite(
       hasDecompression: false,
       stopsOk: true,
       notes: null,
+      ...NO_PARTICIPATION_DETAIL,
       baseUpdatedAt: null,
       deletedAt: null,
       ...values.participation,
     },
     buddyIds: values.buddyIds ?? [],
+    observations: values.observations ?? [],
   };
 }

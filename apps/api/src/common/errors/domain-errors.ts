@@ -10,7 +10,9 @@ export type DomainErrorCode =
   | 'inactive-certification-level'
   | 'invalid-reference'
   | 'buddy-link-conflict'
-  | 'unsupported-contract-value';
+  | 'unsupported-contract-value'
+  | 'duplicate-observation'
+  | 'too-many-observations';
 
 export abstract class DomainError extends Error {
   abstract readonly code: DomainErrorCode;
@@ -76,5 +78,23 @@ export class UnsupportedContractValueError extends DomainError {
   constructor() {
     super('Value not supported by the API contract');
     this.name = UnsupportedContractValueError.name;
+  }
+}
+
+/** Two observations of a dive carry the same label once trimmed (D-19, RG-27). */
+export class DuplicateObservationError extends DomainError {
+  readonly code = 'duplicate-observation';
+  constructor() {
+    super('Duplicate observation label');
+    this.name = DuplicateObservationError.name;
+  }
+}
+
+/** A dive carries more observations than the cap (RG-27). */
+export class TooManyObservationsError extends DomainError {
+  readonly code = 'too-many-observations';
+  constructor() {
+    super('Too many observations');
+    this.name = TooManyObservationsError.name;
   }
 }

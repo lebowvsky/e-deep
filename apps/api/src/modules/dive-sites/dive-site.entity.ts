@@ -24,6 +24,7 @@ import { Diver } from '../divers/diver.entity';
   'locality IS NULL OR char_length(btrim(locality)) BETWEEN 1 AND 120',
 )
 @Check('ck_dive_sites__region', 'char_length(btrim(region)) BETWEEN 1 AND 120')
+@Check('ck_dive_sites__area', 'area IS NULL OR char_length(btrim(area)) BETWEEN 1 AND 120')
 @Check('ck_dive_sites__latitude', 'latitude BETWEEN -90 AND 90')
 @Check('ck_dive_sites__longitude', 'longitude BETWEEN -180 AND 180')
 export class DiveSite extends SyncedEntity {
@@ -47,6 +48,10 @@ export class DiveSite extends SyncedEntity {
 
   @Column({ type: 'text', name: 'region' })
   region: string;
+
+  /** Sea or area of the site (e.g. `Méditerranée`), free text like the region (D-20). Optional. */
+  @Column({ type: 'text', name: 'area', nullable: true })
+  area: string | null;
 
   @Column({
     type: 'numeric',

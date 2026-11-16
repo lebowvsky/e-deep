@@ -8,6 +8,7 @@ import { Diver } from '../../src/modules/divers/diver.entity';
 import { DiversService } from '../../src/modules/divers/divers.service';
 import { DiveBuddy } from '../../src/modules/dives/dive-buddy.entity';
 import { DiveEvent } from '../../src/modules/dives/dive-event.entity';
+import { DiveObservation } from '../../src/modules/dives/dive-observation.entity';
 import { DiveParticipation } from '../../src/modules/dives/dive-participation.entity';
 import { PurgeService } from '../../src/modules/dives/purge.service';
 import { Fixtures, SYNC_SETTINGS_90_DAYS } from './support/fixtures';
@@ -78,8 +79,11 @@ describe('DiversService, CertificationLevelsService and PurgeService', () => {
   it('deleteAccount erases everything of the diver and unlinks the contacts of others', async () => {
     const leaving = await fixtures.diver();
     const other = await fixtures.diver();
-    const buddy = await fixtures.buddy(leaving.id);
-    await fixtures.dive(leaving.id, [buddy.id]);
+    const buddy = await fixtures.buddy(leaving.id, {
+      certificationLevelId: await fixtures.levelId('N3'),
+    });
+    const liveDive = await fixtures.dive(leaving.id, [buddy.id]);
+    await fixtures.observation(liveDive.participation.id, 0, 'Murène');
     const deletedDive = await fixtures.dive(leaving.id, [buddy.id]);
     await dataSource.manager.update(
       DiveEvent,
@@ -88,6 +92,7 @@ describe('DiversService, CertificationLevelsService and PurgeService', () => {
     );
     const othersContact = await fixtures.buddy(other.id, { linkedDiverId: leaving.id });
     const othersDive = await fixtures.dive(other.id);
+    await fixtures.observation(othersDive.participation.id, 0, 'Corb');
 
     await divers.deleteAccount(leaving.id);
 
@@ -98,6 +103,12 @@ describe('DiversService, CertificationLevelsService and PurgeService', () => {
     expect(await manager.countBy(DiveEvent, { creatorId: leaving.id })).toBe(0);
     expect(await manager.countBy(DiveParticipation, { diverId: leaving.id })).toBe(0);
     expect(await manager.countBy(DiveBuddy, { ownerId: leaving.id })).toBe(0);
+    expect(
+      await manager.countBy(DiveObservation, { participationId: liveDive.participation.id }),
+    ).toBe(0);
+    expect(
+      await manager.countBy(DiveObservation, { participationId: othersDive.participation.id }),
+    ).toBe(1);
     expect(await manager.findOneByOrFail(Buddy, { id: othersContact.id })).toMatchObject({
       linkedDiverId: null,
     });
@@ -107,10 +118,12 @@ describe('DiversService, CertificationLevelsService and PurgeService', () => {
   });
 
   describe('purge', () => {
-    it('cascade + trigger, case 2: purges old tombstones in order, dive teams included', async () => {
+    it('cascade + trigger, case 2: purges old tombstones in order, dive teams and observations included', async () => {
       const diver = await fixtures.diver();
       const buddy = await fixtures.buddy(diver.id);
       const { site, event, participation } = await fixtures.dive(diver.id, [buddy.id]);
+      await fixtures.observation(participation.id, 0, 'Murène');
+      await fixtures.observation(participation.id, 1, 'Corb', 2);
       for (const [table, id] of [
         ['dive_participations', participation.id],
         ['dive_events', event.id],
@@ -124,6 +137,7 @@ describe('DiversService, CertificationLevelsService and PurgeService', () => {
 
       expect(report).toEqual({ participations: 1, events: 1, buddies: 1, sites: 1 });
       expect(await dataSource.manager.count(DiveBuddy)).toBe(0);
+      expect(await dataSource.manager.count(DiveObservation)).toBe(0);
       expect(await dataSource.manager.count(DiveSite)).toBe(0);
     });
 

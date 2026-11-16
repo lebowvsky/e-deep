@@ -1,6 +1,9 @@
+import type { DiveDetail } from '@e-deep/shared';
 import {
   groupDiveTeams,
   toDiveDetail,
+  toDiveDetailBuddies,
+  toDiveObservations,
   toDiveSummary,
   toLocalDateTime,
   type DiveDetailRow,
@@ -24,6 +27,7 @@ const SUMMARY_ROW: DiveSummaryRow = {
   site_region: 'Var',
 };
 
+/** A dive entered before the detail fields existed: every new column is `NULL`. */
 const DETAIL_ROW: DiveDetailRow = {
   ...SUMMARY_ROW,
   visibility_m: null,
@@ -31,6 +35,56 @@ const DETAIL_ROW: DiveDetailRow = {
   stops_ok: true,
   site_latitude: '-12.500000',
   site_longitude: '0',
+  site_area: null,
+  level_agency: 'FFESSM',
+  level_code: 'N2',
+  level_label: 'Niveau 2',
+  entry_type: null,
+  time_of_day: null,
+  weather: null,
+  air_temperature_c: null,
+  sea_state: null,
+  current_strength: null,
+  dive_center: null,
+  surface_water_temperature_c: null,
+  safety_stop_duration_min: null,
+  safety_stop_depth_m: null,
+  is_repetitive: null,
+  o2_percent: null,
+  tank_volume_l: null,
+  tank_material: null,
+  start_pressure_bar: null,
+  end_pressure_bar: null,
+  suit_type: null,
+  suit_thickness_mm: null,
+  weight_kg: null,
+  created_at: new Date('2026-03-02T08:00:00.123Z'),
+  updated_at: new Date('2026-03-05T10:15:00.456Z'),
+};
+
+/** Every detail field entered; `numeric` columns arrive as strings. */
+const FULL_DETAIL_ROW: DiveDetailRow = {
+  ...DETAIL_ROW,
+  site_area: 'Méditerranée',
+  entry_type: 'BOAT',
+  time_of_day: 'NIGHT',
+  weather: 'OVERCAST',
+  air_temperature_c: '-2.5',
+  sea_state: 'SLIGHT',
+  current_strength: 'STRONG',
+  dive_center: 'Calvi Plongée',
+  surface_water_temperature_c: '16.0',
+  safety_stop_duration_min: 3,
+  safety_stop_depth_m: '4.5',
+  is_repetitive: false,
+  o2_percent: '28.0',
+  tank_volume_l: '12.0',
+  tank_material: 'ALUMINIUM',
+  start_pressure_bar: 200,
+  end_pressure_bar: 0,
+  suit_type: 'SEMI_DRY',
+  suit_thickness_mm: '7.0',
+  weight_kg: '0.0',
 };
 
 const BUDDY = { id: 'buddy-1', firstName: 'Camille', lastName: 'Bernard' };
@@ -91,8 +145,8 @@ describe('toDiveSummary', () => {
 });
 
 describe('toDiveDetail', () => {
-  it('adds the site coordinates as numbers and the participation fields', () => {
-    expect(toDiveDetail(DETAIL_ROW, [])).toStrictEqual({
+  it('keeps every detail field of an older dive as null, observations empty', () => {
+    expect(toDiveDetail(DETAIL_ROW, [], [])).toStrictEqual({
       ...toDiveSummary(SUMMARY_ROW, []),
       site: {
         id: 'site-1',
@@ -101,11 +155,136 @@ describe('toDiveDetail', () => {
         region: 'Var',
         latitude: -12.5,
         longitude: 0,
+        area: null,
       },
+      buddies: [],
       visibilityM: null,
       hadDecompression: false,
       stopsOk: true,
+      diverLevel: { agency: 'FFESSM', code: 'N2', label: 'Niveau 2' },
+      entryType: null,
+      timeOfDay: null,
+      weather: null,
+      airTemperatureC: null,
+      seaState: null,
+      currentStrength: null,
+      diveCenter: null,
+      surfaceTemperatureC: null,
+      safetyStopDurationMin: null,
+      safetyStopDepthM: null,
+      isRepetitive: null,
+      o2Percent: null,
+      tankVolumeL: null,
+      tankMaterial: null,
+      startPressureBar: null,
+      endPressureBar: null,
+      suitType: null,
+      suitThicknessMm: null,
+      weightKg: null,
+      observations: [],
+      createdAt: '2026-03-02T08:00:00.123Z',
+      updatedAt: '2026-03-05T10:15:00.456Z',
+    } satisfies DiveDetail);
+  });
+
+  it('converts the numeric columns to numbers, zeros included, and keeps the other values', () => {
+    const buddies = [{ ...BUDDY, level: { agency: 'FFESSM', code: 'N3', label: 'Niveau 3' } }];
+
+    const detail = toDiveDetail(FULL_DETAIL_ROW, buddies, [
+      { position: 1, label: 'Barracudas', count: null },
+      { position: 0, label: 'Mérou brun', count: 2 },
+    ]);
+
+    expect(detail).toMatchObject({
+      site: { area: 'Méditerranée' },
+      buddies,
+      entryType: 'BOAT',
+      timeOfDay: 'NIGHT',
+      weather: 'OVERCAST',
+      airTemperatureC: -2.5,
+      seaState: 'SLIGHT',
+      currentStrength: 'STRONG',
+      diveCenter: 'Calvi Plongée',
+      surfaceTemperatureC: 16,
+      safetyStopDurationMin: 3,
+      safetyStopDepthM: 4.5,
+      isRepetitive: false,
+      o2Percent: 28,
+      tankVolumeL: 12,
+      tankMaterial: 'ALUMINIUM',
+      startPressureBar: 200,
+      endPressureBar: 0,
+      suitType: 'SEMI_DRY',
+      suitThicknessMm: 7,
+      weightKg: 0,
+      observations: [
+        { label: 'Mérou brun', count: 2 },
+        { label: 'Barracudas', count: null },
+      ],
     });
+    // `temperatureC` stays the bottom temperature.
+    expect(detail.temperatureC).toBe(7.5);
+  });
+
+  it('serves updatedAt as given by the query (latest of the event and the participation)', () => {
+    const detail = toDiveDetail(
+      { ...DETAIL_ROW, updated_at: new Date('2026-04-01T00:00:00.000Z') },
+      [],
+      [],
+    );
+    expect(detail.updatedAt).toBe('2026-04-01T00:00:00.000Z');
+    expect(detail.createdAt).toBe('2026-03-02T08:00:00.123Z');
+  });
+});
+
+describe('toDiveObservations', () => {
+  it('orders by position whatever the row order', () => {
+    expect(
+      toDiveObservations([
+        { position: 2, label: 'Corb', count: null },
+        { position: 0, label: 'Mérou brun', count: 2 },
+        { position: 1, label: 'Murène', count: 1 },
+      ]),
+    ).toStrictEqual([
+      { label: 'Mérou brun', count: 2 },
+      { label: 'Murène', count: 1 },
+      { label: 'Corb', count: null },
+    ]);
+  });
+});
+
+describe('toDiveDetailBuddies', () => {
+  it('gives each buddy its level, or null without one', () => {
+    expect(
+      toDiveDetailBuddies([
+        {
+          participation_id: 'p1',
+          id: 'b1',
+          first_name: 'Lucas',
+          last_name: 'Bernard',
+          level_agency: 'FFESSM',
+          level_code: 'N3',
+          level_label: 'Niveau 3',
+        },
+        {
+          participation_id: 'p1',
+          id: 'b2',
+          first_name: 'Yann',
+          last_name: 'Le Goff',
+          level_agency: null,
+          level_code: null,
+          level_label: null,
+        },
+      ]),
+    ).toStrictEqual([
+      {
+        id: 'b1',
+        firstName: 'Lucas',
+        lastName: 'Bernard',
+        level: { agency: 'FFESSM', code: 'N3', label: 'Niveau 3' },
+      },
+      { id: 'b2', firstName: 'Yann', lastName: 'Le Goff', level: null },
+    ]);
   });
 });
 

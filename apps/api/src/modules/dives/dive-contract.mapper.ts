@@ -1,4 +1,19 @@
-import type { DiveBuddyRef, DiveDetail, DiveSummary, GasMix } from '@e-deep/shared';
+import type {
+  CertificationLevelRef,
+  CurrentStrength,
+  DiveBuddyRef,
+  DiveDetail,
+  DiveDetailBuddy,
+  DiveObservation,
+  DiveSummary,
+  EntryType,
+  GasMix,
+  SeaState,
+  SuitType,
+  TankMaterial,
+  TimeOfDay,
+  Weather,
+} from '@e-deep/shared';
 
 const MS_PER_MINUTE = 60_000;
 
@@ -42,13 +57,42 @@ export interface DiveSummaryRow {
   site_region: string;
 }
 
-/** Row of the dive detail query: the summary plus the remaining participation and site fields. */
+/**
+ * Row of the dive detail query: the summary plus the remaining event, participation and site
+ * fields, the diver's level snapshot and the timestamps.
+ */
 export interface DiveDetailRow extends DiveSummaryRow {
   visibility_m: number | null;
   has_decompression: boolean;
   stops_ok: boolean;
   site_latitude: string;
   site_longitude: string;
+  site_area: string | null;
+  level_agency: string;
+  level_code: string;
+  level_label: string;
+  entry_type: EntryType | null;
+  time_of_day: TimeOfDay | null;
+  weather: Weather | null;
+  air_temperature_c: string | null;
+  sea_state: SeaState | null;
+  current_strength: CurrentStrength | null;
+  dive_center: string | null;
+  surface_water_temperature_c: string | null;
+  safety_stop_duration_min: number | null;
+  safety_stop_depth_m: string | null;
+  is_repetitive: boolean | null;
+  o2_percent: string | null;
+  tank_volume_l: string | null;
+  tank_material: TankMaterial | null;
+  start_pressure_bar: number | null;
+  end_pressure_bar: number | null;
+  suit_type: SuitType | null;
+  suit_thickness_mm: string | null;
+  weight_kg: string | null;
+  created_at: Date;
+  /** `GREATEST(event.updated_at, participation.updated_at)`. */
+  updated_at: Date;
 }
 
 /** Row of the dive team query: one buddy of one participation. */
@@ -57,6 +101,20 @@ export interface DiveTeamRow {
   id: string;
   first_name: string;
   last_name: string;
+}
+
+/** Row of the detail's dive team query: the buddy plus its current level (LEFT JOIN, D-21). */
+export interface DiveDetailTeamRow extends DiveTeamRow {
+  level_agency: string | null;
+  level_code: string | null;
+  level_label: string | null;
+}
+
+/** Row of the observations query of a participation. */
+export interface DiveObservationRow {
+  position: number;
+  label: string;
+  count: number | null;
 }
 
 export function toDiveSummary(row: DiveSummaryRow, buddies: DiveBuddyRef[]): DiveSummary {
@@ -80,7 +138,11 @@ export function toDiveSummary(row: DiveSummaryRow, buddies: DiveBuddyRef[]): Div
   };
 }
 
-export function toDiveDetail(row: DiveDetailRow, buddies: DiveBuddyRef[]): DiveDetail {
+export function toDiveDetail(
+  row: DiveDetailRow,
+  buddies: DiveDetailBuddy[],
+  observations: readonly DiveObservationRow[],
+): DiveDetail {
   const summary = toDiveSummary(row, buddies);
   return {
     ...summary,
@@ -88,11 +150,61 @@ export function toDiveDetail(row: DiveDetailRow, buddies: DiveBuddyRef[]): DiveD
       ...summary.site,
       latitude: fromNumeric(row.site_latitude),
       longitude: fromNumeric(row.site_longitude),
+      area: row.site_area,
     },
+    buddies,
     visibilityM: row.visibility_m,
     hadDecompression: row.has_decompression,
     stopsOk: row.stops_ok,
+    diverLevel: { agency: row.level_agency, code: row.level_code, label: row.level_label },
+    entryType: row.entry_type,
+    timeOfDay: row.time_of_day,
+    weather: row.weather,
+    airTemperatureC: fromNullableNumeric(row.air_temperature_c),
+    seaState: row.sea_state,
+    currentStrength: row.current_strength,
+    diveCenter: row.dive_center,
+    surfaceTemperatureC: fromNullableNumeric(row.surface_water_temperature_c),
+    safetyStopDurationMin: row.safety_stop_duration_min,
+    safetyStopDepthM: fromNullableNumeric(row.safety_stop_depth_m),
+    isRepetitive: row.is_repetitive,
+    o2Percent: fromNullableNumeric(row.o2_percent),
+    tankVolumeL: fromNullableNumeric(row.tank_volume_l),
+    tankMaterial: row.tank_material,
+    startPressureBar: row.start_pressure_bar,
+    endPressureBar: row.end_pressure_bar,
+    suitType: row.suit_type,
+    suitThicknessMm: fromNullableNumeric(row.suit_thickness_mm),
+    weightKg: fromNullableNumeric(row.weight_kg),
+    observations: toDiveObservations(observations),
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
   };
+}
+
+/** Observations in the order the diver entered them (by position, whatever the row order). */
+export function toDiveObservations(rows: readonly DiveObservationRow[]): DiveObservation[] {
+  return [...rows]
+    .sort((left, right) => left.position - right.position)
+    .map(({ label, count }) => ({ label, count }));
+}
+
+/** The detail's dive team, each buddy with its level or `null`, in the query order. */
+export function toDiveDetailBuddies(rows: readonly DiveDetailTeamRow[]): DiveDetailBuddy[] {
+  return rows.map((row) => ({
+    id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    level: toLevelRef(row),
+  }));
+}
+
+function toLevelRef(row: DiveDetailTeamRow): CertificationLevelRef | null {
+  // The three columns come from the same LEFT JOIN: all set or all null.
+  if (row.level_agency === null || row.level_code === null || row.level_label === null) {
+    return null;
+  }
+  return { agency: row.level_agency, code: row.level_code, label: row.level_label };
 }
 
 /** Groups the team rows by participation, keeping the query order. */

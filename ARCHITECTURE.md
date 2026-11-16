@@ -54,7 +54,8 @@ e-deep/
 │   │   │   ├── common/           transverse : auth (plongeur courant), filtres, logging, database (transformer, upsert, pull),
 │   │   │   │                     errors (erreurs métier), sync (règles et réglages de synchronisation)
 │   │   │   └── modules/<domaine>/ un module Nest par domaine : health, dashboard, certification-levels, divers,
-│   │   │                         dive-sites, buddies, dives (agrégat événement + participation + palanquée ;
+│   │   │                         dive-sites, buddies, dives (agrégat événement + participation + palanquée
+│   │   │                         + observations ;
 │   │   │                         écriture synchronisée DivesService, lecture DivesController + DiveLogService
 │   │   │                         + dive-contract.mapper.ts)
 │   │   └── test/                 tests e2e (supertest), db/ (tests sur PostgreSQL réel)
@@ -206,7 +207,15 @@ Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
 - **Garde-fou** : une règle ESLint `no-restricted-syntax` sur `packages/shared` refuse toute
   instruction de niveau supérieur qui n'est pas un type.
 - **Contrats actuels** : `health.ts`, `dashboard.ts` (`DashboardResponse`…) et `dives.ts`
-  (`DiveSiteRef`, `DiveBuddyRef`, `DiveSummary`, `DiveDetail`, `DiveLogResponse`). Côté API, les
+  (`DiveSiteRef`, `DiveBuddyRef`, `DiveSummary`, `DiveDetail`, `DiveLogResponse`). `DiveDetail`
+  porte à plat tous les champs de l'événement, de la participation et du site (D-13 à D-21 de
+  `docs/data-model/decisions.md`) : chaque champ est **présent**, `null` s'il n'est pas renseigné
+  (pas de `?`), sauf `observations` (tableau, vide par défaut) et `diverLevel` (toujours en base).
+  Types associés : `CertificationLevelRef`, `DiveObservation`, `DiveDetailBuddy` (binôme + niveau
+  de sa fiche) et les unions `EntryType`, `TimeOfDay`, `Weather`, `SeaState`, `CurrentStrength`,
+  `TankMaterial`, `SuitType`. `DiveSummary` et `DiveSiteRef` ne portent **aucun** de ces champs
+  (poids de la liste, D25). Une valeur ajoutée à une union se déploie **front d'abord** (le guard
+  rejette une valeur inconnue). Côté API, les
   modèles de lecture n'ont pas de dossier `dto/` : un `*-contract.mapper.ts` convertit les lignes SQL
   vers ces types partagés (pas de validation d'entrée à porter). Les `dto/` class-validator restent
   la règle dès qu'un endpoint reçoit un corps ou des paramètres.
@@ -246,11 +255,41 @@ Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
 - **Migration `AddDiveSiteLocality`** : `dive_sites.locality text NULL` (ville ou spot, « Calvi »),
   avec `ck_dive_sites__locality` (1 à 120 caractères après `btrim`). Le front affiche
   « localité · région », ou la région seule (D27).
+- **Migration `AddDiveDetailFields`** (champs du détail de plongée, D-13 à D-22 de
+  `docs/data-model/decisions.md`), **toutes les colonnes nullables et sans défaut** (`NULL` = non
+  renseigné, aucun backfill) :
+  - `dive_events` : `entry_type`, `time_of_day`, `weather`, `air_temperature_c`, `sea_state`,
+    `current_strength`, `dive_center` (type et conditions, écrits par le seul créateur) ;
+  - `dive_participations` : `surface_water_temperature_c`, palier de sécurité
+    (`safety_stop_duration_min` + `safety_stop_depth_m`, ensemble ou pas du tout), `is_repetitive`,
+    `o2_percent` (mélange `OTHER` seulement), bloc (`tank_volume_l`, `tank_material`,
+    `start_pressure_bar`, `end_pressure_bar` ≤ début), combinaison (`suit_type`,
+    `suit_thickness_mm`), `weight_kg` ;
+  - `dive_sites.area` (mer ou zone, texte libre) ; `buddies.certification_level_id` (niveau courant
+    du contact, FK `RESTRICT` non indexée ; jamais lu sur le compte lié) ;
+  - table **`dive_observations`** (`participation_id`, `position` 0–49, `label`, `count`), PK
+    `(participation_id, position)`, `UNIQUE (participation_id, label)`, FK `CASCADE` : synchronisée
+    avec sa participation comme `dive_buddies`, sans horodatage. Le SQL brut ajoute le trigger
+    `trg_dive_observations__touch_participation`, qui réutilise `touch_participation_on_buddies_change()` ;
+    le `down()` ne supprime pas cette fonction (elle appartient à `InitDiveLogSchema`).
+
+  Listes fermées en `text` + `CHECK` (`modules/dives/dive-detail-lists.ts`, valeurs H-18 à valider).
+  **Écriture** (D-22) : les types d'écriture des services (`DiveEventWrite`,
+  `DiveParticipationWrite`, `DiveSiteWrite`, `BuddyWrite`) exigent chaque champ synchronisé, `null`
+  compris (`locality` aussi) : un champ omis par un client périmé effacerait la donnée dans
+  l'upsert LWW. `upsertDive` remplace les observations dans la transaction de l'agrégat (libellés
+  `btrim`, casse conservée ; doublon → `DuplicateObservationError`, plus de 50 →
+  `TooManyObservationsError`, rien n'est écrit). Un niveau de binôme inconnu →
+  `InvalidReferenceError`.
+
 - **Seed de développement** : `pnpm db:seed` (`src/database/seeds/`, lancé depuis `dist`). Il vide
   les tables du carnet (le référentiel des niveaux est conservé) puis crée 3 plongeurs fictifs :
   - **Marine Rousseau** (plongeur courant du stub) : le carnet des maquettes « Mes plongées », soit
-    127 plongées aux **dates absolues** (juin 2019 → avril 2026), 23 sites avec localité et région,
-    14 binômes dont 2 liés aux autres comptes, plus 1 plongée supprimée (tombstone) ;
+    127 plongées aux **dates absolues** (juin 2019 → avril 2026), 23 sites avec localité, région et
+    zone, 14 binômes dont 2 liés aux autres comptes et 5 avec un niveau, plus 1 plongée supprimée
+    (tombstone). Les 6 plongées les plus récentes portent les champs du détail (la dernière avec les
+    valeurs de la maquette du détail, espèces comprises) ; la plongée de l'épave du Kléber
+    (2024-09-10) n'en a **aucun** (site sans zone, binôme sans niveau), pour le rendu partiel ;
   - **Lucas** et **Thao** : quelques plongées datées par rapport au jour du seed.
 
   Les données sont **fictives** et statiques (`dive-log.data.ts`, `dev-seed.data.ts`), les ids sont
@@ -266,12 +305,12 @@ Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
 
 ## 8. Tests
 
-| App   | Outil                              | Commande                                                           | Contenu actuel                                                                                                                                                                                                                                                                                                                                  |
-| ----- | ---------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| api   | Jest 30 + ts-jest, supertest       | `pnpm --filter api run test` (unit + e2e), `test:unit`, `test:e2e` | `HealthService`, filtre d'exceptions, transformer, règles de sync, mappings contrat front, `DiveLogService` (propriétaire, numérotation, 404), `CurrentDiverGuard` (401, `no-store`), validation d'env (stub refusé en prod) ; e2e `/api/health`, `/api/dives`, `/api/dives/:id` (200, 400, 401, 404, `Cache-Control`)                          |
-| api   | Jest 30 + ts-jest, PostgreSQL 18   | `pnpm --filter api run test:db` (projet `db`, hors `test`)         | migrations (noms, revert de toutes), contraintes, triggers, cascades, services de synchronisation et purge, `DiveLogService` (isolation entre plongeurs, tombstones hors numérotation, `locality`)                                                                                                                                              |
-| web   | Vitest 5 + Testing Library (jsdom) | `pnpm --filter web run test`                                       | client API, guards (`HealthResponse`, dashboard, dives), `shouldRetry` et politique réelle de retry, mapping et clés de région, `HealthPanel`, `useDashboard` et `useDives` sur `useQuery` (cache, refetch en échec), états de `DivesPage` (région live, vide, erreur et retry avec focus, pages, filtres sans refetch, focus de la pagination) |
-| admin | Vitest 5 + Testing Library (jsdom) | `pnpm --filter admin run test`                                     | client API, guard, `HealthCard`, `AdminLayout`                                                                                                                                                                                                                                                                                                  |
+| App   | Outil                              | Commande                                                           | Contenu actuel                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----- | ---------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| api   | Jest 30 + ts-jest, supertest       | `pnpm --filter api run test` (unit + e2e), `test:unit`, `test:e2e` | `HealthService`, filtre d'exceptions, transformer, règles de sync, mappings contrat front (détail : numeric → number, `null` conservés, observations triées, niveaux des binômes), `DiveLogService` (propriétaire, numérotation, 404, liste sans champ du détail), `CurrentDiverGuard` (401, `no-store`), validation d'env (stub refusé en prod) ; e2e `/api/health`, `/api/dives`, `/api/dives/:id` (contrat complet, 200, 400, 401, 404, `Cache-Control`)                                                                                                                             |
+| api   | Jest 30 + ts-jest, PostgreSQL 18   | `pnpm --filter api run test:db` (projet `db`, hors `test`)         | migrations (noms, colonnes du détail nullables sans défaut, revert de `AddDiveDetailFields` seule puis de toutes), contraintes (dont chaque `CHECK` du détail, `o2_percent`, pressions, palier), triggers (dont observations), cascades (observations à la purge et à l'effacement du compte), services de synchronisation (observations remplacées, doublon et plafond refusés sans écriture, pull, niveau de binôme) et purge, `DiveLogService` (isolation entre plongeurs, tombstones hors numérotation, `locality`, champs du détail, `null` sur une plongée ancienne, `updatedAt`) |
+| web   | Vitest 5 + Testing Library (jsdom) | `pnpm --filter web run test`                                       | client API, guards (`HealthResponse`, dashboard, dives), `shouldRetry` et politique réelle de retry, mapping et clés de région, `HealthPanel`, `useDashboard` et `useDives` sur `useQuery` (cache, refetch en échec), états de `DivesPage` (région live, vide, erreur et retry avec focus, pages, filtres sans refetch, focus de la pagination)                                                                                                                                                                                                                                         |
+| admin | Vitest 5 + Testing Library (jsdom) | `pnpm --filter admin run test`                                     | client API, guard, `HealthCard`, `AdminLayout`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 - **`pnpm test` n'a besoin d'aucune base** : l'e2e de l'API monte les modules (`HealthModule`,
   `DivesController` avec le vrai service et le vrai garde) sur une `DataSource` et une config
@@ -441,8 +480,9 @@ Issus du carnet « Mes plongées » (revue et audits, 2026-11-13) :
     volume prévu) ;
   - la jointure des sites se fait sur le créateur de l'événement, celle du dashboard sur le
     plongeur : même résultat dans le MVP, à aligner avec le partage des plongées (D-08) ;
-  - sync des sites : un `locality` omis devient `null` dans l'upsert LWW, donc un client ancien
-    l'effacerait ; trancher « omis = conserver » ou champ obligatoire avant l'endpoint de sync ;
+  - ~~sync des sites : un `locality` omis devient `null` dans l'upsert LWW~~ : tranché par D-22
+    (`decisions.md`), tous les champs sont obligatoires à l'écriture ; reste à le porter dans les
+    DTO class-validator de l'endpoint de sync (400 sur un champ absent) ;
   - recherche : `normalize('NFD')` refait à chaque frappe sur tout le carnet (0,25 ms pour 127
     plongées, 8,4 ms pour 5 000) ; précalculer le texte normalisé si un gros carnet le justifie.
 - **Seed** : pas de transaction globale (les services ouvrent leurs propres transactions) ; un
@@ -475,20 +515,22 @@ Issus du carnet « Mes plongées » (revue et audits, 2026-11-13) :
 
 Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
 
-- **Champs de la spec absents du contrat `DiveDetail`** : la page n'affiche que ce que l'API sert,
-  sans mock ni valeur inventée. Inventaire, pistes de modélisation et questions ouvertes :
-  `docs/data-model/evolution-champs-detail-plongee.md`. Par section UI :
-  - en-tête : type Bateau / Bord, mer ou zone (« Méditerranée ») ;
-  - KPI : température de surface (« Surface 16 °C »), qualificatif de visibilité (pas de barème) ;
-  - Déroulé : durée et profondeur du palier de sécurité (seul le booléen `stopsOk` existe), détail
-    des paliers de déco., successive, segment « palier » de la barre de temps ;
-  - Équipement & gaz : bloc, pressions et bar consommés, combinaison, lest. Seul le gaz est connu :
-    il est affiché dans le Déroulé, et la carte n'est pas rendue ;
-  - Conditions : type, météo et air, mer, courant, eau en surface, structure. La carte n'est pas
-    rendue (la température au fond est dans les KPI) ;
-  - Notes : étiquettes d'espèces ;
-  - Palanquée : niveau de chaque membre (celui du plongeur à la plongée est déjà en base, D-09) ;
-  - dates de création et de modification (déjà en base, absentes du contrat).
+- **Champs du détail** : modélisés (D-13 à D-22) et **servis par l'API** depuis
+  `AddDiveDetailFields` (contrat `DiveDetail`, §6) : type, conditions et structure, zone du site,
+  température de surface, palier de sécurité, successive, % O₂ (mélange « Autre »), bloc et
+  pressions, combinaison, lest, espèces, niveau des binômes, niveau du plongeur à la plongée, dates
+  de création et de modification. **Reste côté front** (la page n'affiche encore que les anciens
+  champs) :
+  - guards des nouveaux champs : ensembles de littéraux pour chaque union (comme `GAS_MIXES`),
+    `isCertificationLevelRef`, `isDiveObservation`, guard de binôme du détail (`level`) ; une fois
+    en place, toute valeur ajoutée à une union se déploie front d'abord (D-14) ;
+  - affichage par carte (en-tête, KPI, Déroulé, Équipement & gaz, Conditions, Notes, Palanquée,
+    mention des dates) ; les fixtures de test (`mockDiveDetail`, `detail()` de `divesApi.test.ts`)
+    portent déjà les nouveaux champs à `null` ;
+  - dérivés calculés par le front, **jamais servis** : heure de sortie, bar consommés, % O₂ d'Air
+    ou de Nitrox (21, 32, 36), segment « palier » de la barre de temps, qualificatif de visibilité
+    (pas de barème) ;
+  - non modélisés : détail des paliers de déco. (reporté, D-16), hélium, plusieurs blocs.
 - **Actions non rendues** : « Modifier ma plongée », menu « … » (Dupliquer, Exporter, Supprimer),
   faute de formulaire d'édition et d'endpoint d'écriture ; les champs vides n'ont donc pas de lien
   « Compléter » (« — · Non renseignée »). Lien « Toutes mes plongées ici » non rendu : la query de

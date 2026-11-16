@@ -1,17 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import type { DataSource } from 'typeorm';
 import {
+  DuplicateObservationError,
   FullSyncRequiredError,
   IdentifierConflictError,
   InvalidReferenceError,
+  TooManyObservationsError,
 } from '../../src/common/errors/domain-errors';
 import { Buddy } from '../../src/modules/buddies/buddy.entity';
 import { DiveSite } from '../../src/modules/dive-sites/dive-site.entity';
 import { DiversService } from '../../src/modules/divers/divers.service';
 import { DiveEvent } from '../../src/modules/dives/dive-event.entity';
+import { DiveObservation } from '../../src/modules/dives/dive-observation.entity';
 import { DiveParticipation } from '../../src/modules/dives/dive-participation.entity';
 import { DivesService } from '../../src/modules/dives/dives.service';
 import { diveWrite, Fixtures, recentPull, SYNC_SETTINGS_90_DAYS } from './support/fixtures';
+import { selectRows } from './support/sql';
 import { createTestDataSource, resetDatabase } from './support/test-database';
 
 const DAY = 86_400_000;
@@ -241,6 +245,206 @@ describe('DivesService', () => {
     });
   });
 
+  describe('detail fields and observations', () => {
+    const CONDITIONS = {
+      entryType: 'BOAT',
+      timeOfDay: 'DAY',
+      weather: 'SUNNY',
+      airTemperatureC: 19,
+      seaState: 'CALM',
+      currentStrength: 'WEAK',
+      diveCenter: 'Calvi Plongée',
+    } as const;
+    const DETAIL = {
+      gasMix: 'OTHER',
+      o2Percent: 28,
+      surfaceWaterTemperatureC: 16,
+      safetyStopDurationMin: 3,
+      safetyStopDepthM: 5,
+      isRepetitive: false,
+      tankVolumeL: 12,
+      tankMaterial: 'STEEL',
+      startPressureBar: 200,
+      endPressureBar: 60,
+      suitType: 'SEMI_DRY',
+      suitThicknessMm: 7,
+      weightKg: 6.5,
+    } as const;
+
+    it('writes the conditions and the detail, then a null erases them', async () => {
+      const { diver, site } = await diverWithSite();
+      const write = diveWrite(site.id, { event: CONDITIONS, participation: DETAIL });
+
+      const created = await dives.upsertDive(diver.id, write, recentPull());
+      expect(created.current.event).toMatchObject(CONDITIONS);
+      expect(created.current.participation).toMatchObject(DETAIL);
+
+      const erased = await dives.upsertDive(
+        diver.id,
+        diveWrite(site.id, {
+          event: { id: write.event.id, diveCenter: null, airTemperatureC: null },
+          participation: { id: write.participation.id, weightKg: null },
+        }),
+        recentPull(),
+      );
+      expect(erased.current.event).toMatchObject({ diveCenter: null, airTemperatureC: null });
+      expect(erased.current.participation).toMatchObject({ weightKg: null, o2Percent: null });
+    });
+
+    it('replaces the observations in order, labels trimmed', async () => {
+      const { diver, site } = await diverWithSite();
+      const write = diveWrite(site.id, {
+        observations: [
+          { label: ' Mérou brun ', count: 2 },
+          { label: 'Barracudas', count: null },
+          { label: 'Murène', count: null },
+        ],
+      });
+      const created = await dives.upsertDive(diver.id, write, recentPull());
+      expect(created.current.observations).toStrictEqual([
+        { label: 'Mérou brun', count: 2 },
+        { label: 'Barracudas', count: null },
+        { label: 'Murène', count: null },
+      ]);
+
+      const replaced = await dives.upsertDive(
+        diver.id,
+        {
+          ...write,
+          observations: [
+            { label: 'Murène', count: 1 },
+            { label: 'Mérou brun', count: 3 },
+          ],
+        },
+        recentPull(),
+      );
+      expect(replaced.current.observations).toStrictEqual([
+        { label: 'Murène', count: 1 },
+        { label: 'Mérou brun', count: 3 },
+      ]);
+      const stored = await dataSource.manager.find(DiveObservation, {
+        where: { participationId: write.participation.id },
+        order: { position: 'ASC' },
+      });
+      expect(stored.map(({ position, label }) => [position, label])).toStrictEqual([
+        [0, 'Murène'],
+        [1, 'Mérou brun'],
+      ]);
+
+      const cleared = await dives.upsertDive(
+        diver.id,
+        { ...write, observations: [] },
+        recentPull(),
+      );
+      expect(cleared.current.observations).toStrictEqual([]);
+      expect(await dataSource.manager.count(DiveObservation)).toBe(0);
+    });
+
+    it('keeps the case of a label (D-19)', async () => {
+      const { diver, site } = await diverWithSite();
+      const result = await dives.upsertDive(
+        diver.id,
+        diveWrite(site.id, {
+          observations: [
+            { label: 'Murène', count: null },
+            { label: 'murène', count: null },
+          ],
+        }),
+        recentPull(),
+      );
+      expect(result.current.observations.map(({ label }) => label)).toStrictEqual([
+        'Murène',
+        'murène',
+      ]);
+    });
+
+    it('accepts 50 observations', async () => {
+      const { diver, site } = await diverWithSite();
+      const observations = Array.from({ length: 50 }, (_unused, index) => ({
+        label: `Espèce ${String(index)}`,
+        count: null,
+      }));
+      const result = await dives.upsertDive(
+        diver.id,
+        diveWrite(site.id, { observations }),
+        recentPull(),
+      );
+      expect(result.current.observations).toHaveLength(50);
+    });
+
+    it.each([
+      [
+        'a duplicate label once trimmed',
+        [
+          { label: 'Corb', count: null },
+          { label: ' Corb', count: 2 },
+        ],
+        DuplicateObservationError,
+      ],
+      [
+        'more than 50 observations',
+        Array.from({ length: 51 }, (_unused, index) => ({
+          label: `Espèce ${String(index)}`,
+          count: null,
+        })),
+        TooManyObservationsError,
+      ],
+    ])('refuses %s and writes nothing', async (_case, observations, error) => {
+      const { diver, site } = await diverWithSite();
+      const write = diveWrite(site.id, { observations });
+
+      await expect(dives.upsertDive(diver.id, write, recentPull())).rejects.toThrow(error);
+
+      expect(await dataSource.manager.existsBy(DiveEvent, { id: write.event.id })).toBe(false);
+      expect(await dataSource.manager.count(DiveParticipation)).toBe(0);
+      expect(await dataSource.manager.count(DiveObservation)).toBe(0);
+    });
+
+    it('rolls back the dive when an observation breaks a constraint', async () => {
+      const { diver, site } = await diverWithSite();
+      const write = diveWrite(site.id, { observations: [{ label: 'Corb', count: 1 }] });
+      await dives.upsertDive(diver.id, write, recentPull());
+
+      await expect(
+        dives.upsertDive(
+          diver.id,
+          {
+            ...write,
+            participation: { ...write.participation, maxDepthM: 12 },
+            observations: [{ label: 'Corb', count: 0 }],
+          },
+          recentPull(),
+        ),
+      ).rejects.toBeDefined();
+
+      expect(
+        await dataSource.manager.findOneByOrFail(DiveParticipation, {
+          id: write.participation.id,
+        }),
+      ).toMatchObject({ maxDepthM: 32.5 });
+      expect(await dataSource.manager.find(DiveObservation)).toMatchObject([
+        { label: 'Corb', count: 1 },
+      ]);
+    });
+
+    it('does not rewrite unchanged observations', async () => {
+      const { diver, site } = await diverWithSite();
+      const write = diveWrite(site.id, { observations: [{ label: 'Corb', count: 1 }] });
+      await dives.upsertDive(diver.id, write, recentPull());
+      // The physical row id changes on any UPDATE or re-INSERT.
+      const physicalRows = () =>
+        selectRows<{ ctid: string }>(
+          dataSource,
+          'SELECT ctid::text AS ctid FROM dive_observations',
+        );
+      const before = await physicalRows();
+
+      await dives.upsertDive(diver.id, write, recentPull());
+
+      expect(await physicalRows()).toStrictEqual(before);
+    });
+  });
+
   describe('participation level snapshot (D-09)', () => {
     it('keeps a level sent by the client, even above the current level', async () => {
       const { diver, site } = await diverWithSite('N1');
@@ -326,7 +530,13 @@ describe('DivesService', () => {
     const other = await diverWithSite();
     await dives.upsertDive(other.diver.id, diveWrite(other.site.id), recentPull());
     const buddy = await fixtures.buddy(diver.id);
-    const kept = diveWrite(site.id, { buddyIds: [buddy.id] });
+    const kept = diveWrite(site.id, {
+      buddyIds: [buddy.id],
+      observations: [
+        { label: 'Murène', count: null },
+        { label: 'Corb', count: 2 },
+      ],
+    });
     const deleted = diveWrite(site.id);
     await dives.upsertDive(diver.id, kept, recentPull());
     await dives.upsertDive(diver.id, deleted, recentPull());
@@ -338,10 +548,21 @@ describe('DivesService', () => {
     expect(events.items.map((event) => event.id)).toEqual([kept.event.id, deleted.event.id]);
     expect(events.nextCursor).toBeNull();
     expect(
-      participations.items.map(({ participation, buddyIds }) => [participation.id, buddyIds]),
+      participations.items.map(({ participation, buddyIds, observations }) => [
+        participation.id,
+        buddyIds,
+        observations,
+      ]),
     ).toEqual([
-      [kept.participation.id, [buddy.id]],
-      [deleted.participation.id, []],
+      [
+        kept.participation.id,
+        [buddy.id],
+        [
+          { label: 'Murène', count: null },
+          { label: 'Corb', count: 2 },
+        ],
+      ],
+      [deleted.participation.id, [], []],
     ]);
   });
 });

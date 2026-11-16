@@ -16,15 +16,19 @@ import type {
   SyncedWrite,
   SyncWriteResult,
 } from '../../common/sync/sync.types';
+import { CertificationLevel } from '../certification-levels/certification-level.entity';
 import { Diver } from '../divers/diver.entity';
 import { DiveBuddy } from '../dives/dive-buddy.entity';
 import { Buddy } from './buddy.entity';
 
+/** Every field is required, `null` included (D-22). */
 export interface BuddyWrite extends SyncedWrite {
   readonly id: string;
   readonly firstName: string;
   readonly lastName: string;
   readonly linkedDiverId: string | null;
+  /** Current level declared by the owner (D-21); any existing level, even deactivated. */
+  readonly certificationLevelId: string | null;
 }
 
 const LINK_UNIQUE_INDEX = 'uq_buddies__owner_id_linked_diver_id';
@@ -44,8 +48,8 @@ export class BuddiesService {
    * Synchronised write (create, update, tombstone or restore). A tombstone also removes the buddy
    * from every dive team.
    *
-   * @throws {FullSyncRequiredError} | {IdentifierConflictError} | {InvalidReferenceError} |
-   *   {BuddyLinkConflictError}
+   * @throws {FullSyncRequiredError} | {IdentifierConflictError} | {InvalidReferenceError} (unknown
+   *   linked account or level) | {BuddyLinkConflictError}
    */
   async upsert(
     ownerId: string,
@@ -66,6 +70,7 @@ export class BuddiesService {
         return { status: 'rejected', current: existing };
       }
       await assertLinkableDiver(manager, ownerId, write.linkedDiverId);
+      await assertExistingLevel(manager, write.certificationLevelId);
 
       try {
         await upsertOwnedRow(manager, Buddy, 'ownerId', {
@@ -74,6 +79,7 @@ export class BuddiesService {
           firstName: write.firstName,
           lastName: write.lastName,
           linkedDiverId: write.linkedDiverId,
+          certificationLevelId: write.certificationLevelId,
           deletedAt: write.deletedAt,
         });
       } catch (error) {
@@ -117,6 +123,22 @@ async function assertLinkableDiver(
     return;
   }
   if (linkedDiverId === ownerId || !(await manager.existsBy(Diver, { id: linkedDiverId }))) {
+    throw new InvalidReferenceError();
+  }
+}
+
+/**
+ * The buddy's level must exist (a deactivated one is admitted: nothing is imposed on a third
+ * party's level, D-21), as for a participation snapshot (D-09).
+ */
+async function assertExistingLevel(
+  manager: EntityManager,
+  certificationLevelId: string | null,
+): Promise<void> {
+  if (
+    certificationLevelId !== null &&
+    !(await manager.existsBy(CertificationLevel, { id: certificationLevelId }))
+  ) {
     throw new InvalidReferenceError();
   }
 }

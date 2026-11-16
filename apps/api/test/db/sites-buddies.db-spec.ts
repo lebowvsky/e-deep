@@ -230,6 +230,52 @@ describe('DiveSitesService and BuddiesService', () => {
     });
   });
 
+  describe('detail fields (D-20, D-21)', () => {
+    it('writes a site area, and a null erases it', async () => {
+      const diver = await fixtures.diver();
+      const write = siteWrite({ area: 'Méditerranée' });
+
+      const created = await sites.upsert(diver.id, write, recentPull());
+      const erased = await sites.upsert(
+        diver.id,
+        { ...write, area: null, baseUpdatedAt: created.current.updatedAt },
+        recentPull(),
+      );
+
+      expect(created.current.area).toBe('Méditerranée');
+      expect(erased.current.area).toBeNull();
+      expect((await sites.pull(diver.id, null)).items[0]?.area).toBeNull();
+    });
+
+    it('writes and pulls the level of a buddy, a deactivated one included', async () => {
+      const diver = await fixtures.diver();
+      const retired = await fixtures.addLevel({ isActive: false });
+      const n3 = await fixtures.levelId('N3');
+      const write = buddyWrite({ certificationLevelId: n3 });
+
+      const created = await buddies.upsert(diver.id, write, recentPull());
+      const changed = await buddies.upsert(
+        diver.id,
+        { ...write, certificationLevelId: retired.id },
+        recentPull(),
+      );
+
+      expect(created.current.certificationLevelId).toBe(n3);
+      expect(changed.current.certificationLevelId).toBe(retired.id);
+      expect((await buddies.pull(diver.id, null)).items[0]?.certificationLevelId).toBe(retired.id);
+    });
+
+    it('refuses an unknown buddy level, without writing', async () => {
+      const diver = await fixtures.diver();
+      const write = buddyWrite({ certificationLevelId: '01900000-0000-7000-8000-0000000000ff' });
+
+      await expect(buddies.upsert(diver.id, write, recentPull())).rejects.toThrow(
+        InvalidReferenceError,
+      );
+      expect(await dataSource.manager.existsBy(Buddy, { id: write.id })).toBe(false);
+    });
+  });
+
   it('pulls by (updated_at, id) cursor, tombstones included, owner only', async () => {
     const diver = await fixtures.diver();
     const other = await fixtures.diver();

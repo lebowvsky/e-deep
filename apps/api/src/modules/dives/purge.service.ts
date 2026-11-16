@@ -46,7 +46,7 @@ export class PurgeService {
         return (await query.execute()).affected ?? 0;
       };
 
-      // 1. Participations (their dive team lines cascade).
+      // 1. Participations (their dive team lines and observations cascade).
       const participations = await deleteTombstones(DiveParticipation);
       // 2. Events without any remaining participation.
       const events = await deleteTombstones(

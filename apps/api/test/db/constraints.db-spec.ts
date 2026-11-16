@@ -6,6 +6,7 @@ import { DiveSite } from '../../src/modules/dive-sites/dive-site.entity';
 import { Diver } from '../../src/modules/divers/diver.entity';
 import { DiveBuddy } from '../../src/modules/dives/dive-buddy.entity';
 import { DiveEvent } from '../../src/modules/dives/dive-event.entity';
+import { DiveObservation } from '../../src/modules/dives/dive-observation.entity';
 import { DiveParticipation } from '../../src/modules/dives/dive-participation.entity';
 import { Fixtures } from './support/fixtures';
 import { selectRows, updatedAtOf, violating } from './support/sql';
@@ -111,6 +112,230 @@ describe('dive log schema constraints', () => {
     });
   });
 
+  describe('detail fields (AddDiveDetailFields)', () => {
+    it.each([
+      ['entryType', 'BOAT_DIVE', 'ck_dive_events__entry_type'],
+      ['timeOfDay', 'DUSK', 'ck_dive_events__time_of_day'],
+      ['weather', 'SNOW', 'ck_dive_events__weather'],
+      ['airTemperatureC', -40.1, 'ck_dive_events__air_temperature_c'],
+      ['airTemperatureC', 60.1, 'ck_dive_events__air_temperature_c'],
+      ['seaState', 'STORM', 'ck_dive_events__sea_state'],
+      ['currentStrength', 'EXTREME', 'ck_dive_events__current_strength'],
+      ['diveCenter', '  ', 'ck_dive_events__dive_center'],
+      ['diveCenter', 'x'.repeat(121), 'ck_dive_events__dive_center'],
+    ] as const)('refuses an event with %s = %s', async (property, value, constraint) => {
+      const diver = await fixtures.diver();
+      const site = await fixtures.site(diver.id);
+      await expect(fixtures.event(diver.id, site.id, { [property]: value })).rejects.toEqual(
+        violating(constraint),
+      );
+    });
+
+    it('accepts the event detail bounds, and NULL everywhere', async () => {
+      const diver = await fixtures.diver();
+      const site = await fixtures.site(diver.id);
+      const empty = await fixtures.event(diver.id, site.id);
+      const full = await fixtures.event(diver.id, site.id, {
+        entryType: 'SHORE',
+        timeOfDay: 'NIGHT',
+        weather: 'RAIN',
+        airTemperatureC: -40,
+        seaState: 'ROUGH',
+        currentStrength: 'STRONG',
+        diveCenter: 'x'.repeat(120),
+      });
+      expect(empty).toMatchObject({ entryType: null, airTemperatureC: null, diveCenter: null });
+      expect(full).toMatchObject({ airTemperatureC: -40, seaState: 'ROUGH' });
+      await expect(
+        fixtures.event(diver.id, site.id, { airTemperatureC: 60 }),
+      ).resolves.toBeDefined();
+    });
+
+    it.each([
+      ['surfaceWaterTemperatureC', -5.1, 'ck_dive_participations__surface_water_temperature_c'],
+      ['surfaceWaterTemperatureC', 45.1, 'ck_dive_participations__surface_water_temperature_c'],
+      ['tankVolumeL', 0, 'ck_dive_participations__tank_volume_l'],
+      ['tankVolumeL', 30.1, 'ck_dive_participations__tank_volume_l'],
+      ['tankMaterial', 'CARBON', 'ck_dive_participations__tank_material'],
+      ['startPressureBar', 0, 'ck_dive_participations__start_pressure_bar'],
+      ['startPressureBar', 351, 'ck_dive_participations__start_pressure_bar'],
+      ['endPressureBar', -1, 'ck_dive_participations__end_pressure_bar'],
+      ['endPressureBar', 351, 'ck_dive_participations__end_pressure_bar'],
+      ['suitType', 'SHORTY', 'ck_dive_participations__suit_type'],
+      ['suitThicknessMm', 0, 'ck_dive_participations__suit_thickness_mm'],
+      ['suitThicknessMm', 15.1, 'ck_dive_participations__suit_thickness_mm'],
+      ['weightKg', -0.5, 'ck_dive_participations__weight_kg'],
+      ['weightKg', 40.5, 'ck_dive_participations__weight_kg'],
+    ] as const)('refuses a participation with %s = %s', async (property, value, constraint) => {
+      const { diver, event } = await newEvent();
+      await expect(
+        fixtures.participation(event.id, diver.id, { [property]: value }),
+      ).rejects.toEqual(violating(constraint));
+    });
+
+    it('accepts the participation detail bounds, and NULL everywhere', async () => {
+      const { diver, event } = await newEvent();
+      const other = await newEvent();
+      const empty = await fixtures.participation(other.event.id, other.diver.id);
+      const full = await fixtures.participation(event.id, diver.id, {
+        maxDepthM: 20,
+        durationMin: 61,
+        surfaceWaterTemperatureC: 45,
+        safetyStopDurationMin: 60,
+        safetyStopDepthM: 20,
+        isRepetitive: true,
+        tankVolumeL: 30,
+        tankMaterial: 'ALUMINIUM',
+        startPressureBar: 350,
+        endPressureBar: 0,
+        suitType: 'SEMI_DRY',
+        suitThicknessMm: 15,
+        weightKg: 40,
+      });
+      expect(empty).toMatchObject({
+        surfaceWaterTemperatureC: null,
+        safetyStopDurationMin: null,
+        isRepetitive: null,
+        weightKg: null,
+      });
+      expect(full).toMatchObject({ safetyStopDepthM: 20, weightKg: 40, endPressureBar: 0 });
+    });
+
+    it('accepts o2_percent with the OTHER mix only (RG-23)', async () => {
+      const { diver, event } = await newEvent();
+      const other = await newEvent();
+      await expect(
+        fixtures.participation(event.id, diver.id, { gasMix: 'AIR', o2Percent: 21 }),
+      ).rejects.toEqual(violating('ck_dive_participations__o2_percent'));
+      await expect(
+        fixtures.participation(event.id, diver.id, { gasMix: 'NITROX32', o2Percent: 32 }),
+      ).rejects.toEqual(violating('ck_dive_participations__o2_percent'));
+      await expect(
+        fixtures.participation(event.id, diver.id, { gasMix: 'OTHER', o2Percent: 100.1 }),
+      ).rejects.toEqual(violating('ck_dive_participations__o2_percent'));
+      await expect(
+        fixtures.participation(other.event.id, other.diver.id, {
+          gasMix: 'OTHER',
+          o2Percent: 28.5,
+        }),
+      ).resolves.toMatchObject({ o2Percent: 28.5 });
+    });
+
+    it('refuses an end pressure above the start pressure, accepts an end pressure alone (RG-24)', async () => {
+      const { diver, event } = await newEvent();
+      const other = await newEvent();
+      await expect(
+        fixtures.participation(event.id, diver.id, { startPressureBar: 200, endPressureBar: 201 }),
+      ).rejects.toEqual(violating('ck_dive_participations__end_pressure_bar'));
+      await expect(
+        fixtures.participation(other.event.id, other.diver.id, { endPressureBar: 50 }),
+      ).resolves.toMatchObject({ startPressureBar: null, endPressureBar: 50 });
+    });
+
+    it('refuses an incomplete safety stop, too deep or too long (RG-25)', async () => {
+      const { diver, event } = await newEvent();
+      await expect(
+        fixtures.participation(event.id, diver.id, { safetyStopDurationMin: 3 }),
+      ).rejects.toEqual(violating('ck_dive_participations__safety_stop'));
+      await expect(
+        fixtures.participation(event.id, diver.id, { safetyStopDepthM: 5 }),
+      ).rejects.toEqual(violating('ck_dive_participations__safety_stop'));
+      await expect(
+        fixtures.participation(event.id, diver.id, {
+          maxDepthM: 4,
+          safetyStopDurationMin: 3,
+          safetyStopDepthM: 5,
+        }),
+      ).rejects.toEqual(violating('ck_dive_participations__safety_stop_depth_m'));
+      await expect(
+        fixtures.participation(event.id, diver.id, {
+          durationMin: 30,
+          safetyStopDurationMin: 30,
+          safetyStopDepthM: 5,
+        }),
+      ).rejects.toEqual(violating('ck_dive_participations__safety_stop_duration_min'));
+      await expect(
+        fixtures.participation(event.id, diver.id, {
+          safetyStopDurationMin: 0,
+          safetyStopDepthM: 5,
+        }),
+      ).rejects.toEqual(violating('ck_dive_participations__safety_stop_duration_min'));
+      await expect(
+        fixtures.participation(event.id, diver.id, {
+          safetyStopDurationMin: 3,
+          safetyStopDepthM: 0,
+        }),
+      ).rejects.toEqual(violating('ck_dive_participations__safety_stop_depth_m'));
+    });
+
+    it.each([
+      ['  ', 'ck_dive_sites__area'],
+      ['x'.repeat(121), 'ck_dive_sites__area'],
+    ])('refuses a site area %j', async (area, constraint) => {
+      const diver = await fixtures.diver();
+      await expect(fixtures.site(diver.id, { area })).rejects.toEqual(violating(constraint));
+    });
+
+    it('accepts a site area or none', async () => {
+      const diver = await fixtures.diver();
+      await expect(fixtures.site(diver.id, { area: 'Méditerranée' })).resolves.toMatchObject({
+        area: 'Méditerranée',
+      });
+      await expect(fixtures.site(diver.id)).resolves.toMatchObject({ area: null });
+    });
+  });
+
+  describe('dive_observations', () => {
+    it('refuses the same label twice on a participation, accepts it on another one', async () => {
+      const diver = await fixtures.diver();
+      const first = await fixtures.dive(diver.id);
+      const second = await fixtures.dive(diver.id);
+      await fixtures.observation(first.participation.id, 0, 'Murène');
+
+      await expect(fixtures.observation(first.participation.id, 1, 'Murène')).rejects.toEqual(
+        violating('uq_dive_observations__participation_id_label'),
+      );
+      await expect(
+        fixtures.observation(second.participation.id, 0, 'Murène'),
+      ).resolves.toBeUndefined();
+    });
+
+    it.each([
+      [50, 'Corb', null, 'ck_dive_observations__position'],
+      [-1, 'Corb', null, 'ck_dive_observations__position'],
+      [0, '   ', null, 'ck_dive_observations__label'],
+      [0, 'x'.repeat(81), null, 'ck_dive_observations__label'],
+      [0, 'Corb', 0, 'ck_dive_observations__count'],
+      [0, 'Corb', 10000, 'ck_dive_observations__count'],
+    ] as const)(
+      'refuses position %s, label %j, count %s',
+      async (position, label, count, constraint) => {
+        const diver = await fixtures.diver();
+        const { participation } = await fixtures.dive(diver.id);
+        await expect(
+          fixtures.observation(participation.id, position, label, count),
+        ).rejects.toEqual(violating(constraint));
+      },
+    );
+
+    it('accepts positions 0 to 49, a NULL count and the count bounds', async () => {
+      const diver = await fixtures.diver();
+      const { participation } = await fixtures.dive(diver.id);
+      await fixtures.observation(participation.id, 0, 'x'.repeat(80), null);
+      await fixtures.observation(participation.id, 1, 'Corb', 1);
+      await fixtures.observation(participation.id, 49, 'Mérou', 9999);
+      expect(
+        await dataSource.manager.countBy(DiveObservation, { participationId: participation.id }),
+      ).toBe(3);
+    });
+
+    it('refuses an observation of an unknown participation', async () => {
+      await expect(fixtures.observation(randomUUID(), 0, 'Corb')).rejects.toEqual(
+        violating('fk_dive_observations__participation_id'),
+      );
+    });
+  });
+
   it('requires stops_ok: no default value', async () => {
     const { diver, event } = await newEvent();
     await expect(
@@ -143,6 +368,22 @@ describe('dive log schema constraints', () => {
       await expect(dataSource.manager.delete(CertificationLevel, { id: level.id })).rejects.toEqual(
         violating('fk_divers__certification_level_id'),
       );
+    });
+
+    it('refuses to delete a level used by a buddy (RESTRICT), even a deactivated one', async () => {
+      const level = await fixtures.addLevel({ isActive: false });
+      const diver = await fixtures.diver();
+      await fixtures.buddy(diver.id, { certificationLevelId: level.id });
+      await expect(dataSource.manager.delete(CertificationLevel, { id: level.id })).rejects.toEqual(
+        violating('fk_buddies__certification_level_id'),
+      );
+    });
+
+    it('refuses a buddy level that does not exist', async () => {
+      const diver = await fixtures.diver();
+      await expect(
+        fixtures.buddy(diver.id, { certificationLevelId: randomUUID() }),
+      ).rejects.toEqual(violating('fk_buddies__certification_level_id'));
     });
 
     it('refuses to delete a level used by a participation snapshot', async () => {
@@ -242,13 +483,37 @@ describe('dive log schema constraints', () => {
       const afterRemove = await updatedAtOf(dataSource, 'dive_participations', participation.id);
       expect(afterRemove > afterAdd).toBe(true);
     });
+
+    it('touches the participation when an observation is added, changed or removed', async () => {
+      const diver = await fixtures.diver();
+      const { participation } = await fixtures.dive(diver.id);
+      const touched = () => updatedAtOf(dataSource, 'dive_participations', participation.id);
+      const initial = await touched();
+
+      await fixtures.observation(participation.id, 0, 'Murène');
+      const afterAdd = await touched();
+      expect(afterAdd > initial).toBe(true);
+
+      await dataSource.manager.update(
+        DiveObservation,
+        { participationId: participation.id, position: 0 },
+        { count: 2 },
+      );
+      const afterUpdate = await touched();
+      expect(afterUpdate > afterAdd).toBe(true);
+
+      await dataSource.manager.delete(DiveObservation, { participationId: participation.id });
+      const afterRemove = await touched();
+      expect(afterRemove > afterUpdate).toBe(true);
+    });
   });
 
   it('cascade + trigger, case 1: deleting an account erases everything and unlinks contacts', async () => {
     const leaving = await fixtures.diver();
     const other = await fixtures.diver();
     const buddy = await fixtures.buddy(leaving.id);
-    await fixtures.dive(leaving.id, [buddy.id]);
+    const { participation } = await fixtures.dive(leaving.id, [buddy.id]);
+    await fixtures.observation(participation.id, 0, 'Murène');
     const othersContact = await fixtures.buddy(other.id, { linkedDiverId: leaving.id });
 
     await dataSource.manager.delete(Diver, { id: leaving.id });
@@ -259,11 +524,19 @@ describe('dive log schema constraints', () => {
               (SELECT count(*) FROM buddies WHERE owner_id = $1) AS buddies,
               (SELECT count(*) FROM dive_events WHERE creator_id = $1) AS events,
               (SELECT count(*) FROM dive_participations WHERE diver_id = $1) AS participations,
-              (SELECT count(*) FROM dive_buddies WHERE owner_id = $1) AS team_lines`,
-      [leaving.id],
+              (SELECT count(*) FROM dive_buddies WHERE owner_id = $1) AS team_lines,
+              (SELECT count(*) FROM dive_observations WHERE participation_id = $2) AS observations`,
+      [leaving.id, participation.id],
     );
     expect(counts).toEqual([
-      { sites: '0', buddies: '0', events: '0', participations: '0', team_lines: '0' },
+      {
+        sites: '0',
+        buddies: '0',
+        events: '0',
+        participations: '0',
+        team_lines: '0',
+        observations: '0',
+      },
     ]);
     expect(await dataSource.manager.findOneByOrFail(Buddy, { id: othersContact.id })).toMatchObject(
       { linkedDiverId: null },
@@ -274,6 +547,8 @@ describe('dive log schema constraints', () => {
     const diver = await fixtures.diver();
     const buddy = await fixtures.buddy(diver.id);
     const { site, event, participation } = await fixtures.dive(diver.id, [buddy.id]);
+    await fixtures.observation(participation.id, 0, 'Murène');
+    await fixtures.observation(participation.id, 1, 'Corb', 3);
 
     await dataSource.manager.delete(DiveParticipation, { id: participation.id });
     await dataSource.manager.delete(DiveEvent, { id: event.id });
@@ -282,6 +557,9 @@ describe('dive log schema constraints', () => {
     expect(await dataSource.manager.countBy(DiveBuddy, { participationId: participation.id })).toBe(
       0,
     );
+    expect(
+      await dataSource.manager.countBy(DiveObservation, { participationId: participation.id }),
+    ).toBe(0);
     expect(await dataSource.manager.existsBy(Buddy, { id: buddy.id })).toBe(true);
   });
 

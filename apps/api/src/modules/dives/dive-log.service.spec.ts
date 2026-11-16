@@ -1,7 +1,13 @@
 import type { DiveDetail, DiveSummary } from '@e-deep/shared';
 import { NotFoundException } from '@nestjs/common';
 import type { DataSource, EntityManager } from 'typeorm';
-import type { DiveDetailRow, DiveSummaryRow, DiveTeamRow } from './dive-contract.mapper';
+import type {
+  DiveDetailRow,
+  DiveDetailTeamRow,
+  DiveObservationRow,
+  DiveSummaryRow,
+  DiveTeamRow,
+} from './dive-contract.mapper';
 import { DIVE_LOG_MAX, DiveLogService } from './dive-log.service';
 
 const DIVER_ID = '01900000-0000-7000-8000-000000000001';
@@ -43,7 +49,41 @@ function detailRow(values: Partial<DiveDetailRow> = {}): DiveDetailRow {
     stops_ok: false,
     site_latitude: '27.734100',
     site_longitude: '34.256400',
+    site_area: 'Mer Rouge',
+    level_agency: 'FFESSM',
+    level_code: 'N2',
+    level_label: 'Niveau 2',
+    entry_type: 'BOAT',
+    time_of_day: 'DAY',
+    weather: 'SUNNY',
+    air_temperature_c: '29.0',
+    sea_state: 'CALM',
+    current_strength: 'WEAK',
+    dive_center: 'Sharm Diving',
+    surface_water_temperature_c: '26.5',
+    safety_stop_duration_min: 3,
+    safety_stop_depth_m: '5.0',
+    is_repetitive: true,
+    o2_percent: null,
+    tank_volume_l: '12.0',
+    tank_material: 'ALUMINIUM',
+    start_pressure_bar: 200,
+    end_pressure_bar: 50,
+    suit_type: 'WET',
+    suit_thickness_mm: '3.0',
+    weight_kg: '4.5',
+    created_at: new Date('2026-07-14T20:00:00.000Z'),
+    updated_at: new Date('2026-07-15T08:00:00.000Z'),
     ...values,
+  };
+}
+
+function detailTeamRow(id: string, firstName: string, levelCode: string | null): DiveDetailTeamRow {
+  return {
+    ...teamRow('participation-1', id, firstName),
+    level_agency: levelCode === null ? null : 'FFESSM',
+    level_code: levelCode,
+    level_label: levelCode === null ? null : `Niveau ${levelCode.slice(1)}`,
   };
 }
 
@@ -155,6 +195,19 @@ describe('DiveLogService', () => {
       expect(teams?.sql).toMatch(/db\.owner_id = \$1/);
     });
 
+    it('reads none of the detail fields (D-25: weight of the list)', async () => {
+      query.mockResolvedValueOnce([summaryRow()]).mockResolvedValueOnce([]);
+
+      await service.findAll(DIVER_ID);
+
+      const sql = queries()
+        .map((entry) => entry.sql)
+        .join('\n');
+      expect(sql).not.toMatch(
+        /entry_type|surface_water_temperature_c|area|certification_level|dive_observations/,
+      );
+    });
+
     it('does not query the teams when the diver has no dive', async () => {
       query.mockResolvedValueOnce([]);
 
@@ -166,10 +219,18 @@ describe('DiveLogService', () => {
   describe('findOne', () => {
     const EVENT_ID = '01900000-0000-7000-8000-0000000000aa';
 
-    it('maps the detail fields of the dive', async () => {
+    it('maps the detail fields of the dive, the levels of the buddies and the observations', async () => {
+      const observations: DiveObservationRow[] = [
+        { position: 0, label: 'Napoléon', count: 1 },
+        { position: 1, label: 'Raies pastenague', count: null },
+      ];
       query
         .mockResolvedValueOnce([detailRow()])
-        .mockResolvedValueOnce([teamRow('participation-1', 'buddy-a', 'Lucas')]);
+        .mockResolvedValueOnce([
+          detailTeamRow('buddy-a', 'Lucas', 'N3'),
+          detailTeamRow('buddy-b', 'Thao', null),
+        ])
+        .mockResolvedValueOnce(observations);
 
       const result = await service.findOne(DIVER_ID, EVENT_ID);
 
@@ -185,30 +246,79 @@ describe('DiveLogService', () => {
           region: 'Mer Rouge',
           latitude: 27.7341,
           longitude: 34.2564,
+          area: 'Mer Rouge',
         },
         depthMaxM: 32.5,
         durationMin: 52,
         temperatureC: 24.5,
         gasMix: 'NITROX32',
         notes: null,
-        buddies: [{ id: 'buddy-a', firstName: 'Lucas', lastName: 'Durand' }],
+        buddies: [
+          {
+            id: 'buddy-a',
+            firstName: 'Lucas',
+            lastName: 'Durand',
+            level: { agency: 'FFESSM', code: 'N3', label: 'Niveau 3' },
+          },
+          { id: 'buddy-b', firstName: 'Thao', lastName: 'Durand', level: null },
+        ],
         visibilityM: 25,
         hadDecompression: true,
         stopsOk: false,
+        diverLevel: { agency: 'FFESSM', code: 'N2', label: 'Niveau 2' },
+        entryType: 'BOAT',
+        timeOfDay: 'DAY',
+        weather: 'SUNNY',
+        airTemperatureC: 29,
+        seaState: 'CALM',
+        currentStrength: 'WEAK',
+        diveCenter: 'Sharm Diving',
+        surfaceTemperatureC: 26.5,
+        safetyStopDurationMin: 3,
+        safetyStopDepthM: 5,
+        isRepetitive: true,
+        o2Percent: null,
+        tankVolumeL: 12,
+        tankMaterial: 'ALUMINIUM',
+        startPressureBar: 200,
+        endPressureBar: 50,
+        suitType: 'WET',
+        suitThicknessMm: 3,
+        weightKg: 4.5,
+        observations: [
+          { label: 'Napoléon', count: 1 },
+          { label: 'Raies pastenague', count: null },
+        ],
+        createdAt: '2026-07-14T20:00:00.000Z',
+        updatedAt: '2026-07-15T08:00:00.000Z',
       } satisfies DiveDetail);
     });
 
-    it('filters both queries by the owner, in one REPEATABLE READ transaction', async () => {
-      query.mockResolvedValueOnce([detailRow()]).mockResolvedValueOnce([]);
+    it('runs its three queries in one REPEATABLE READ transaction, scoped to the owner', async () => {
+      query
+        .mockResolvedValueOnce([detailRow()])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
 
-      await expect(service.findOne(DIVER_ID, EVENT_ID)).resolves.toMatchObject({ buddies: [] });
+      await expect(service.findOne(DIVER_ID, EVENT_ID)).resolves.toMatchObject({
+        buddies: [],
+        observations: [],
+      });
 
+      expect(transaction).toHaveBeenCalledTimes(1);
       expect(transaction.mock.calls[0]?.[0]).toBe('REPEATABLE READ');
-      const [dive, teams] = queries();
+      const [dive, teams, observations] = queries();
       expect(dive?.parameters).toStrictEqual([DIVER_ID, EVENT_ID]);
       expect(dive?.sql).toMatch(/p\.diver_id = \$1/);
       expect(dive?.sql).toMatch(/WHERE n\.id = \$2/);
-      expect(teams?.parameters).toStrictEqual([DIVER_ID, ['participation-1']]);
+      expect(dive?.sql).toMatch(/GREATEST\(de\.updated_at, dp\.updated_at\) AS updated_at/);
+      expect(teams?.parameters).toStrictEqual([DIVER_ID, 'participation-1']);
+      expect(teams?.sql).toMatch(/db\.owner_id = \$1/);
+      expect(teams?.sql).toMatch(
+        /LEFT JOIN certification_levels l ON l\.id = b\.certification_level_id/,
+      );
+      expect(observations?.parameters).toStrictEqual(['participation-1']);
+      expect(observations?.sql).toMatch(/ORDER BY position/);
     });
 
     it('throws NotFoundException when no live dive of the diver matches', async () => {

@@ -2,9 +2,11 @@ import { NotFoundException } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
 import { DiveSite } from '../../src/modules/dive-sites/dive-site.entity';
 import { DiveSitesService } from '../../src/modules/dive-sites/dive-sites.service';
+import { DiveEvent } from '../../src/modules/dives/dive-event.entity';
 import { DiveLogService } from '../../src/modules/dives/dive-log.service';
+import { DiveParticipation } from '../../src/modules/dives/dive-participation.entity';
 import { Fixtures, recentPull, siteWrite, SYNC_SETTINGS_90_DAYS } from './support/fixtures';
-import { violating } from './support/sql';
+import { selectRows, violating } from './support/sql';
 import { createTestDataSource, resetDatabase } from './support/test-database';
 
 describe('DiveLogService', () => {
@@ -144,6 +146,207 @@ describe('DiveLogService', () => {
       await expect(diveLog.findOne(other.id, foreign.id)).resolves.toMatchObject({
         id: foreign.id,
       });
+    });
+  });
+
+  describe('findOne: detail fields (AddDiveDetailFields)', () => {
+    it('returns the conditions, the detail, the levels, the observations and the timestamps', async () => {
+      const diver = await fixtures.diver({ certificationLevelId: await fixtures.levelId('N2') });
+      const retired = await fixtures.addLevel({
+        agency: 'CMAS',
+        code: '2*',
+        label: 'Plongeur 2 étoiles',
+        isActive: false,
+      });
+      const lucas = await fixtures.buddy(diver.id, {
+        firstName: 'Lucas',
+        certificationLevelId: await fixtures.levelId('N3'),
+      });
+      const thao = await fixtures.buddy(diver.id, {
+        firstName: 'Thao',
+        certificationLevelId: null,
+      });
+      const sofia = await fixtures.buddy(diver.id, {
+        firstName: 'Sofia',
+        certificationLevelId: retired.id,
+      });
+      const site = await fixtures.site(diver.id, { area: 'Méditerranée' });
+      const event = await fixtures.event(diver.id, site.id, {
+        entryType: 'BOAT',
+        timeOfDay: 'DAY',
+        weather: 'SUNNY',
+        airTemperatureC: 19,
+        seaState: 'CALM',
+        currentStrength: 'WEAK',
+        diveCenter: 'Calvi Plongée',
+      });
+      const participation = await fixtures.participation(event.id, diver.id, {
+        certificationLevelId: diver.certificationLevelId,
+        maxDepthM: 42,
+        durationMin: 38,
+        gasMix: 'OTHER',
+        o2Percent: 28,
+        surfaceWaterTemperatureC: 16,
+        safetyStopDurationMin: 3,
+        safetyStopDepthM: 5,
+        isRepetitive: false,
+        tankVolumeL: 12,
+        tankMaterial: 'STEEL',
+        startPressureBar: 200,
+        endPressureBar: 60,
+        suitType: 'SEMI_DRY',
+        suitThicknessMm: 7,
+        weightKg: 6.5,
+      });
+      for (const buddy of [lucas, thao, sofia]) {
+        await fixtures.diveBuddy(diver.id, participation.id, buddy.id);
+      }
+      // Inserted out of order: served by position.
+      await fixtures.observation(participation.id, 1, 'Barracudas');
+      await fixtures.observation(participation.id, 0, 'Mérou brun', 2);
+
+      const detail = await diveLog.findOne(diver.id, event.id);
+
+      expect(detail).toMatchObject({
+        site: { area: 'Méditerranée' },
+        diverLevel: { agency: 'FFESSM', code: 'N2', label: 'Niveau 2' },
+        entryType: 'BOAT',
+        timeOfDay: 'DAY',
+        weather: 'SUNNY',
+        airTemperatureC: 19,
+        seaState: 'CALM',
+        currentStrength: 'WEAK',
+        diveCenter: 'Calvi Plongée',
+        surfaceTemperatureC: 16,
+        safetyStopDurationMin: 3,
+        safetyStopDepthM: 5,
+        isRepetitive: false,
+        o2Percent: 28,
+        tankVolumeL: 12,
+        tankMaterial: 'STEEL',
+        startPressureBar: 200,
+        endPressureBar: 60,
+        suitType: 'SEMI_DRY',
+        suitThicknessMm: 7,
+        weightKg: 6.5,
+        observations: [
+          { label: 'Mérou brun', count: 2 },
+          { label: 'Barracudas', count: null },
+        ],
+      });
+      expect(new Map(detail.buddies.map((buddy) => [buddy.firstName, buddy.level]))).toEqual(
+        new Map([
+          ['Lucas', { agency: 'FFESSM', code: 'N3', label: 'Niveau 3' }],
+          ['Thao', null],
+          // A deactivated level is still served (D-21).
+          ['Sofia', { agency: 'CMAS', code: '2*', label: 'Plongeur 2 étoiles' }],
+        ]),
+      );
+      expect(detail.createdAt).toBe(participation.createdAt.toISOString());
+    });
+
+    it('never reads the level of the account linked to a buddy (RG-10)', async () => {
+      const diver = await fixtures.diver();
+      const linked = await fixtures.diver({ certificationLevelId: await fixtures.levelId('N4') });
+      const buddy = await fixtures.buddy(diver.id, { linkedDiverId: linked.id });
+      const { event, participation } = await fixtures.dive(diver.id);
+      await fixtures.diveBuddy(diver.id, participation.id, buddy.id);
+
+      const detail = await diveLog.findOne(diver.id, event.id);
+
+      expect(detail.buddies).toStrictEqual([
+        { id: buddy.id, firstName: buddy.firstName, lastName: buddy.lastName, level: null },
+      ]);
+    });
+
+    it('serves null everywhere for an older dive without detail', async () => {
+      const diver = await fixtures.diver();
+      const site = await fixtures.site(diver.id);
+      const event = await dive(diver.id, site.id, '2026-06-01T08:00:00.000Z');
+
+      const detail = await diveLog.findOne(diver.id, event.id);
+
+      expect(detail).toMatchObject({
+        site: { area: null },
+        diverLevel: { agency: 'FFESSM', code: 'N1', label: 'Niveau 1' },
+        entryType: null,
+        timeOfDay: null,
+        weather: null,
+        airTemperatureC: null,
+        seaState: null,
+        currentStrength: null,
+        diveCenter: null,
+        surfaceTemperatureC: null,
+        safetyStopDurationMin: null,
+        safetyStopDepthM: null,
+        isRepetitive: null,
+        o2Percent: null,
+        tankVolumeL: null,
+        tankMaterial: null,
+        startPressureBar: null,
+        endPressureBar: null,
+        suitType: null,
+        suitThicknessMm: null,
+        weightKg: null,
+        observations: [],
+      });
+    });
+
+    it('serves updatedAt as the latest change of the event or the participation', async () => {
+      const diver = await fixtures.diver();
+      const { event, participation } = await fixtures.dive(diver.id);
+      const latestOf = async (): Promise<string> => {
+        const [row] = await selectRows<{ latest: Date }>(
+          dataSource,
+          `SELECT GREATEST(e.updated_at, p.updated_at) AS latest
+             FROM dive_events e JOIN dive_participations p ON p.dive_event_id = e.id
+            WHERE e.id = $1`,
+          [event.id],
+        );
+        return row?.latest.toISOString() ?? '';
+      };
+
+      await dataSource.manager.update(DiveEvent, { id: event.id }, { weather: 'RAIN' });
+      const afterEvent = await diveLog.findOne(diver.id, event.id);
+      const event2 = await dataSource.manager.findOneByOrFail(DiveEvent, { id: event.id });
+      expect(afterEvent.updatedAt).toBe(event2.updatedAt.toISOString());
+      expect(afterEvent.updatedAt).toBe(await latestOf());
+
+      await dataSource.manager.update(DiveParticipation, { id: participation.id }, { weightKg: 5 });
+      const afterParticipation = await diveLog.findOne(diver.id, event.id);
+      const participation2 = await dataSource.manager.findOneByOrFail(DiveParticipation, {
+        id: participation.id,
+      });
+      expect(afterParticipation.updatedAt).toBe(participation2.updatedAt.toISOString());
+      expect(afterParticipation.updatedAt > afterEvent.updatedAt).toBe(true);
+    });
+
+    it('keeps the list free of the detail fields (D-25)', async () => {
+      const diver = await fixtures.diver();
+      const { event, participation } = await fixtures.dive(diver.id);
+      await fixtures.observation(participation.id, 0, 'Murène');
+      await dataSource.manager.update(DiveEvent, { id: event.id }, { entryType: 'SHORE' });
+
+      const { dives } = await diveLog.findAll(diver.id);
+
+      expect(Object.keys(dives[0] ?? {}).sort()).toStrictEqual(
+        [
+          'buddies',
+          'date',
+          'depthMaxM',
+          'durationMin',
+          'gasMix',
+          'id',
+          'notes',
+          'number',
+          'site',
+          'temperatureC',
+          'utcOffsetMinutes',
+        ].sort(),
+      );
+      expect(Object.keys(dives[0]?.site ?? {}).sort()).toStrictEqual(
+        ['id', 'locality', 'name', 'region'].sort(),
+      );
     });
   });
 

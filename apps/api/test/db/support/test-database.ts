@@ -9,6 +9,7 @@ import { DiveSite } from '../../../src/modules/dive-sites/dive-site.entity';
 import { Diver } from '../../../src/modules/divers/diver.entity';
 import { DiveBuddy } from '../../../src/modules/dives/dive-buddy.entity';
 import { DiveEvent } from '../../../src/modules/dives/dive-event.entity';
+import { DiveObservation } from '../../../src/modules/dives/dive-observation.entity';
 import { DiveParticipation } from '../../../src/modules/dives/dive-participation.entity';
 
 const API_ROOT = join(__dirname, '..', '..', '..');
@@ -24,6 +25,7 @@ export const ENTITIES = [
   DiveEvent,
   DiveParticipation,
   DiveBuddy,
+  DiveObservation,
 ];
 
 /** The dev database from `apps/api/.env` (the docker compose one). */
@@ -54,7 +56,7 @@ const SEEDED_LEVELS = "agency = 'FFESSM' AND code IN ('N1', 'N2', 'N3', 'N4')";
 /** Empties every table and restores the seeded reference data. */
 export async function resetDatabase(dataSource: DataSource): Promise<void> {
   await dataSource.query(
-    'TRUNCATE dive_buddies, dive_participations, dive_events, buddies, dive_sites, divers',
+    'TRUNCATE dive_observations, dive_buddies, dive_participations, dive_events, buddies, dive_sites, divers',
   );
   await dataSource.query(`DELETE FROM certification_levels WHERE NOT (${SEEDED_LEVELS})`);
   await dataSource.query('UPDATE certification_levels SET is_active = true WHERE NOT is_active');

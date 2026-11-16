@@ -2,7 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DataSource, In, IsNull, Not, type EntityManager } from 'typeorm';
 import { upsertOwnedRow } from '../../common/database/owned-upsert';
 import { pullPage } from '../../common/database/sync-pull';
-import { IdentifierConflictError, InvalidReferenceError } from '../../common/errors/domain-errors';
+import {
+  DuplicateObservationError,
+  IdentifierConflictError,
+  InvalidReferenceError,
+  TooManyObservationsError,
+} from '../../common/errors/domain-errors';
 import { assertWithinPurgeHorizon, isStaleRestore } from '../../common/sync/sync-rules';
 import { SYNC_SETTINGS, type SyncSettings } from '../../common/sync/sync-settings';
 import type { PullPage, SyncCursor, SyncWriteResult } from '../../common/sync/sync.types';
@@ -12,11 +17,22 @@ import { DiveSite } from '../dive-sites/dive-site.entity';
 import { Diver } from '../divers/diver.entity';
 import { DiveBuddy } from './dive-buddy.entity';
 import { DiveEvent } from './dive-event.entity';
+import { DiveObservation } from './dive-observation.entity';
 import { DiveParticipation } from './dive-participation.entity';
-import type { Dive, DiveWrite, ParticipationWithBuddies } from './dive.types';
+import type {
+  Dive,
+  DiveObservationValue,
+  DiveObservationWrite,
+  DiveWrite,
+  ParticipationWithBuddies,
+} from './dive.types';
+
+/** Cap of observations per participation (RG-27), also guaranteed by `ck_dive_observations__position`. */
+export const MAX_OBSERVATIONS = 50;
 
 /**
- * A dive is an aggregate written in one block: event + the diver's participation + its dive team.
+ * A dive is an aggregate written in one block: event + the diver's participation + its dive team +
+ * its observations.
  *
  * MVP invariants (enforced here, not in SQL, since sharing will lift them): an event is created by
  * `diverId` and only has `diverId`'s participation; only the creator changes the event, only the
@@ -36,9 +52,11 @@ export class DivesService {
    * - A tombstoned participation of the same `(event, diver)` is restored under its existing id,
    *   never recreated: `current.participation.id` may then differ from the id sent.
    * - A live dive restores its tombstoned site and buddies (D-12 b).
-   * - The dive team is replaced by `buddyIds`.
+   * - The dive team is replaced by `buddyIds`, the observations by `observations` (position = index,
+   *   labels trimmed).
    *
-   * @throws {FullSyncRequiredError} | {IdentifierConflictError} | {InvalidReferenceError}
+   * @throws {FullSyncRequiredError} | {IdentifierConflictError} | {InvalidReferenceError} |
+   *   {DuplicateObservationError} | {TooManyObservationsError}
    */
   async upsertDive(
     diverId: string,
@@ -46,6 +64,7 @@ export class DivesService {
     lastPulledAt: Date,
   ): Promise<SyncWriteResult<Dive>> {
     assertWithinPurgeHorizon(lastPulledAt, new Date(), this.settings.purgeHorizonDays);
+    const observations = normalizeObservations(write.observations);
 
     return await this.dataSource.transaction(async (manager) => {
       const { event, participation } = write;
@@ -85,6 +104,13 @@ export class DivesService {
         siteId: event.siteId,
         startedAt: event.startedAt,
         utcOffsetMinutes: event.utcOffsetMinutes,
+        entryType: event.entryType,
+        timeOfDay: event.timeOfDay,
+        weather: event.weather,
+        airTemperatureC: event.airTemperatureC,
+        seaState: event.seaState,
+        currentStrength: event.currentStrength,
+        diveCenter: event.diveCenter,
         deletedAt: event.deletedAt,
       });
       await upsertOwnedRow(manager, DiveParticipation, 'diverId', {
@@ -100,18 +126,27 @@ export class DivesService {
         hasDecompression: participation.hasDecompression,
         stopsOk: participation.stopsOk,
         notes: participation.notes,
+        surfaceWaterTemperatureC: participation.surfaceWaterTemperatureC,
+        safetyStopDurationMin: participation.safetyStopDurationMin,
+        safetyStopDepthM: participation.safetyStopDepthM,
+        isRepetitive: participation.isRepetitive,
+        o2Percent: participation.o2Percent,
+        tankVolumeL: participation.tankVolumeL,
+        tankMaterial: participation.tankMaterial,
+        startPressureBar: participation.startPressureBar,
+        endPressureBar: participation.endPressureBar,
+        suitType: participation.suitType,
+        suitThicknessMm: participation.suitThicknessMm,
+        weightKg: participation.weightKg,
         deletedAt: participation.deletedAt,
       });
 
       if (event.deletedAt === null && participation.deletedAt === null) {
         await restoreParents(manager, diverId, event.siteId, buddyIds);
       }
-      await replaceDiveTeam(
-        manager,
-        diverId,
-        existingParticipation?.id ?? participation.id,
-        buddyIds,
-      );
+      const participationId = existingParticipation?.id ?? participation.id;
+      await replaceDiveTeam(manager, diverId, participationId, buddyIds);
+      await replaceObservations(manager, participationId, observations);
 
       return { status: 'applied', current: await loadDiveOrFail(manager, diverId, event.id) };
     });
@@ -149,7 +184,10 @@ export class DivesService {
     return pullPage(query, cursor, limit);
   }
 
-  /** Sync pull of the diver's participations with their dive team, tombstones included. */
+  /**
+   * Sync pull of the diver's participations with their dive team and observations, tombstones
+   * included.
+   */
   async pullParticipations(
     diverId: string,
     cursor: SyncCursor | null,
@@ -160,14 +198,14 @@ export class DivesService {
       .createQueryBuilder(DiveParticipation, 'participation')
       .where('participation.diverId = :diverId', { diverId });
     const page = await pullPage(query, cursor, limit);
-    const teams = await loadDiveTeams(
-      manager,
-      page.items.map((item) => item.id),
-    );
+    const participationIds = page.items.map((item) => item.id);
+    const teams = await loadDiveTeams(manager, participationIds);
+    const observations = await loadObservations(manager, participationIds);
     return {
       items: page.items.map((participation) => ({
         participation,
         buddyIds: teams.get(participation.id) ?? [],
+        observations: observations.get(participation.id) ?? [],
       })),
       nextCursor: page.nextCursor,
     };
@@ -282,6 +320,59 @@ async function replaceDiveTeam(
   }
 }
 
+/**
+ * Validates and normalises the observations before anything is written (D-19): labels trimmed, at
+ * most `MAX_OBSERVATIONS`, no label twice (the `UNIQUE` would otherwise end in a driver error).
+ * Case is kept as entered.
+ *
+ * @throws {TooManyObservationsError} | {DuplicateObservationError}
+ */
+export function normalizeObservations(
+  observations: readonly DiveObservationWrite[],
+): DiveObservationValue[] {
+  if (observations.length > MAX_OBSERVATIONS) {
+    throw new TooManyObservationsError();
+  }
+  const normalized = observations.map(({ label, count }) => ({ label: label.trim(), count }));
+  if (new Set(normalized.map(({ label }) => label)).size !== normalized.length) {
+    throw new DuplicateObservationError();
+  }
+  return normalized;
+}
+
+/**
+ * Replaces the observations of the participation as a whole, position = index. Nothing is written
+ * when they are unchanged, so the trigger does not touch the participation needlessly.
+ */
+async function replaceObservations(
+  manager: EntityManager,
+  participationId: string,
+  observations: readonly DiveObservationValue[],
+): Promise<void> {
+  const current = (await loadObservations(manager, [participationId])).get(participationId) ?? [];
+  const unchanged =
+    current.length === observations.length &&
+    current.every((stored, index) => {
+      const next = observations[index];
+      return next !== undefined && stored.label === next.label && stored.count === next.count;
+    });
+  if (unchanged) {
+    return;
+  }
+  await manager.delete(DiveObservation, { participationId });
+  if (observations.length > 0) {
+    await manager.insert(
+      DiveObservation,
+      observations.map(({ label, count }, position) => ({
+        participationId,
+        position,
+        label,
+        count,
+      })),
+    );
+  }
+}
+
 async function loadDiveOrFail(
   manager: EntityManager,
   diverId: string,
@@ -293,7 +384,13 @@ async function loadDiveOrFail(
     diverId,
   });
   const teams = await loadDiveTeams(manager, [participation.id]);
-  return { event, participation, buddyIds: teams.get(participation.id) ?? [] };
+  const observations = await loadObservations(manager, [participation.id]);
+  return {
+    event,
+    participation,
+    buddyIds: teams.get(participation.id) ?? [],
+    observations: observations.get(participation.id) ?? [],
+  };
 }
 
 async function loadDiveTeams(
@@ -312,4 +409,26 @@ async function loadDiveTeams(
     teams.set(line.participationId, [...(teams.get(line.participationId) ?? []), line.buddyId]);
   }
   return teams;
+}
+
+/** Observations of the participations, ordered by position. */
+async function loadObservations(
+  manager: EntityManager,
+  participationIds: readonly string[],
+): Promise<Map<string, DiveObservationValue[]>> {
+  const observations = new Map<string, DiveObservationValue[]>();
+  if (participationIds.length === 0) {
+    return observations;
+  }
+  const lines = await manager.find(DiveObservation, {
+    where: { participationId: In([...participationIds]) },
+    order: { participationId: 'ASC', position: 'ASC' },
+  });
+  for (const { participationId, label, count } of lines) {
+    observations.set(participationId, [
+      ...(observations.get(participationId) ?? []),
+      { label, count },
+    ]);
+  }
+  return observations;
 }

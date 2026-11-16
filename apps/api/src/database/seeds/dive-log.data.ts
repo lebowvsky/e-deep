@@ -6,9 +6,18 @@
  * Differences with the mocks: the region is the display name of the region filter (the 2 Esterel
  * sites read "Agay · Esterel" and "Saint-Raphaël · Esterel"), coordinates are added, avatar colours
  * are not stored. Every dive has `stopsOk: true`, no decompression and no visibility.
+ *
+ * Detail fields (D-13 to D-21): the latest dives carry them (`DETAILS`), the latest one with the
+ * values of the detail mockup; older dives have none. Every site has an area except the Kléber
+ * wreck, whose single dive (2024-09-10, with Yann, who has no level) has no new field at all, to
+ * render a partial detail.
  */
 import type { GasMix } from '../../modules/dives/gas-mix';
-import type { SeedBuddy, SeedDive, SeedSite } from './dev-seed.types';
+import type { LevelCode, SeedBuddy, SeedDive, SeedDiveDetail, SeedSite } from './dev-seed.types';
+
+const MEDITERRANEAN = 'Méditerranée';
+const ATLANTIC = 'Atlantique';
+const CHANNEL = 'Manche';
 
 const site = (
   name: string,
@@ -16,7 +25,8 @@ const site = (
   region: string,
   latitude: number,
   longitude: number,
-): Omit<SeedSite, 'key'> => ({ name, locality, region, latitude, longitude });
+  area: string | null = MEDITERRANEAN,
+): Omit<SeedSite, 'key'> => ({ name, locality, region, area, latitude, longitude });
 
 const SITES = {
   revellata: site('Pointe de la Revellata', 'Calvi', 'Corse', 42.583, 8.725),
@@ -36,12 +46,12 @@ const SITES = {
   fourmigue: site('La Fourmigue', 'Giens', 'Var', 43.038, 6.075),
   capRoux: site('Cap Roux', 'Agay', 'Esterel', 43.453, 6.923),
   lionDeMer: site('Le Lion de Mer', 'Saint-Raphaël', 'Esterel', 43.413, 6.77),
-  amoco: site('Épave de l’Amoco Cadiz', 'Portsall', 'Bretagne', 48.588, -4.72),
-  kleber: site('Épave du Kléber', 'Morgat', 'Bretagne', 48.208, -4.505),
-  pierresNoires: site('Les Pierres Noires', 'Le Conquet', 'Bretagne', 48.308, -4.914),
-  basseJaune: site('La Basse Jaune', 'Glénan', 'Bretagne', 47.72, -3.99),
-  toulinguet: site('Pointe du Toulinguet', 'Camaret', 'Bretagne', 48.28, -4.629),
-  septIles: site('Les Sept-Îles', 'Perros-Guirec', 'Bretagne', 48.88, -3.49),
+  amoco: site('Épave de l’Amoco Cadiz', 'Portsall', 'Bretagne', 48.588, -4.72, CHANNEL),
+  kleber: site('Épave du Kléber', 'Morgat', 'Bretagne', 48.208, -4.505, null),
+  pierresNoires: site('Les Pierres Noires', 'Le Conquet', 'Bretagne', 48.308, -4.914, ATLANTIC),
+  basseJaune: site('La Basse Jaune', 'Glénan', 'Bretagne', 47.72, -3.99, ATLANTIC),
+  toulinguet: site('Pointe du Toulinguet', 'Camaret', 'Bretagne', 48.28, -4.629, ATLANTIC),
+  septIles: site('Les Sept-Îles', 'Perros-Guirec', 'Bretagne', 48.88, -3.49, CHANNEL),
 } as const;
 
 type SiteKey = keyof typeof SITES;
@@ -301,6 +311,164 @@ const ROWS: readonly DiveLogRow[] = [
 /** Accounts of the seed linked to Marine's buddies (the other seeded divers). */
 const LINKED_DIVER_KEYS: Partial<Record<BuddyKey, string>> = { LB: 'lucas', TN: 'thao' };
 
+/**
+ * Levels Marine declares on some contacts (D-21), as in the mockup (Lucas N3, Thao N2). A contact's
+ * level is never read from the linked account (Thao's own account is N1).
+ */
+const BUDDY_LEVELS: Partial<Record<BuddyKey, LevelCode>> = {
+  LB: 'N3',
+  TN: 'N2',
+  EM: 'N2',
+  RP: 'N4',
+  SB: 'N1',
+};
+
+/** Usual kit of Marine in the Mediterranean (shared by most detailed dives). */
+const MED_KIT = {
+  tankVolumeL: 12,
+  tankMaterial: 'STEEL',
+  suitType: 'SEMI_DRY',
+  suitThicknessMm: 7,
+} as const;
+
+/** Detail fields of the latest dives, keyed by their local date (unique in the log). */
+const DETAILS: Readonly<Record<string, SeedDiveDetail>> = {
+  // Latest dive: the values of the detail mockup (no ballast entered).
+  '2026-04-08T10:30:00+02:00': {
+    conditions: {
+      entryType: 'BOAT',
+      timeOfDay: 'DAY',
+      weather: 'SUNNY',
+      airTemperatureC: 19,
+      seaState: 'CALM',
+      currentStrength: 'WEAK',
+      diveCenter: 'Calvi Plongée',
+    },
+    participation: {
+      ...MED_KIT,
+      surfaceWaterTemperatureC: 16,
+      safetyStopDurationMin: 3,
+      safetyStopDepthM: 5,
+      isRepetitive: false,
+      startPressureBar: 200,
+      endPressureBar: 60,
+    },
+    observations: [
+      { label: 'Mérou brun', count: 2 },
+      { label: 'Barracudas', count: null },
+      { label: 'Gorgones rouges', count: null },
+      { label: 'Corb', count: null },
+      { label: 'Murène', count: null },
+    ],
+  },
+  '2026-04-07T14:30:00+02:00': {
+    conditions: {
+      entryType: 'BOAT',
+      timeOfDay: 'DAY',
+      weather: 'CLOUDY',
+      airTemperatureC: 17.5,
+      seaState: 'SLIGHT',
+      currentStrength: 'NONE',
+      diveCenter: 'Calvi Plongée',
+    },
+    participation: {
+      ...MED_KIT,
+      surfaceWaterTemperatureC: 15.5,
+      safetyStopDurationMin: 3,
+      safetyStopDepthM: 5,
+      isRepetitive: false,
+      startPressureBar: 210,
+      endPressureBar: 70,
+      weightKg: 6,
+    },
+    observations: [
+      { label: 'Langouste', count: 3 },
+      { label: 'Castagnoles', count: null },
+    ],
+  },
+  // Only part of the fields: conditions without structure, no tank pressures.
+  '2026-04-06T10:00:00+02:00': {
+    conditions: { entryType: 'BOAT', weather: 'OVERCAST', seaState: 'MODERATE' },
+    participation: { surfaceWaterTemperatureC: 15, isRepetitive: false, ...MED_KIT },
+  },
+  // Second dive of the day after a morning dive: repetitive, from the shore.
+  '2026-04-05T15:00:00+02:00': {
+    conditions: {
+      entryType: 'SHORE',
+      timeOfDay: 'DAY',
+      weather: 'SUNNY',
+      airTemperatureC: 21,
+      seaState: 'CALM',
+      currentStrength: 'NONE',
+      diveCenter: null,
+    },
+    participation: {
+      surfaceWaterTemperatureC: 16,
+      safetyStopDurationMin: 3,
+      safetyStopDepthM: 5,
+      isRepetitive: true,
+      tankVolumeL: 15,
+      tankMaterial: 'ALUMINIUM',
+      startPressureBar: 200,
+      endPressureBar: 90,
+      suitType: 'WET',
+      suitThicknessMm: 5,
+      weightKg: 4,
+    },
+    observations: [{ label: 'Poulpe', count: 1 }],
+  },
+  '2026-03-22T09:30:00+01:00': {
+    conditions: {
+      entryType: 'BOAT',
+      timeOfDay: 'DAY',
+      weather: 'RAIN',
+      airTemperatureC: 12,
+      seaState: 'ROUGH',
+      currentStrength: 'STRONG',
+      diveCenter: 'Club de Plongée de Riou',
+    },
+    participation: {
+      ...MED_KIT,
+      surfaceWaterTemperatureC: 13,
+      safetyStopDurationMin: 5,
+      safetyStopDepthM: 3,
+      isRepetitive: false,
+      startPressureBar: 230,
+      endPressureBar: 50,
+      suitType: 'DRY',
+      suitThicknessMm: null,
+      weightKg: 10,
+    },
+  },
+  // Nitrox dive, weather not entered.
+  '2026-03-08T10:00:00+01:00': {
+    conditions: {
+      entryType: 'BOAT',
+      timeOfDay: 'DAY',
+      weather: null,
+      airTemperatureC: 9.5,
+      seaState: 'CALM',
+      currentStrength: 'WEAK',
+      diveCenter: 'Hyères Plongée',
+    },
+    participation: {
+      ...MED_KIT,
+      surfaceWaterTemperatureC: 13.5,
+      safetyStopDurationMin: 3,
+      safetyStopDepthM: 5,
+      isRepetitive: false,
+      startPressureBar: 200,
+      endPressureBar: 80,
+      weightKg: 8,
+    },
+    observations: [
+      { label: 'Seiche', count: 2 },
+      { label: 'Rascasse', count: null },
+      { label: 'Spirographe', count: 12 },
+    ],
+  },
+};
+
 export const DIVE_LOG_SITES: readonly SeedSite[] = Object.entries(SITES).map(([key, value]) => ({
   key,
   ...value,
@@ -310,21 +478,31 @@ export const DIVE_LOG_BUDDIES: readonly SeedBuddy[] = (
   Object.entries(BUDDIES) as [BuddyKey, (typeof BUDDIES)[BuddyKey]][]
 ).map(([key, value]) => {
   const linkedDiverKey = LINKED_DIVER_KEYS[key];
-  return { key, ...value, ...(linkedDiverKey === undefined ? {} : { linkedDiverKey }) };
+  const levelCode = BUDDY_LEVELS[key];
+  return {
+    key,
+    ...value,
+    ...(linkedDiverKey === undefined ? {} : { linkedDiverKey }),
+    ...(levelCode === undefined ? {} : { levelCode }),
+  };
 });
 
 export const DIVE_LOG_DIVES: readonly SeedDive[] = ROWS.map(
-  ([date, siteKey, maxDepthM, durationMin, waterTemperatureC, gasMix, team, notes]) => ({
-    date,
-    siteKey,
-    maxDepthM,
-    durationMin,
-    waterTemperatureC,
-    visibilityM: null,
-    gasMix,
-    hasDecompression: false,
-    stopsOk: true,
-    notes: notes ?? null,
-    buddyKeys: team,
-  }),
+  ([date, siteKey, maxDepthM, durationMin, waterTemperatureC, gasMix, team, notes]) => {
+    const detail = DETAILS[date];
+    return {
+      date,
+      siteKey,
+      maxDepthM,
+      durationMin,
+      waterTemperatureC,
+      visibilityM: null,
+      gasMix,
+      hasDecompression: false,
+      stopsOk: true,
+      notes: notes ?? null,
+      buddyKeys: team,
+      ...(detail === undefined ? {} : { detail }),
+    };
+  },
 );

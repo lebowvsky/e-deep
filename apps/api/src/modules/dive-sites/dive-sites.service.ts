@@ -14,12 +14,17 @@ import type {
 import { DiveEvent } from '../dives/dive-event.entity';
 import { DiveSite } from './dive-site.entity';
 
+/**
+ * Every field is required, `null` included (D-22): the LWW upsert writes the whole record, so an
+ * omitted field would erase the stored value.
+ */
 export interface DiveSiteWrite extends SyncedWrite {
   readonly id: string;
   readonly name: string;
-  /** Omitted → `null`. */
-  readonly locality?: string | null;
+  readonly locality: string | null;
   readonly region: string;
+  /** Sea or area (e.g. `Méditerranée`, D-20). */
+  readonly area: string | null;
   readonly latitude: number;
   readonly longitude: number;
 }
@@ -63,8 +68,9 @@ export class DiveSitesService {
         id: write.id,
         ownerId,
         name: write.name,
-        locality: write.locality ?? null,
+        locality: write.locality,
         region: write.region,
+        area: write.area,
         latitude: write.latitude,
         longitude: write.longitude,
         deletedAt: write.deletedAt,

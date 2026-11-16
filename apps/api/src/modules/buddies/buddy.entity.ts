@@ -10,6 +10,7 @@ import {
   type Relation,
 } from 'typeorm';
 import { SyncedEntity } from '../../common/database/timestamped.entity';
+import { CertificationLevel } from '../certification-levels/certification-level.entity';
 import { Diver } from '../divers/diver.entity';
 
 /**
@@ -57,4 +58,20 @@ export class Buddy extends SyncedEntity {
     foreignKeyConstraintName: 'fk_buddies__linked_diver_id',
   })
   linkedDiver?: Relation<Diver> | null;
+
+  /**
+   * Current level of the contact, declared by its owner (D-21, RG-28); a deactivated level is
+   * admitted. Never read from the linked account: linking a contact shares nothing (RG-10).
+   * Third-party personal data.
+   */
+  @Column({ type: 'uuid', name: 'certification_level_id', nullable: true })
+  certificationLevelId: string | null;
+
+  // Deliberately not indexed: levels are never deleted.
+  @ManyToOne(() => CertificationLevel, { onDelete: 'RESTRICT', nullable: true })
+  @JoinColumn({
+    name: 'certification_level_id',
+    foreignKeyConstraintName: 'fk_buddies__certification_level_id',
+  })
+  certificationLevel?: Relation<CertificationLevel> | null;
 }

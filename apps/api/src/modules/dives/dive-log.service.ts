@@ -5,8 +5,11 @@ import { queryRows } from '../../common/database/query-rows';
 import {
   groupDiveTeams,
   toDiveDetail,
+  toDiveDetailBuddies,
   toDiveSummary,
   type DiveDetailRow,
+  type DiveDetailTeamRow,
+  type DiveObservationRow,
   type DiveSummaryRow,
   type DiveTeamRow,
 } from './dive-contract.mapper';
@@ -51,9 +54,26 @@ const SUMMARY_COLUMNS = `
   n.max_depth_m, n.duration_min, n.water_temperature_c, n.gas_mix, n.notes,
   s.id AS site_id, s.name AS site_name, s.locality AS site_locality, s.region AS site_region`;
 
+/**
+ * The detail joins the event and the participation again (by primary key) for the columns the list
+ * does not need, so `NUMBERED_LIVE_DIVES`, shared with the list, keeps its weight (D-25). `l` is the
+ * diver's level snapshot (D-09).
+ */
+const DETAIL_JOINS = `
+  JOIN dive_events de ON de.id = n.id
+  JOIN dive_participations dp ON dp.id = n.participation_id
+  JOIN certification_levels l ON l.id = dp.certification_level_id`;
+
 const DETAIL_COLUMNS = `${SUMMARY_COLUMNS},
   n.visibility_m, n.has_decompression, n.stops_ok,
-  s.latitude AS site_latitude, s.longitude AS site_longitude`;
+  s.latitude AS site_latitude, s.longitude AS site_longitude, s.area AS site_area,
+  l.agency AS level_agency, l.code AS level_code, l.label AS level_label,
+  de.entry_type, de.time_of_day, de.weather, de.air_temperature_c, de.sea_state,
+  de.current_strength, de.dive_center,
+  dp.surface_water_temperature_c, dp.safety_stop_duration_min, dp.safety_stop_depth_m,
+  dp.is_repetitive, dp.o2_percent, dp.tank_volume_l, dp.tank_material, dp.start_pressure_bar,
+  dp.end_pressure_bar, dp.suit_type, dp.suit_thickness_mm, dp.weight_kg,
+  dp.created_at, GREATEST(de.updated_at, dp.updated_at) AS updated_at`;
 
 /**
  * Read model of the diver's dive log, separate from the synchronisation (`DivesService`). Every
@@ -89,7 +109,8 @@ export class DiveLogService {
   }
 
   /**
-   * A live dive of the diver, by event id.
+   * A live dive of the diver, by event id, with every field of the event, the participation and
+   * the site, the level of each buddy and the observations (three queries, one snapshot).
    *
    * @throws {NotFoundException} when the dive does not exist, is deleted or belongs to another
    *   diver: the three cases are indistinguishable on purpose.
@@ -102,14 +123,34 @@ export class DiveLogService {
          SELECT ${DETAIL_COLUMNS}
            FROM numbered n
            ${SITE_JOIN}
+           ${DETAIL_JOINS}
           WHERE n.id = $2`,
         [diverId, eventId],
       );
       if (row === undefined) {
         throw new NotFoundException('Dive not found');
       }
-      const teams = await loadDiveTeams(manager, diverId, [row.participation_id]);
-      return toDiveDetail(row, teams.get(row.participation_id) ?? []);
+      const team = await queryRows<DiveDetailTeamRow>(
+        manager,
+        `SELECT db.participation_id, b.id, b.first_name, b.last_name,
+                l.agency AS level_agency, l.code AS level_code, l.label AS level_label
+           FROM dive_buddies db
+           JOIN buddies b ON b.owner_id = db.owner_id AND b.id = db.buddy_id
+           LEFT JOIN certification_levels l ON l.id = b.certification_level_id
+          WHERE db.owner_id = $1 AND db.participation_id = $2 AND b.deleted_at IS NULL
+          ORDER BY b.id`,
+        [diverId, row.participation_id],
+      );
+      // The participation was checked as the diver's by the first query.
+      const observations = await queryRows<DiveObservationRow>(
+        manager,
+        `SELECT position, label, count
+           FROM dive_observations
+          WHERE participation_id = $1
+          ORDER BY position`,
+        [row.participation_id],
+      );
+      return toDiveDetail(row, toDiveDetailBuddies(team), observations);
     });
   }
 }
