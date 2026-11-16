@@ -32,6 +32,8 @@ export interface LoggedDive {
   number: number;
   /** Local time of the dive, ISO 8601 with its own offset. */
   date: string;
+  /** Offset of the dive's local time, in minutes (D-10): the times shown are the dive's own. */
+  utcOffsetMinutes: number;
   site: DiveSiteRef;
   /** The whole dive team, the user included (`isSelf`). */
   team: DiveMember[];
@@ -151,3 +153,56 @@ export type DivesState =
       /** Size of the selection a query would give (live counter of the filters sheet). */
       count: (query: DivesQuery) => number;
     } & DivesSelection);
+
+// ── Dive detail (`/dives/:diveId`) ────────────────────────────────────────────────────────────
+
+/** WGS84 coordinates of a site, in degrees. */
+export interface GeoPoint {
+  latitude: number;
+  longitude: number;
+}
+
+/** A logged dive with every field of the participation (`GET /dives/:id`). */
+export interface DiveDetailView extends LoggedDive {
+  site: DiveSiteRef & GeoPoint;
+  /** `null` when not entered. */
+  visibilityM: number | null;
+  hadDecompression: boolean;
+  /** Stops done as planned (entry required, D-11). */
+  stopsOk: boolean;
+}
+
+/** The dive just before or after in the log, for paging. */
+export interface DiveNeighbour {
+  id: string;
+  number: number;
+  siteName: string;
+}
+
+/** What the rest of the log says about a dive. Needs the whole log (`GET /dives`). */
+export interface DiveLogInsights {
+  /** Chronological neighbours (logbook numbers); `null` at either end of the log. */
+  previous: DiveNeighbour | null;
+  next: DiveNeighbour | null;
+  /** The deepest dive of the log (ties included). */
+  isPersonalBest: boolean;
+  /** The user's dives on the same site, this one included. */
+  site: { diveCount: number; maxDepthM: number };
+  /** Dives shared with each other member of the team, by member id (this one included). */
+  sharedDives: ReadonlyMap<string, number>;
+}
+
+/** Previous / next dives of the pagers. */
+export type DiveNeighbours = Pick<DiveLogInsights, 'previous' | 'next'>;
+
+export type DiveDetailState =
+  /**
+   * `preview`: the dive as the cached log already knows it, to show the header at once;
+   * `neighbours`: its previous / next dives, so that the pagers stay in place while paging.
+   */
+  | { status: 'loading'; preview: LoggedDive | null; neighbours: DiveNeighbours | null }
+  /** Unknown id, another diver's dive or a malformed id: one neutral message for all. */
+  | { status: 'not-found' }
+  | { status: 'error'; retry: () => void }
+  /** `insights` is `null` while the log loads, or when it failed: the page stays usable. */
+  | { status: 'ready'; dive: DiveDetailView; insights: DiveLogInsights | null };

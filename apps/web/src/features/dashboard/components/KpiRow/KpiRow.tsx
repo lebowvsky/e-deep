@@ -6,7 +6,7 @@ import {
 } from '@/shared/lib/format';
 import { cumulative } from '../../lib/sparkline';
 import type { DashboardStats, DiveSite } from '../../types';
-import { KpiCard } from '../KpiCard';
+import { KpiCard } from '@/shared/ui/KpiCard';
 import { Sparkline } from '../Sparkline';
 import styles from './KpiRow.module.scss';
 

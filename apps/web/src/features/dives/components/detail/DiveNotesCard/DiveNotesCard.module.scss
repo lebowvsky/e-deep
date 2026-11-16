@@ -1,0 +1,23 @@
+@use '@/styles/tokens' as *;
+
+// dive-detail.jsx · NotesCard: 14 (phones) / 15 textMed, max 680px wide.
+.text {
+  @include type($type-body-loose);
+
+  max-width: $layout-notes-max-width;
+  margin: 0;
+  color: $color-text-med;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+
+  @include from($bp-tablet) {
+    @include type($type-body-lg);
+  }
+}
+
+.missing {
+  @include type($type-body);
+
+  margin: 0;
+  color: $color-text-muted;
+}

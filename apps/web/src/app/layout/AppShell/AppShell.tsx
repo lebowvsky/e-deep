@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Outlet, useLocation } from 'react-router';
+import { Outlet, useLocation, useMatch } from 'react-router';
 import { breakpoint } from '@/design/tokens';
 import type { User } from '@/features/dashboard/types';
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
@@ -27,6 +27,8 @@ export function AppShell({ user }: AppShellProps) {
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   const previousPath = useRef(pathname);
+  // A dive detail (and « Nouvelle plongée », which the FAB opens) has no FAB (detail-plongee.md).
+  const onDivePage = useMatch('/dives/:diveId') !== null;
 
   // Client-side navigation: move focus to the new content so screen readers announce it.
   useEffect(() => {
@@ -65,7 +67,7 @@ export function AppShell({ user }: AppShellProps) {
       >
         <Outlet />
       </main>
-      {!isTabletUp && <Fab inert={behindDrawer} />}
+      {!isTabletUp && !onDivePage && <Fab inert={behindDrawer} />}
     </div>
   );
 }

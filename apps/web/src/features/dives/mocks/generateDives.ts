@@ -424,11 +424,20 @@ const toTeam = (keys: readonly BuddyKey[]): DiveMember[] => [
   ...keys.map((key) => BUDDIES[key]),
 ];
 
+/** "2026-04-08T10:30:00+02:00" → 120 · "…-04:30" → -270 */
+export function isoOffsetMinutes(iso: string): number {
+  const match = /([+-])(\d{2}):(\d{2})$/.exec(iso);
+  if (!match) return 0;
+  const [, sign, hours = '0', minutes = '0'] = match;
+  return (sign === '-' ? -1 : 1) * (Number(hours) * 60 + Number(minutes));
+}
+
 function fixedDive(dive: FixedDive): LoggedDive {
   return {
     id: `d${dive.number}`,
     number: dive.number,
     date: dive.date,
+    utcOffsetMinutes: isoOffsetMinutes(dive.date),
     site: toSiteRef(SITES[dive.site]),
     team: toTeam(dive.team),
     depthMaxM: dive.depth,
@@ -479,10 +488,12 @@ export function generateDives(): LoggedDive[] {
 
   const generated = drafts.map((draft, index): LoggedDive => {
     const number = index + 1;
+    const date = toIso(draft.slot);
     return {
       id: `d${number}`,
       number,
-      date: toIso(draft.slot),
+      date,
+      utcOffsetMinutes: isoOffsetMinutes(date),
       site: toSiteRef(draft.site),
       team: toTeam(draft.team),
       depthMaxM: draft.depth,

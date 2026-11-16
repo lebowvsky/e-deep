@@ -8,6 +8,7 @@ import type {
   DivesQuery,
   DivesSort,
   DivesState,
+  DiveDetailState,
   GasFamily,
 } from '../types';
 
@@ -39,6 +40,30 @@ export function gasMixShort(gasMix: GasMix): string {
 /** Screen readers: « Nitrox 32 ». */
 export function gasMixSpoken(gasMix: GasMix): string {
   return GAS_MIX_SPOKEN[gasMix];
+}
+
+/** Oxygen fraction of each mix (%); unknown for `OTHER`, whose mix is not entered. */
+const GAS_MIX_OXYGEN: Record<GasMix, number | null> = {
+  AIR: 21,
+  NITROX32: 32,
+  NITROX36: 36,
+  OTHER: null,
+};
+
+/** « 21 % O₂ », or `null` when the fraction is unknown. */
+export function oxygenLabel(gasMix: GasMix): string | null {
+  const percent = GAS_MIX_OXYGEN[gasMix];
+  return percent === null ? null : `${percent} % O₂`;
+}
+
+/** Dive run « Paliers »: « Respectés » / « À vérifier » (the header badge says « Palier OK »). */
+export function stopsLabel(stopsOk: boolean): string {
+  return stopsOk ? 'Respectés' : 'À vérifier';
+}
+
+/** « Oui » / « Non » for the decompression stops. */
+export function decompressionLabel(hadDecompression: boolean): string {
+  return hadDecompression ? 'Oui' : 'Non';
 }
 
 export const SORT_OPTIONS: { value: DivesSort; label: string }[] = [
@@ -133,4 +158,33 @@ export function stateAnnouncement(state: DivesState): string {
     case 'ready':
       return `${formatDiveCount(state.total)} dans la sélection`;
   }
+}
+
+export const DIVE_NOT_FOUND_MESSAGE = 'Cette plongée n’existe pas ou a été supprimée.';
+export const DIVE_LOAD_ERROR_MESSAGE = 'Impossible de charger cette plongée pour l’instant.';
+/** Neutral: the cause may be the network, the server or an unexpected answer. */
+export const DIVE_LOAD_ERROR_HINT = 'Réessaie dans un instant.';
+
+/** What the detail page live region says for each state (never the id from the URL). */
+export function diveDetailAnnouncement(state: DiveDetailState): string {
+  switch (state.status) {
+    case 'loading':
+      return 'Chargement de la plongée';
+    case 'not-found':
+      return DIVE_NOT_FOUND_MESSAGE;
+    case 'error':
+      return DIVE_LOAD_ERROR_MESSAGE;
+    case 'ready':
+      return `Plongée n° ${state.dive.number}, ${state.dive.site.name}`;
+  }
+}
+
+/** « 1 plongée ensemble » · « 24 plongées ensemble » */
+export function sharedDivesLabel(count: number): string {
+  return `${formatDiveCount(count)} ensemble`;
+}
+
+/** « 1 plongeur » · « 3 plongeurs » */
+export function teamSizeLabel(count: number): string {
+  return `${count} ${count > 1 ? 'plongeurs' : 'plongeur'}`;
 }

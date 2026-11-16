@@ -42,6 +42,34 @@
   }
 }
 
+// dive-detail.jsx · Cell / SiteCard — mono 16/500, unit mono 11 (rounded to the measure scale).
+.fact {
+  .value {
+    @include type($type-measure, $font: $font-mono, $tabular: true);
+  }
+
+  .unit {
+    @include type($type-caption-sm, $font: $font-mono);
+  }
+}
+
+// dive-detail.jsx · RunCard — mono 18/600 on phones, 22/600 above; unit mono 12.
+.run {
+  .value {
+    @include type($type-metric-sm, $font: $font-mono, $tabular: true);
+  }
+
+  .unit {
+    @include type($type-unit-sm, $font: $font-mono);
+  }
+
+  @include from($bp-tablet) {
+    .value {
+      @include type($type-run-time, $font: $font-mono, $tabular: true);
+    }
+  }
+}
+
 .srOnly {
   @include visually-hidden;
 }

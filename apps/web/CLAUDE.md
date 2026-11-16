@@ -35,10 +35,11 @@ CSS-in-JS, pas de lib de composants UI.
 
 - Un composant par dossier : `<Name>/<Name>.tsx` + `<Name>.module.scss` + `index.ts`, placé selon
   sa portée :
-  - primitives UI (Button, Card, Overline, Icon, Badge, Avatar, Skeleton) → `src/shared/ui/<Name>/` ;
+  - primitives UI (Button, Card, Overline, Icon, Badge, Avatar, Skeleton, KpiCard, Measure,
+    MapBackdrop) → `src/shared/ui/<Name>/` ;
   - layout applicatif (AppShell, Sidebar, NavItem, UserCard, TopBar, Drawer, Fab) →
     `src/app/layout/<Name>/` ;
-  - dashboard (KpiCard, SiteMap, LastDiveCard…) → `src/features/dashboard/components/<Name>/`,
+  - dashboard (KpiRow, SiteMap, LastDiveCard…) → `src/features/dashboard/components/<Name>/`,
     hook `src/features/dashboard/hooks/useDashboard.ts`, page `src/app/routes/DashboardPage.tsx`.
 - Une feature n'importe jamais une autre feature ; ce qui est partagé remonte dans `src/shared/`.
 - Composants fonctionnels, props typées par `interface <Name>Props`, exports nommés. Pas de

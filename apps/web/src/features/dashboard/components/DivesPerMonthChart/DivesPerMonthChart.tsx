@@ -3,7 +3,7 @@ import { cx } from '@/shared/lib/classNames';
 import { formatDiveCount, formatMonthInitial } from '@/shared/lib/format';
 import { Overline } from '@/shared/ui/Overline';
 import type { DashboardStats } from '../../types';
-import { ResponsiveText } from '../ResponsiveText';
+import { ResponsiveText } from '@/shared/ui/ResponsiveText';
 import styles from './DivesPerMonthChart.module.scss';
 
 export interface DivesPerMonthChartProps {

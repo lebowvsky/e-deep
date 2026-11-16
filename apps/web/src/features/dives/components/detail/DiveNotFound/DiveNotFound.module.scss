@@ -1,0 +1,20 @@
+@use '@/styles/tokens' as *;
+
+// Same card as the error state (DivesError).
+.card {
+  display: flex;
+  max-width: $layout-empty-text-max;
+  flex-direction: column;
+  gap: $space-3;
+  align-items: flex-start;
+}
+
+.message {
+  @include type($type-body-lg);
+
+  margin: 0;
+}
+
+.back {
+  margin-top: $space-2;
+}

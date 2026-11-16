@@ -1,0 +1,31 @@
+@use '@/styles/tokens' as *;
+
+// 2 × 2 tiles on phones and tablets, 4 equal columns from 1280px (as the dashboard KPI row).
+.kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3; // mockup 10px on phones, rounded to the 4px scale
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  > * {
+    flex: 1 1 calc(50% - #{$space-3});
+  }
+
+  @include from($bp-tablet) {
+    gap: $space-4;
+
+    > * {
+      flex-basis: calc(50% - #{$space-4});
+    }
+  }
+
+  @include from($bp-large) {
+    flex-wrap: nowrap;
+
+    > * {
+      flex-basis: 0;
+    }
+  }
+}

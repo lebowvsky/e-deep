@@ -1,0 +1,52 @@
+@use '@/styles/tokens' as *;
+
+// dive-detail.jsx · RunCard.
+.times {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: $space-3;
+  margin: 0;
+}
+
+.time {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.duration {
+  align-items: center;
+}
+
+.exit {
+  align-items: flex-end;
+}
+
+.term {
+  @include type($type-caption);
+
+  font-weight: 400;
+  color: $color-text-low;
+}
+
+.value {
+  margin: 0;
+}
+
+// Whole duration as one track: no stop segment, its length is not in the data.
+.bar {
+  height: $layout-run-bar-height;
+  border-radius: $radius-pill;
+  background: $color-track-fill;
+  box-shadow: inset 0 0 0 1px $color-line;
+}
+
+.facts {
+  padding-top: $space-4;
+  border-top: 1px solid $color-line;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

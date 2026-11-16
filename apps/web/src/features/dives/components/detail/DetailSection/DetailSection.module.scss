@@ -1,0 +1,32 @@
+@use '@/styles/tokens' as *;
+
+// dive-detail.jsx · Card (pad 16 compact / 24) + CardHead (margin-bottom 16).
+.section {
+  @include card(1);
+
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-4;
+
+  @include from($bp-tablet) {
+    padding: $space-6;
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+}
+
+.title {
+  @include overline;
+
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  margin: 0;
+}

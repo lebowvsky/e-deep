@@ -1,0 +1,52 @@
+@use '@/styles/tokens' as *;
+
+// dive-detail.jsx · breadcrumb + prev/next (desktop) / top bar back link (mobile).
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+}
+
+.crumbs {
+  @include type($type-body-sm);
+
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: 0;
+  margin: 0;
+  font-weight: 400;
+  color: $color-text-low;
+  list-style: none;
+}
+
+.back {
+  @include focus-ring;
+  @include hit-target;
+
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  color: $color-text-med;
+  text-decoration: none;
+  border-radius: $radius-sm;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+.current {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+
+  &::before {
+    content: '/';
+    color: $color-text-muted;
+  }
+}

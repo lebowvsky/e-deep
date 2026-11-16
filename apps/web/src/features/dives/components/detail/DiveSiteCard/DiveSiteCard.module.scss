@@ -1,0 +1,30 @@
+@use '@/styles/tokens' as *;
+
+// dive-detail.jsx · SiteCard.
+.identity {
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  @include type($type-h-3);
+
+  margin: 0;
+}
+
+.place {
+  @include type($type-caption);
+
+  margin: 0;
+  font-weight: 400;
+  color: $color-text-low;
+}
+
+// Two figures side by side, not stretched over the whole card.
+.stats > * {
+  flex-grow: 0;
+}
+
+.stats {
+  gap: $space-6;
+}
