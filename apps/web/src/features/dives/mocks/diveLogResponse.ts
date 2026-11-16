@@ -13,7 +13,7 @@ function toDiveSummary(dive: LoggedDive): DiveSummary {
     id: dive.id,
     number: dive.number,
     date: dive.date,
-    utcOffsetMinutes: Number(dive.date.slice(-6, -3)) * 60,
+    utcOffsetMinutes: dive.utcOffsetMinutes,
     site: {
       id: dive.site.id,
       name: dive.site.name,

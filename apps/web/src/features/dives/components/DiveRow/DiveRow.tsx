@@ -1,9 +1,9 @@
-import { Link } from 'react-router';
 import { formatDiveDayMonth, formatWeekdayShort } from '@/shared/lib/format';
 import { Icon } from '@/shared/ui/Icon';
 import { gasMixShort, gasMixSpoken } from '../../lib/labels';
 import type { LoggedDive } from '../../types';
 import { DepthBar } from '../DepthBar';
+import { DiveLink } from '../DiveLink';
 import { Palanquee } from '../Palanquee';
 import { Quantity } from '../Quantity';
 import styles from './DiveRow.module.scss';
@@ -32,11 +32,11 @@ export function DiveRow({ dive, isPeak }: DiveRowProps) {
         </time>
       </td>
       <td className={styles.site}>
-        <Link to={`/dives/${dive.id}`} className={styles.link}>
+        <DiveLink diveId={dive.id} className={styles.link}>
           {dive.site.name}
           {/* Same site, several dives: the number makes each link unique (WCAG 2.4.4). */}
           <span className={styles.srOnly}>, plongée n° {dive.number}</span>
-        </Link>
+        </DiveLink>
         <span className={styles.place}>{dive.site.place}</span>
       </td>
       <td>

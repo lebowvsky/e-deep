@@ -2,6 +2,7 @@ import { Navigate, type RouteObject } from 'react-router';
 import { mockUser } from '@/features/dashboard/mocks/dashboard';
 import { AppShell } from './layout/AppShell';
 import { DashboardPage } from './routes/DashboardPage';
+import { DiveDetailPage } from './routes/DiveDetailPage';
 import { DivesPage } from './routes/DivesPage';
 import { HomePage } from './routes/HomePage';
 import { PlaceholderPage } from './routes/PlaceholderPage';
@@ -32,7 +33,7 @@ export const routes: RouteObject[] = [
       { path: '/dashboard', element: <DashboardPage /> },
       { path: '/dives', element: <DivesPage /> },
       placeholder('/dives/new', 'Nouvelle plongée'),
-      placeholder('/dives/:diveId', 'Détail de la plongée'),
+      { path: '/dives/:diveId', element: <DiveDetailPage /> },
       placeholder('/map', 'Carte'),
       placeholder('/stats', 'Statistiques'),
       placeholder('/buddies', 'Binômes'),

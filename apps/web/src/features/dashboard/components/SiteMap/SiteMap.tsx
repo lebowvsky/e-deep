@@ -6,7 +6,7 @@ import { Overline } from '@/shared/ui/Overline';
 import { TextLink } from '@/shared/ui/TextLink';
 import { projectToMap } from '../../lib/mapProjection';
 import type { DiveSite } from '../../types';
-import { MapBackdrop } from '../MapBackdrop';
+import { MapBackdrop } from '@/shared/ui/MapBackdrop';
 import styles from './SiteMap.module.scss';
 
 const MAP_PERIODS = ['1M', '3M', '1A', 'Tout'] as const;

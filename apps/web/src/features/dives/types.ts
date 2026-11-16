@@ -32,6 +32,8 @@ export interface LoggedDive {
   number: number;
   /** Local time of the dive, ISO 8601 with its own offset. */
   date: string;
+  /** Offset of the dive's local time, in minutes (D-10): the times shown are the dive's own. */
+  utcOffsetMinutes: number;
   site: DiveSiteRef;
   /** The whole dive team, the user included (`isSelf`). */
   team: DiveMember[];
@@ -162,8 +164,6 @@ export interface GeoPoint {
 
 /** A logged dive with every field of the participation (`GET /dives/:id`). */
 export interface DiveDetailView extends LoggedDive {
-  /** Offset of the dive's local time, in minutes (D-10): the times shown are the dive's own. */
-  utcOffsetMinutes: number;
   site: DiveSiteRef & GeoPoint;
   /** `null` when not entered. */
   visibilityM: number | null;

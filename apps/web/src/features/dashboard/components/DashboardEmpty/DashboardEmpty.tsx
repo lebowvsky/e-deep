@@ -3,8 +3,8 @@ import { ButtonLink } from '@/shared/ui/Button';
 import { Icon } from '@/shared/ui/Icon';
 import { Overline } from '@/shared/ui/Overline';
 import type { User } from '../../types';
-import { KpiCard } from '../KpiCard';
-import { MapBackdrop } from '../MapBackdrop';
+import { KpiCard } from '@/shared/ui/KpiCard';
+import { MapBackdrop } from '@/shared/ui/MapBackdrop';
 import styles from './DashboardEmpty.module.scss';
 
 export interface DashboardEmptyProps {

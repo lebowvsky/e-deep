@@ -5,7 +5,8 @@ import styles from './KpiCard.module.scss';
 
 export interface KpiCardProps extends Omit<MeasureProps, 'size' | 'className'> {
   label: ResponsiveLabel;
-  caption: ResponsiveLabel;
+  /** Omitted when there is nothing true to say (no invented caption). */
+  caption?: ResponsiveLabel | undefined;
   /** Decorative trend (Sparkline), shown from 768px. */
   trend?: ReactNode;
 }
@@ -19,9 +20,11 @@ export function KpiCard({ label, caption, trend, ...measure }: KpiCardProps) {
       </span>
       <div className={styles.body}>
         <Measure size="kpi" {...measure} />
-        <p className={styles.caption}>
-          <ResponsiveText text={caption} />
-        </p>
+        {caption !== undefined && (
+          <p className={styles.caption}>
+            <ResponsiveText text={caption} />
+          </p>
+        )}
       </div>
       {trend}
     </li>

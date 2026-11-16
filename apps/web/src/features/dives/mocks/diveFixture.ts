@@ -11,6 +11,7 @@ export function makeDive(overrides: Partial<LoggedDive> & Pick<LoggedDive, 'numb
   return {
     id: `d${overrides.number}`,
     date: '2025-07-14T10:00:00+02:00',
+    utcOffsetMinutes: 120,
     site: {
       id: 's01',
       name: 'Pointe de la Revellata',

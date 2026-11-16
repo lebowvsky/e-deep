@@ -7,8 +7,8 @@ export interface QuantityProps {
   unit?: string | undefined;
   /** Spoken form, value and unit together: « 42 mètres » (design/README.md § 6). */
   srText: string;
-  /** summary: summary band · cell: table cell */
-  size: 'summary' | 'cell';
+  /** summary: summary band · cell: table cell · fact: detail value · run: dive run times */
+  size: 'summary' | 'cell' | 'fact' | 'run';
   /** muted: secondary value (temperature) · empty: placeholder (« — ») */
   tone?: 'default' | 'muted' | 'empty';
   className?: string | undefined;

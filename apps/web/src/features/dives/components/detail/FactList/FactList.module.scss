@@ -1,0 +1,68 @@
+@use '@/styles/tokens' as *;
+
+.list {
+  display: flex;
+  margin: 0;
+}
+
+.term {
+  @include type($type-caption);
+
+  font-weight: 400;
+  color: $color-text-low;
+}
+
+.value {
+  @include type($type-body-med);
+
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  margin: 0;
+  color: $color-text-high;
+}
+
+.note {
+  @include type($type-caption-sm);
+
+  color: $color-text-low;
+}
+
+// dive-detail.jsx · KV: one fact per line, hairline between lines.
+.rows {
+  flex-direction: column;
+
+  .fact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: $space-4;
+    padding: $space-3 0;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid $color-line;
+    }
+  }
+
+  .value {
+    align-items: flex-end;
+    text-align: right;
+  }
+}
+
+// dive-detail.jsx · RunCard cells / SiteCard figures: equal columns, term above value.
+.cells {
+  gap: $space-3;
+
+  .fact {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: $space-1;
+  }
+
+  @include from($bp-tablet) {
+    gap: $space-4;
+  }
+}

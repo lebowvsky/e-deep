@@ -1,0 +1,97 @@
+@use '@/styles/tokens' as *;
+
+.ready {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+
+  @include from($bp-tablet) {
+    gap: $space-6;
+  }
+}
+
+// Below 1280px the two column wrappers dissolve (`display: contents`, plain divs, no semantics
+// lost) so that `order` can interleave their cards in the spec order: run, team, notes, site.
+// From 1280px: main column + 360px side column, each a flex column (dive-detail.jsx · grid).
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+
+  @include from($bp-tablet) {
+    gap: $space-4;
+  }
+
+  @include from($bp-large) {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+.main,
+.aside {
+  display: contents;
+
+  @include from($bp-large) {
+    display: flex;
+    flex-direction: column;
+    gap: $space-4;
+  }
+}
+
+.main {
+  @include from($bp-large) {
+    min-width: 0;
+    flex: 1;
+  }
+}
+
+.aside {
+  @include from($bp-large) {
+    width: $layout-detail-aside-width;
+    flex-shrink: 0;
+  }
+}
+
+.run {
+  order: 1;
+}
+
+.team {
+  order: 2;
+}
+
+.notes {
+  order: 3;
+}
+
+.site {
+  order: 4;
+}
+
+.sharing {
+  @include type($type-caption);
+
+  order: 5;
+  padding: $space-1 $space-1 0;
+  margin: 0;
+  font-weight: 400;
+  color: $color-text-low;
+}
+
+// Larger screens leaf through with the buttons of the navigation bar.
+.tiles {
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+@include from($bp-large) {
+  .run,
+  .team,
+  .notes,
+  .site,
+  .sharing {
+    order: 0;
+  }
+}

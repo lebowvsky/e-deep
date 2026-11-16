@@ -60,6 +60,10 @@
   color: $color-text-muted;
 }
 
+.accent .value {
+  color: $color-accent;
+}
+
 .srOnly {
   @include visually-hidden;
 }

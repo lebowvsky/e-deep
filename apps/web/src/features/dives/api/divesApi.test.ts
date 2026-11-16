@@ -320,6 +320,7 @@ describe('toLoggedDive', () => {
       id: 'd1',
       number: 1,
       date: '2026-04-05T10:30:00+02:00',
+      utcOffsetMinutes: 120,
       site: {
         id: 's1',
         name: 'La Revellata',

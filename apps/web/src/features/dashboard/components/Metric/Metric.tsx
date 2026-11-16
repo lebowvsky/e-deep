@@ -1,5 +1,5 @@
-import { Measure, type MeasureProps } from '../Measure';
-import { ResponsiveText, type ResponsiveLabel } from '../ResponsiveText';
+import { Measure, type MeasureProps } from '@/shared/ui/Measure';
+import { ResponsiveText, type ResponsiveLabel } from '@/shared/ui/ResponsiveText';
 import styles from './Metric.module.scss';
 
 export interface MetricProps extends Omit<MeasureProps, 'size' | 'className'> {

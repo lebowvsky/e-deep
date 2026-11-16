@@ -4,7 +4,7 @@ import { Avatar } from '@/shared/ui/Avatar';
 import { Overline } from '@/shared/ui/Overline';
 import { TextLink } from '@/shared/ui/TextLink';
 import type { Buddy } from '../../types';
-import { ResponsiveText } from '../ResponsiveText';
+import { ResponsiveText } from '@/shared/ui/ResponsiveText';
 import styles from './BuddyList.module.scss';
 
 export interface BuddyListProps {

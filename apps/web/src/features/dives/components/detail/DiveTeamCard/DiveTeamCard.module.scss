@@ -1,0 +1,47 @@
+@use '@/styles/tokens' as *;
+
+// dive-detail.jsx · PalanqueeCard.
+.members {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-2 0;
+
+  & + & {
+    border-top: 1px solid $color-line;
+  }
+}
+
+.identity {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.name {
+  @include type($type-body-med);
+
+  color: $color-text-high;
+}
+
+.self {
+  @include type($type-caption);
+
+  font-weight: 400;
+  color: $color-text-low;
+}
+
+.shared {
+  @include type($type-caption-sm, $font: $font-mono);
+
+  color: $color-text-low;
+}

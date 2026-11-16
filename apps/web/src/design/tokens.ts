@@ -106,6 +106,7 @@ export const type = {
   label: { size: 13, lh: 18, w: 600, ls: 0 }, // month group label
   title: { size: 24, lh: 30, w: 600, ls: -0.4 }, // empty dive log title
   measure: { size: 15, lh: 20, w: 500, ls: 0 }, // mono — mobile dive card measures
+  runTime: { size: 22, lh: 26, w: 600, ls: -0.4 }, // mono — dive run immersion / exit (dive-detail.jsx)
 } as const;
 
 // 4px scale
@@ -174,6 +175,7 @@ export const opacity = {
   spark: 0.7,
   pulse: 0.35,
   ghost: 0.5, // ghost logbook lines of the empty dive log
+  disabled: 0.45, // missing previous / next dive tile (dive-detail.jsx)
 } as const;
 
 export const breakpoint = {
@@ -274,6 +276,14 @@ export const layout = {
   emptyLogMinHeight: 560,
   emptyIconLg: 56,
   emptyTextMaxLg: 460,
+  // Dive detail (dive-detail.jsx)
+  detailAsideWidth: 360, // side column (site, dive team) from 1280px
+  miniMapHeight: 170,
+  miniMapHeightSm: 150,
+  runBarHeight: 10, // dive run time bar
+  pagerTileMinHeight: 64, // previous / next tiles on phones
+  siteMarkerDot: 10, // dot inside the site marker of the mini map
+  notesMaxWidth: 680, // reading width of the dive notes
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.

@@ -1,8 +1,8 @@
-import { Link } from 'react-router';
 import { cx } from '@/shared/lib/classNames';
 import { formatDiveDayMonth, formatWeekdayShort } from '@/shared/lib/format';
 import { gasMixShort, gasMixSpoken } from '../../lib/labels';
 import type { LoggedDive } from '../../types';
+import { DiveLink } from '../DiveLink';
 import { Palanquee } from '../Palanquee';
 import styles from './DiveCard.module.scss';
 
@@ -29,11 +29,11 @@ export function DiveCard({ dive, isPeak }: DiveCardProps) {
         <Palanquee team={dive.team} max={TEAM_MAX} size="xxs" />
       </div>
       <h3 className={styles.site}>
-        <Link to={`/dives/${dive.id}`} className={styles.link}>
+        <DiveLink diveId={dive.id} className={styles.link}>
           {dive.site.name}
           {/* Same site, several dives: the number makes each link unique (WCAG 2.4.4). */}
           <span className={styles.srOnly}>, plongée n° {dive.number}</span>
-        </Link>
+        </DiveLink>
       </h3>
       <p className={styles.place}>{dive.site.place}</p>
       <dl className={styles.measures}>

@@ -165,6 +165,7 @@ export function toLoggedDive(summary: DiveSummary, self: DiveMember): LoggedDive
     id: summary.id,
     number: summary.number,
     date: summary.date,
+    utcOffsetMinutes: summary.utcOffsetMinutes,
     site: toSiteRef(summary.site),
     team: [self, ...summary.buddies.map(toBuddyMember)],
     depthMaxM: summary.depthMaxM,
@@ -185,7 +186,6 @@ export function toDiveDetailView(detail: DiveDetail, self: DiveMember): DiveDeta
   const dive = toLoggedDive(detail, self);
   return {
     ...dive,
-    utcOffsetMinutes: detail.utcOffsetMinutes,
     site: { ...dive.site, latitude: detail.site.latitude, longitude: detail.site.longitude },
     visibilityM: detail.visibilityM,
     hadDecompression: detail.hadDecompression,

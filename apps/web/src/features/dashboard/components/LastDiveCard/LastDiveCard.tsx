@@ -13,7 +13,7 @@ import { TextLink } from '@/shared/ui/TextLink';
 import { gasLabel } from '../../lib/labels';
 import type { Dive, UserLevel } from '../../types';
 import { Metric } from '../Metric';
-import { ResponsiveText } from '../ResponsiveText';
+import { ResponsiveText } from '@/shared/ui/ResponsiveText';
 import styles from './LastDiveCard.module.scss';
 
 export interface LastDiveCardProps {
