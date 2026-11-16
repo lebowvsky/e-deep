@@ -41,6 +41,30 @@ export function gasMixSpoken(gasMix: GasMix): string {
   return GAS_MIX_SPOKEN[gasMix];
 }
 
+/** Oxygen fraction of each mix (%); unknown for `OTHER`, whose mix is not entered. */
+const GAS_MIX_OXYGEN: Record<GasMix, number | null> = {
+  AIR: 21,
+  NITROX32: 32,
+  NITROX36: 36,
+  OTHER: null,
+};
+
+/** « 21 % O₂ », or `null` when the fraction is unknown. */
+export function oxygenLabel(gasMix: GasMix): string | null {
+  const percent = GAS_MIX_OXYGEN[gasMix];
+  return percent === null ? null : `${percent} % O₂`;
+}
+
+/** Badge and dive run: same wording as the dashboard (« Palier OK » / « Paliers à vérifier »). */
+export function stopsLabel(stopsOk: boolean): string {
+  return stopsOk ? 'Respectés' : 'À vérifier';
+}
+
+/** « Oui » / « Non » for the decompression stops. */
+export function decompressionLabel(hadDecompression: boolean): string {
+  return hadDecompression ? 'Oui' : 'Non';
+}
+
 export const SORT_OPTIONS: { value: DivesSort; label: string }[] = [
   { value: '-date', label: 'Plus récentes' },
   { value: 'date', label: 'Plus anciennes' },

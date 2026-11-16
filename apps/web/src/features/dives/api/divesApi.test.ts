@@ -9,7 +9,9 @@ import {
   fetchDiveLog,
   isDiveDetail,
   isDiveLogResponse,
+  isDiveNotFound,
   isDiveSummary,
+  toDiveDetailView,
   toDiveLog,
   toLoggedDive,
   toSelfMember,
@@ -366,5 +368,53 @@ describe('toDiveLog', () => {
 
   it('maps an empty log to an empty list', () => {
     expect(toDiveLog({ dives: [] }, mockOwner)).toStrictEqual([]);
+  });
+});
+
+describe('isDiveNotFound', () => {
+  it('is true for a 404 and a 400 (malformed id) only', () => {
+    expect(isDiveNotFound(new ApiError('http', 'HTTP 404', { status: 404 }))).toBe(true);
+    expect(isDiveNotFound(new ApiError('http', 'HTTP 400', { status: 400 }))).toBe(true);
+  });
+
+  it.each([
+    ['a 500', new ApiError('http', 'HTTP 500', { status: 500 })],
+    ['a 403', new ApiError('http', 'HTTP 403', { status: 403 })],
+    ['a network failure', new ApiError('network', 'The API is unreachable.')],
+    ['a broken contract', new ApiError('invalid-response', 'Unexpected response shape.')],
+    ['any other error', new Error('boom')],
+  ])('is false for %s', (_, error) => {
+    expect(isDiveNotFound(error)).toBe(false);
+  });
+});
+
+describe('toDiveDetailView', () => {
+  const self = toSelfMember(mockOwner);
+
+  it('extends the logged dive with the participation fields and the site coordinates', () => {
+    const view = toDiveDetailView(
+      detail({ visibilityM: null, hadDecompression: true, stopsOk: false }),
+      self,
+    );
+    const logged = toLoggedDive(summary(), self);
+
+    expect(view).toStrictEqual({
+      ...logged,
+      utcOffsetMinutes: 120,
+      site: { ...logged.site, latitude: 42.58, longitude: 8.72 },
+      visibilityM: null,
+      hadDecompression: true,
+      stopsOk: false,
+    });
+  });
+
+  it('keeps the team of the list: the user first, buddies with the same colours', () => {
+    const view = toDiveDetailView(detail(), self);
+    expect(view.team.map(({ id, isSelf }) => ({ id, isSelf }))).toStrictEqual([
+      { id: mockOwner.id, isSelf: true },
+      { id: 'b1', isSelf: false },
+      { id: 'b2', isSelf: false },
+    ]);
+    expect(view.team[1]?.color).toBe(avatarColorOf('b1'));
   });
 });

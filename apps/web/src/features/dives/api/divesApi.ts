@@ -7,7 +7,7 @@ import type {
   GasMix,
 } from '@e-deep/shared';
 import { avatarPalette } from '@/design/tokens';
-import type { ApiClient, RequestOptions } from '@/shared/lib/apiClient';
+import { ApiError, type ApiClient, type RequestOptions } from '@/shared/lib/apiClient';
 import { formatInitials } from '@/shared/lib/format';
 import {
   isArrayOf,
@@ -22,7 +22,7 @@ import {
 import { hashOf } from '@/shared/lib/hash';
 import type { DiveMember } from '@/shared/model/dive';
 import { toRegionKey } from '../lib/region';
-import type { DiveSiteRef, LoggedDive } from '../types';
+import type { DiveDetailView, DiveSiteRef, LoggedDive } from '../types';
 
 const GAS_MIXES = ['AIR', 'NITROX32', 'NITROX36', 'OTHER'] as const satisfies readonly GasMix[];
 
@@ -97,6 +97,22 @@ export function fetchDive(
   return client.get(`dives/${encodeURIComponent(id)}`, isDiveDetail, options);
 }
 
+/**
+ * HTTP statuses of `GET /dives/:id` that mean « no such dive for this diver »: 404 (unknown, deleted
+ * or another diver's dive, deliberately indistinguishable) and 400 (malformed id, e.g. a URL typed
+ * by hand). Neither will change on a retry.
+ */
+const DIVE_NOT_FOUND_STATUSES: readonly number[] = [400, 404];
+
+export function isDiveNotFound(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    error.kind === 'http' &&
+    error.status !== undefined &&
+    DIVE_NOT_FOUND_STATUSES.includes(error.status)
+  );
+}
+
 // ── Contract → view model ─────────────────────────────────────────────────────────────────────
 
 /** Who the user is: the contract leaves them out of the dive teams. */
@@ -162,4 +178,17 @@ export function toLoggedDive(summary: DiveSummary, self: DiveMember): LoggedDive
 export function toDiveLog(response: DiveLogResponse, owner: DiveLogOwner): LoggedDive[] {
   const self = toSelfMember(owner);
   return response.dives.map((summary) => toLoggedDive(summary, self));
+}
+
+/** The detail adds the participation fields and the site coordinates to the logged dive. */
+export function toDiveDetailView(detail: DiveDetail, self: DiveMember): DiveDetailView {
+  const dive = toLoggedDive(detail, self);
+  return {
+    ...dive,
+    utcOffsetMinutes: detail.utcOffsetMinutes,
+    site: { ...dive.site, latitude: detail.site.latitude, longitude: detail.site.longitude },
+    visibilityM: detail.visibilityM,
+    hadDecompression: detail.hadDecompression,
+    stopsOk: detail.stopsOk,
+  };
 }
