@@ -2,7 +2,18 @@
 //
 // A logged dive aggregates the shared event (site, date, dive team) and the user's participation
 // (depth, duration, temperature, gas, notes are the user's own measurements).
-import type { GasMix } from '@e-deep/shared';
+import type {
+  CertificationLevelRef,
+  CurrentStrength,
+  DiveObservation,
+  EntryType,
+  GasMix,
+  SeaState,
+  SuitType,
+  TankMaterial,
+  TimeOfDay,
+  Weather,
+} from '@e-deep/shared';
 import type { DiveMember } from '@/shared/model/dive';
 
 /**
@@ -162,14 +173,68 @@ export interface GeoPoint {
   longitude: number;
 }
 
-/** A logged dive with every field of the participation (`GET /dives/:id`). */
+/**
+ * A member of the dive team in the detail, with a level: the user's at the time of the dive
+ * (`diverLevel`, D-09), a buddy's as their contact card declares it (D-21), `null` when unknown.
+ */
+export interface DiveDetailMember extends DiveMember {
+  level: CertificationLevelRef | null;
+}
+
+/** Safety stop of the dive (D-16): both values, or none. */
+export interface SafetyStop {
+  durationMin: number;
+  depthM: number;
+}
+
+/** « Conditions » card: type, weather, sea and dive centre of the event (D-13, D-18). */
+export interface DiveConditions {
+  entryType: EntryType | null;
+  timeOfDay: TimeOfDay | null;
+  weather: Weather | null;
+  airTemperatureC: number | null;
+  seaState: SeaState | null;
+  currentStrength: CurrentStrength | null;
+  /** « Structure »: the dive centre. */
+  diveCenter: string | null;
+}
+
+/** « Équipement & gaz » card: the user's kit (D-15). */
+export interface DiveEquipment {
+  /** Oxygen share of the mix: 21, 32 or 36 from the mix, entered for `OTHER` (`null` if not). */
+  o2Percent: number | null;
+  tankVolumeL: number | null;
+  tankMaterial: TankMaterial | null;
+  startPressureBar: number | null;
+  endPressureBar: number | null;
+  suitType: SuitType | null;
+  suitThicknessMm: number | null;
+  weightKg: number | null;
+}
+
+/** A logged dive with every field of the event and the participation (`GET /dives/:id`). */
 export interface DiveDetailView extends LoggedDive {
-  site: DiveSiteRef & GeoPoint;
+  /** `area`: sea or area of the site (« Méditerranée »), `null` when not entered. */
+  site: DiveSiteRef & GeoPoint & { area: string | null };
+  /** The whole team, the user first, each member with a level. */
+  team: DiveDetailMember[];
   /** `null` when not entered. */
   visibilityM: number | null;
   hadDecompression: boolean;
   /** Stops done as planned (entry required, D-11). */
   stopsOk: boolean;
+  /** Water at the surface; `temperatureC` is the bottom one. */
+  surfaceTemperatureC: number | null;
+  /** `null` when not entered (or when only half of it came, against the contract). */
+  safetyStop: SafetyStop | null;
+  isRepetitive: boolean | null;
+  conditions: DiveConditions;
+  equipment: DiveEquipment;
+  /** Species seen, in the order entered. */
+  observations: DiveObservation[];
+  /** Technical instants (UTC): creation of the participation, latest change. */
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** The dive just before or after in the log, for paging. */

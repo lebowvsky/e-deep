@@ -185,6 +185,13 @@ export function formatOneDecimal(value: number): string {
   return oneDecimal.format(value);
 }
 
+const upToOneDecimal = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
+
+/** A measure as entered: 17.5 → "17,5" · 16 → "16" · 1200 → "1 200" (no forced decimal). */
+export function formatMeasure(value: number): string {
+  return upToOneDecimal.format(value);
+}
+
 /** 1 → "1 plongeur différent" · 14 → "14 plongeurs différents" */
 export function formatDiverCount(count: number): string {
   return count > 1 ? `${count} plongeurs différents` : `${count} plongeur différent`;

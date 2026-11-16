@@ -58,7 +58,11 @@ export function DiveRunCard({ dive, className }: DiveRunCardProps) {
         layout="cells"
         className={styles.facts}
         facts={[
-          { term: 'Gaz', value: gasMixSpoken(dive.gasMix), note: oxygenLabel(dive.gasMix) },
+          {
+            term: 'Gaz',
+            value: gasMixSpoken(dive.gasMix),
+            note: oxygenLabel(dive.equipment.o2Percent),
+          },
           { term: 'Paliers', value: stopsLabel(dive.stopsOk) },
           { term: 'Paliers de déco.', value: decompressionLabel(dive.hadDecompression) },
         ]}

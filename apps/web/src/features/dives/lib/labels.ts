@@ -1,5 +1,15 @@
-// Dive log — French labels of the filters, sorts and gases.
-import type { GasMix } from '@e-deep/shared';
+// Dive log — French labels of the filters, sorts, gases and dive detail values.
+import type {
+  CurrentStrength,
+  DiveObservation,
+  EntryType,
+  GasMix,
+  SeaState,
+  SuitType,
+  TankMaterial,
+  TimeOfDay,
+  Weather,
+} from '@e-deep/shared';
 import { formatDiveCount } from '@/shared/lib/format';
 import type {
   DivesFacets,
@@ -42,17 +52,23 @@ export function gasMixSpoken(gasMix: GasMix): string {
   return GAS_MIX_SPOKEN[gasMix];
 }
 
-/** Oxygen fraction of each mix (%); unknown for `OTHER`, whose mix is not entered. */
-const GAS_MIX_OXYGEN: Record<GasMix, number | null> = {
+/** Oxygen share implied by each mix (%); `OTHER` carries its own (`o2Percent`). */
+const GAS_MIX_OXYGEN: Record<Exclude<GasMix, 'OTHER'>, number> = {
   AIR: 21,
   NITROX32: 32,
   NITROX36: 36,
-  OTHER: null,
 };
 
-/** « 21 % O₂ », or `null` when the fraction is unknown. */
-export function oxygenLabel(gasMix: GasMix): string | null {
-  const percent = GAS_MIX_OXYGEN[gasMix];
+/**
+ * Oxygen share of the dive's mix: implied by AIR and NITROX (an entered `o2Percent` is ignored),
+ * entered for `OTHER`, `null` when it was not.
+ */
+export function oxygenPercent(gasMix: GasMix, o2Percent: number | null): number | null {
+  return gasMix === 'OTHER' ? o2Percent : GAS_MIX_OXYGEN[gasMix];
+}
+
+/** « 21 % O₂ », or `null` when the share is unknown (no line rather than a guess). */
+export function oxygenLabel(percent: number | null): string | null {
   return percent === null ? null : `${percent} % O₂`;
 }
 
@@ -61,9 +77,82 @@ export function stopsLabel(stopsOk: boolean): string {
   return stopsOk ? 'Respectés' : 'À vérifier';
 }
 
-/** « Oui » / « Non » for the decompression stops. */
+/** Dive run « Paliers de déco. »: « Aucun » / « Oui ». */
 export function decompressionLabel(hadDecompression: boolean): string {
-  return hadDecompression ? 'Oui' : 'Non';
+  return hadDecompression ? 'Oui' : 'Aucun';
+}
+
+/** Dive run « Successive »: « Oui » / « Non ». */
+export function repetitiveLabel(isRepetitive: boolean): string {
+  return isRepetitive ? 'Oui' : 'Non';
+}
+
+// ── Dive detail: values of the unions (provisional wording, H-18 of the data model) ─────────
+
+/** A field left empty, agreed with its name: « Lest : Non renseigné », « Mer : Non renseignée ». */
+export const MISSING_LABELS = {
+  masculine: 'Non renseigné',
+  feminine: 'Non renseignée',
+} as const;
+export type MissingLabel = (typeof MISSING_LABELS)[keyof typeof MISSING_LABELS];
+
+/** A card with no value at all. */
+export const NOTHING_ENTERED = 'Rien de renseigné';
+
+/** Header tag and « Type » of the conditions: « Bateau », « Bord ». */
+export const ENTRY_TYPE_LABELS: Record<EntryType, string> = { BOAT: 'Bateau', SHORE: 'Bord' };
+
+/** Lower case: it follows the entry type (« Bateau · jour »). */
+export const TIME_OF_DAY_LABELS: Record<TimeOfDay, string> = { DAY: 'jour', NIGHT: 'nuit' };
+
+export const WEATHER_LABELS: Record<Weather, string> = {
+  SUNNY: 'Ensoleillé',
+  CLOUDY: 'Nuageux',
+  OVERCAST: 'Couvert',
+  RAIN: 'Pluie',
+};
+
+export const SEA_STATE_LABELS: Record<SeaState, string> = {
+  CALM: 'Calme',
+  SLIGHT: 'Peu agitée',
+  MODERATE: 'Agitée',
+  ROUGH: 'Forte',
+};
+
+export const CURRENT_STRENGTH_LABELS: Record<CurrentStrength, string> = {
+  NONE: 'Nul',
+  WEAK: 'Faible',
+  MODERATE: 'Moyen',
+  STRONG: 'Fort',
+};
+
+/** Lower case: it follows the volume (« 12 L · acier »). */
+export const TANK_MATERIAL_LABELS: Record<TankMaterial, string> = {
+  STEEL: 'acier',
+  ALUMINIUM: 'alu',
+};
+
+/** Lower case: it follows the thickness (« 7 mm · semi-étanche »). */
+export const SUIT_TYPE_LABELS: Record<SuitType, string> = {
+  WET: 'humide',
+  SEMI_DRY: 'semi-étanche',
+  DRY: 'étanche',
+};
+
+/** Header: « Calvi · Corse · Méditerranée », or the place alone when the area is unknown. */
+export function placeWithArea(place: string, area: string | null): string {
+  return area === null ? place : `${place} · ${area}`;
+}
+
+/** Species tag: « Mérou brun · 2 », or the species alone when not counted. */
+export function observationLabel({ label, count }: DiveObservation): string {
+  return count === null ? label : `${label} · ${count}`;
+}
+
+/** Screen readers: « Mérou brun, 2 individus » · « Murène, 1 individu » · « Corb ». */
+export function observationSpoken({ label, count }: DiveObservation): string {
+  if (count === null) return label;
+  return `${label}, ${count} ${count > 1 ? 'individus' : 'individu'}`;
 }
 
 export const SORT_OPTIONS: { value: DivesSort; label: string }[] = [

@@ -2,6 +2,7 @@ import type { DiveDetail, DiveSummary } from '@e-deep/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { avatarPalette } from '@/design/tokens';
 import { ApiError, createApiClient } from '@/shared/lib/apiClient';
+import { MOCKUP_DETAIL_FIELDS } from '../mocks/diveDetailResponse';
 import { mockDiveLogResponse, mockOwner } from '../mocks/diveLogResponse';
 import {
   avatarColorOf,
@@ -72,6 +73,21 @@ function detail(overrides: Partial<DiveDetail> = {}): DiveDetail {
     ...overrides,
   };
 }
+
+/** `detail()` filled with the mockup values (#127): area, buddy levels and every detail field. */
+function filledDetail(): DiveDetail {
+  const base = detail(structuredClone(MOCKUP_DETAIL_FIELDS));
+  return {
+    ...base,
+    site: { ...base.site, area: 'Méditerranée' },
+    buddies: [
+      { id: 'b1', firstName: 'Lucas', lastName: 'Bernard', level: N3 },
+      { id: 'b2', firstName: 'émilie', lastName: 'durand', level: null },
+    ],
+  };
+}
+
+const N3 = { agency: 'FFESSM', code: 'N3', label: 'Niveau 3' };
 
 /** `summary()` with one field replaced by a value of any type (the guards take `unknown`). */
 const withField = (key: string, value: unknown): unknown => ({ ...summary(), [key]: value });
@@ -151,7 +167,79 @@ describe('isDiveDetail', () => {
     expect(isDiveDetail(summary())).toBe(false);
   });
 
+  it('accepts a detail filled with every field', () => {
+    expect(isDiveDetail(filledDetail())).toBe(true);
+    expect(isDiveDetail(detail({ gasMix: 'OTHER', o2Percent: 28 }))).toBe(true);
+  });
+
+  // Each union, with a value the front does not know (D-14: deployed front first).
   it.each([
+    ['entryType', 'BOAT', 'BOAT_DIVE'],
+    ['timeOfDay', 'NIGHT', 'DUSK'],
+    ['weather', 'RAIN', 'SNOW'],
+    ['seaState', 'ROUGH', 'STORM'],
+    ['currentStrength', 'MODERATE', 'moderate'],
+    ['tankMaterial', 'ALUMINIUM', 'CARBON'],
+    ['suitType', 'SEMI_DRY', 'SHORTY'],
+  ] as const)('accepts a known %s or null, rejects an unknown one', (key, known, unknown) => {
+    expect(isDiveDetail({ ...detail(), [key]: known })).toBe(true);
+    expect(isDiveDetail({ ...detail(), [key]: null })).toBe(true);
+    expect(isDiveDetail({ ...detail(), [key]: unknown })).toBe(false);
+    expect(isDiveDetail({ ...detail(), [key]: undefined })).toBe(false);
+  });
+
+  it.each([
+    'airTemperatureC',
+    'surfaceTemperatureC',
+    'safetyStopDurationMin',
+    'safetyStopDepthM',
+    'o2Percent',
+    'tankVolumeL',
+    'startPressureBar',
+    'endPressureBar',
+    'suitThicknessMm',
+    'weightKg',
+  ] as const)('accepts a numeric or null %s, rejects a string or a missing one', (key) => {
+    expect(isDiveDetail({ ...detail(), [key]: 12.5 })).toBe(true);
+    expect(isDiveDetail({ ...detail(), [key]: '12' })).toBe(false);
+    expect(isDiveDetail({ ...detail(), [key]: undefined })).toBe(false);
+  });
+
+  it.each([
+    ['without diverLevel', { ...detail(), diverLevel: null }],
+    [
+      'with a diverLevel without code',
+      { ...detail(), diverLevel: { agency: 'FFESSM', label: 'N2' } },
+    ],
+    ['with a numeric repetitive flag', { ...detail(), isRepetitive: 0 }],
+    ['with a numeric dive centre', { ...detail(), diveCenter: 3 }],
+    ['without site area', { ...detail(), site: { ...detail().site, area: undefined } }],
+    ['with null observations', { ...detail(), observations: null }],
+    ['with an observation without label', { ...detail(), observations: [{ count: 2 }] }],
+    [
+      'with a string observation count',
+      { ...detail(), observations: [{ label: 'Corb', count: '2' }] },
+    ],
+    [
+      'with a buddy without level',
+      { ...detail(), buddies: [{ id: 'b1', firstName: 'Lucas', lastName: 'Bernard' }] },
+    ],
+    [
+      'with a buddy level without agency',
+      {
+        ...detail(),
+        buddies: [{ id: 'b1', firstName: 'Lucas', lastName: 'Bernard', level: { code: 'N3' } }],
+      },
+    ],
+    [
+      'with a string level',
+      {
+        ...detail(),
+        buddies: [{ id: 'b1', firstName: 'Lucas', lastName: 'Bernard', level: 'N3' }],
+      },
+    ],
+    ['with an unparsable creation date', { ...detail(), createdAt: 'hier' }],
+    ['without updatedAt', { ...detail(), updatedAt: undefined }],
     ['without coordinates', { ...detail(), site: summary().site }],
     ['with a string latitude', { ...detail(), site: { ...detail().site, latitude: '42.58' } }],
     ['with a string visibility', { ...detail(), visibilityM: '20' }],
@@ -272,6 +360,12 @@ describe('fetchDive', () => {
     stubFetch(() => Promise.resolve(new Response(null, { status: 404 })));
 
     await expect(fetchDive(client, 'd999')).rejects.toMatchObject({ kind: 'http', status: 404 });
+  });
+
+  it('rejects a union value the front does not know with an invalid-response ApiError', async () => {
+    stubFetch(() => Promise.resolve(Response.json({ ...filledDetail(), weather: 'SNOW' })));
+
+    await expect(fetchDive(client, 'd1')).rejects.toMatchObject({ kind: 'invalid-response' });
   });
 
   it('rejects a summary with an invalid-response ApiError', async () => {
@@ -416,7 +510,7 @@ describe('isDiveNotFound', () => {
 describe('toDiveDetailView', () => {
   const self = toSelfMember(mockOwner);
 
-  it('extends the logged dive with the participation fields and the site coordinates', () => {
+  it('extends the logged dive with every detail field, nothing entered', () => {
     const view = toDiveDetailView(
       detail({ visibilityM: null, hadDecompression: true, stopsOk: false }),
       self,
@@ -425,21 +519,102 @@ describe('toDiveDetailView', () => {
 
     expect(view).toStrictEqual({
       ...logged,
-      utcOffsetMinutes: 120,
-      site: { ...logged.site, latitude: 42.58, longitude: 8.72 },
+      site: { ...logged.site, latitude: 42.58, longitude: 8.72, area: null },
+      team: logged.team.map((member) => ({
+        ...member,
+        level: member.isSelf ? { agency: 'FFESSM', code: 'N2', label: 'Niveau 2' } : null,
+      })),
       visibilityM: null,
       hadDecompression: true,
       stopsOk: false,
+      surfaceTemperatureC: null,
+      safetyStop: null,
+      isRepetitive: null,
+      conditions: {
+        entryType: null,
+        timeOfDay: null,
+        weather: null,
+        airTemperatureC: null,
+        seaState: null,
+        currentStrength: null,
+        diveCenter: null,
+      },
+      equipment: {
+        o2Percent: 32,
+        tankVolumeL: null,
+        tankMaterial: null,
+        startPressureBar: null,
+        endPressureBar: null,
+        suitType: null,
+        suitThicknessMm: null,
+        weightKg: null,
+      },
+      observations: [],
+      createdAt: '2026-04-08T18:00:00.000Z',
+      updatedAt: '2026-04-08T18:00:00.000Z',
     });
   });
 
-  it('keeps the team of the list: the user first, buddies with the same colours', () => {
-    const view = toDiveDetailView(detail(), self);
-    expect(view.team.map(({ id, isSelf }) => ({ id, isSelf }))).toStrictEqual([
-      { id: mockOwner.id, isSelf: true },
-      { id: 'b1', isSelf: false },
-      { id: 'b2', isSelf: false },
+  it('groups a filled detail into the cards, with the mockup values', () => {
+    const view = toDiveDetailView({ ...filledDetail(), gasMix: 'AIR' }, self);
+
+    expect(view.site.area).toBe('Méditerranée');
+    expect(view.surfaceTemperatureC).toBe(16);
+    expect(view.safetyStop).toStrictEqual({ durationMin: 3, depthM: 5 });
+    expect(view.isRepetitive).toBe(false);
+    expect(view.conditions).toStrictEqual({
+      entryType: 'BOAT',
+      timeOfDay: 'DAY',
+      weather: 'SUNNY',
+      airTemperatureC: 19,
+      seaState: 'CALM',
+      currentStrength: 'WEAK',
+      diveCenter: 'Calvi Plongée',
+    });
+    expect(view.equipment).toStrictEqual({
+      o2Percent: 21,
+      tankVolumeL: 12,
+      tankMaterial: 'STEEL',
+      startPressureBar: 200,
+      endPressureBar: 60,
+      suitType: 'SEMI_DRY',
+      suitThicknessMm: 7,
+      weightKg: null,
+    });
+    expect(view.observations.map(({ label }) => label)).toStrictEqual([
+      'Mérou brun',
+      'Barracudas',
+      'Gorgones rouges',
+      'Corb',
+      'Murène',
+    ]);
+    expect(view.updatedAt).toBe('2026-04-09T07:30:00.000Z');
+  });
+
+  it('gives the user the level at the time of the dive, each buddy the declared one', () => {
+    const view = toDiveDetailView(filledDetail(), self);
+    expect(
+      view.team.map(({ id, isSelf, level }) => ({ id, isSelf, code: level?.code })),
+    ).toStrictEqual([
+      { id: mockOwner.id, isSelf: true, code: 'N2' },
+      { id: 'b1', isSelf: false, code: 'N3' },
+      { id: 'b2', isSelf: false, code: undefined },
     ]);
     expect(view.team[1]?.color).toBe(avatarColorOf('b1'));
+  });
+
+  it('takes the entered oxygen share of another mix only', () => {
+    expect(
+      toDiveDetailView(detail({ gasMix: 'OTHER', o2Percent: 28 }), self).equipment.o2Percent,
+    ).toBe(28);
+    expect(toDiveDetailView(detail({ gasMix: 'OTHER' }), self).equipment.o2Percent).toBeNull();
+    expect(
+      toDiveDetailView(detail({ gasMix: 'AIR', o2Percent: 28 }), self).equipment.o2Percent,
+    ).toBe(21);
+  });
+
+  it('drops a safety stop entered by half (the contract pairs both values)', () => {
+    expect(toDiveDetailView(detail({ safetyStopDurationMin: 3 }), self).safetyStop).toBeNull();
+    expect(toDiveDetailView(detail({ safetyStopDepthM: 5 }), self).safetyStop).toBeNull();
   });
 });

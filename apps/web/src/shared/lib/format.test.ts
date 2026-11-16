@@ -7,6 +7,7 @@ import {
   formatDiverLevel,
   formatHeaderDate,
   formatInitials,
+  formatMeasure,
   formatMonthInitial,
   formatMonthLabel,
   formatMonthShort,
@@ -90,5 +91,13 @@ describe('format', () => {
     expect(formatNameList(['L. Bernard', 'T. Nguyen'])).toBe('L. Bernard & T. Nguyen');
     expect(formatNameList(['A', 'B', 'C'])).toBe('A, B & C');
     expect(formatNameList(['A'])).toBe('A');
+  });
+});
+
+describe('formatMeasure', () => {
+  it('writes a measure as entered, in French, without forcing a decimal', () => {
+    expect(formatMeasure(16)).toBe('16');
+    expect(formatMeasure(17.5)).toBe('17,5');
+    expect(formatMeasure(0)).toBe('0');
   });
 });
