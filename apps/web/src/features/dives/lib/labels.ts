@@ -162,6 +162,8 @@ export function stateAnnouncement(state: DivesState): string {
 
 export const DIVE_NOT_FOUND_MESSAGE = 'Cette plongée n’existe pas ou a été supprimée.';
 export const DIVE_LOAD_ERROR_MESSAGE = 'Impossible de charger cette plongée pour l’instant.';
+/** Neutral: the cause may be the network, the server or an unexpected answer. */
+export const DIVE_LOAD_ERROR_HINT = 'Réessaie dans un instant.';
 
 /** What the detail page live region says for each state (never the id from the URL). */
 export function diveDetailAnnouncement(state: DiveDetailState): string {

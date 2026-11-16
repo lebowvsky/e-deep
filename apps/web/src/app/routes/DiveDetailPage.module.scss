@@ -23,13 +23,6 @@
   }
 }
 
-// The tiles sit below the content (dive-detail.jsx · mobile); larger screens use the bar buttons.
-.tiles {
-  @include from($bp-tablet) {
-    display: none;
-  }
-}
-
 .srOnly {
   @include visually-hidden;
 }

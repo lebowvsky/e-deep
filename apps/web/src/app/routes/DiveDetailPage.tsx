@@ -9,7 +9,11 @@ import { DiveNotFound } from '@/features/dives/components/detail/DiveNotFound';
 import { DivePager } from '@/features/dives/components/detail/DivePager';
 import { useDive } from '@/features/dives/hooks/useDive';
 import { backToLogHref, forwardLinkState } from '@/features/dives/lib/backLink';
-import { DIVE_LOAD_ERROR_MESSAGE, diveDetailAnnouncement } from '@/features/dives/lib/labels';
+import {
+  DIVE_LOAD_ERROR_HINT,
+  DIVE_LOAD_ERROR_MESSAGE,
+  diveDetailAnnouncement,
+} from '@/features/dives/lib/labels';
 import type { DiveDetailState, DiveNeighbours } from '@/features/dives/types';
 import { pageTitle } from '@/shared/config/app';
 import styles from './DiveDetailPage.module.scss';
@@ -86,7 +90,6 @@ export function DiveDetailPage() {
           next={neighbours.next}
           linkState={linkState}
           variant="tiles"
-          className={styles.tiles}
         />
       )}
     </div>
@@ -108,6 +111,13 @@ function DiveDetailContent({ state, backHref, onRetry }: DiveDetailContentProps)
     case 'not-found':
       return <DiveNotFound backHref={backHref} />;
     case 'error':
-      return <DivesError message={DIVE_LOAD_ERROR_MESSAGE} onRetry={onRetry} />;
+      return (
+        <DivesError
+          overline="Erreur"
+          message={DIVE_LOAD_ERROR_MESSAGE}
+          hint={DIVE_LOAD_ERROR_HINT}
+          onRetry={onRetry}
+        />
+      );
   }
 }

@@ -60,13 +60,13 @@ export function useDive(id: string, owner: DiveLogOwner): DiveDetailState {
     () => (logQuery.data ? toDiveLog(logQuery.data, owner) : null),
     [logQuery.data, owner],
   );
-  const insights = useMemo(() => (log && dive ? describeDiveInLog(log, dive) : null), [log, dive]);
   const preview = useMemo(() => log?.find((entry) => entry.id === id) ?? null, [log, id]);
-  const previewNeighbours = useMemo(() => {
-    if (!log || !preview) return null;
-    const { previous, next } = describeDiveInLog(log, preview);
-    return { previous, next };
-  }, [log, preview]);
+  // One pass over the log, on the fresh detail once loaded, on the preview meanwhile (pagers).
+  const subject = dive ?? preview;
+  const insights = useMemo(
+    () => (log && subject ? describeDiveInLog(log, subject) : null),
+    [log, subject],
+  );
 
   const { refetch } = detailQuery;
   // The outcome of the new attempt replaces the error state; details stay out of the UI.
@@ -83,5 +83,5 @@ export function useDive(id: string, owner: DiveLogOwner): DiveDetailState {
   // Any other failed refetch keeps showing the cached dive.
   if (dive) return { status: 'ready', dive, insights };
   if (settledError) return { status: 'error', retry };
-  return { status: 'loading', preview, neighbours: previewNeighbours };
+  return { status: 'loading', preview, neighbours: insights };
 }

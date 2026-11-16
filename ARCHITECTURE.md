@@ -511,6 +511,15 @@ Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
   (`features/dives/lib/diveTime.ts`). Ils divergeraient si le décalage de `date` et
   `utcOffsetMinutes` ne concordaient plus : à unifier dans `shared/lib/format`. `teamSizeLabel`
   double en partie `formatDiverCount` (libellés différents).
+- **Ordre de lecture sous 1280 px** (écart accepté) : la spec fait remonter la palanquée juste
+  après le Déroulé sur mobile et tablette ; les colonnes passent en `display: contents` et `order`
+  réordonne les cartes, donc l'ordre visuel (Déroulé, Palanquée, Notes, Site) diffère de l'ordre
+  du DOM (Déroulé, Notes, Site, Palanquée). Les cartes n'ont aucun élément focalisable (ordre du
+  focus intact) et sont des sections indépendantes ; une grille à aires couplerait les hauteurs des
+  deux colonnes sur desktop.
+- **FAB** : masqué dans `AppShell` par `useMatch('/dives/:diveId')` (qui couvre aussi
+  `/dives/new`). Un `handle: { fab: false }` sur les routes, lu par `useMatches()`, éviterait un cas
+  particulier par page.
 - **Carnet converti deux fois** : `useDive` refait `toDiveLog` sur tout le carnet, déjà converti
   par `useDives` (memo distincts, `toSelfMember` recalculé). Négligeable à 127 plongées ; un
   `select` partagé sur `divesKeys.log()` mutualiserait la conversion entre la liste et le détail.

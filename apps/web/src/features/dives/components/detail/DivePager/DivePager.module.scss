@@ -40,11 +40,19 @@
   white-space: nowrap;
 }
 
-// dive-detail.jsx · NavBtn: 40px high, mono 12, « ‹ #126 · La Bibliothèque ».
+// Each variant owns its visibility (same file, after `.pager`: no dependency on bundle order).
+// dive-detail.jsx · NavBtn: 40px high, mono 12, « ‹ #126 · La Bibliothèque »; tablet+ only.
 .buttons {
+  display: none;
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+
   .link {
     @include type($type-data, $font: $font-mono);
     @include hit-target($layout-control-height);
+    @include hit-area; // 40px box, 44px touch target
 
     gap: $space-2;
     padding: 0 $space-3;
@@ -56,9 +64,14 @@
 }
 
 // dive-detail.jsx · mobile tiles: « ‹ #126 » above the site, ≥ 64px, the missing one at 45 %.
-// The chevron and the number share the first line, the site wraps onto the second one.
+// The chevron and the number share the first line, the site wraps onto the second one. Phones
+// only: larger screens use the buttons of the navigation bar.
 .tiles {
   gap: $space-3;
+
+  @include from($bp-tablet) {
+    display: none;
+  }
 
   .link {
     min-height: $layout-pager-tile-min-height;

@@ -40,7 +40,6 @@ export function DiveDetailNav({ backHref, number, neighbours, linkState }: DiveD
           next={neighbours.next}
           linkState={linkState}
           variant="buttons"
-          className={styles.pager}
         />
       )}
     </div>

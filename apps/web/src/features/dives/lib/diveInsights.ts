@@ -1,4 +1,5 @@
 // Dive detail — what the rest of the log says about one dive (paging, record, site, team).
+import { othersInTeam } from '@/shared/model/dive';
 import type { DiveLogInsights, DiveNeighbour, LoggedDive } from '../types';
 
 type InsightSubject = Pick<LoggedDive, 'id' | 'number' | 'depthMaxM' | 'site' | 'team'>;
@@ -21,8 +22,7 @@ export function describeDiveInLog(
   let deepestM = dive.depthMaxM;
   let siteDiveCount = 1;
   let siteMaxDepthM = dive.depthMaxM;
-  const buddyIds = dive.team.filter((member) => !member.isSelf).map(({ id }) => id);
-  const sharedDives = new Map(buddyIds.map((id) => [id, 1]));
+  const sharedDives = new Map(othersInTeam(dive.team).map(({ id }) => [id, 1]));
 
   for (const entry of log) {
     if (entry.id === dive.id) continue;
