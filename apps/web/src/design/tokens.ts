@@ -282,6 +282,25 @@ export const iconSize = { xs: 12, sm: 14, md: 16, lg: 18, xl: 20, xxl: 22 } as c
 // Icon stroke widths — TS only (SVG attribute). `bold` = FAB plus.
 export const iconStroke = { regular: 1.5, bold: 2.2, brand: 1.6 } as const;
 
+// Buddy avatar backgrounds (dives-list.jsx · BUDDY) — TS only: picked per buddy at runtime, from
+// the buddy id, since the colour is not stored. Muted navy-family tones under white initials.
+export const avatarPalette = [
+  '#3A5A82',
+  '#2A6A6A',
+  '#5A3A7A',
+  '#3A7A5A',
+  '#7A5A3A',
+  '#3A4A7A',
+  '#6A4A3A',
+  '#2F5A6E',
+  '#4A5A2F',
+  '#6A3A52',
+  '#3A6A7A',
+  '#4A3A6E',
+  '#5A6A3A',
+  '#7A3A4A',
+] as const;
+
 export const tokens = {
   color,
   font,
@@ -296,5 +315,6 @@ export const tokens = {
   layout,
   iconSize,
   iconStroke,
+  avatarPalette,
 };
 export type Tokens = typeof tokens;

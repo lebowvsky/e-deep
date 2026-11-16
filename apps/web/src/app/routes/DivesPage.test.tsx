@@ -1,11 +1,14 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_QUERY } from '@/features/dives/lib/query';
 import { selectDives } from '@/features/dives/lib/selectDives';
+import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
 import { mockDives } from '@/features/dives/mocks/dives';
+import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { ToastProvider } from '@/shared/ui/Toast';
+import { TestProviders } from '@/test/TestProviders';
 import { DivesPage } from './DivesPage';
 
 function Location() {
@@ -13,27 +16,36 @@ function Location() {
   return <output data-testid="search">{search}</output>;
 }
 
-function renderAt(path: string) {
+function renderAt(
+  path: string,
+  get: ApiClient['get'] = vi.fn().mockResolvedValue(mockDiveLogResponse),
+) {
   return render(
-    <ToastProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route
-            path="/dives"
-            element={
-              <>
-                <DivesPage />
-                <Location />
-              </>
-            }
-          />
-        </Routes>
-      </MemoryRouter>
-    </ToastProvider>,
+    <TestProviders client={{ get }}>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route
+              path="/dives"
+              element={
+                <>
+                  <DivesPage />
+                  <Location />
+                </>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+    </TestProviders>,
   );
 }
 
 const search = () => screen.getByTestId('search').textContent;
+
+/** The page live region (the toasts have their own). */
+const liveRegion = () =>
+  first(screen.getAllByRole('status').filter((region) => region.tagName === 'P'));
 
 function first<T>(items: T[]): T {
   const [item] = items;
@@ -53,21 +65,25 @@ describe('DivesPage', () => {
   it('shows the first page of the log, grouped by month, most recent first', async () => {
     renderAt('/dives');
 
-    expect(await screen.findByRole('table')).toBeTruthy();
+    // Role queries are scoped to the table: the phone cards hold the same dives (both in jsdom),
+    // and a role query over the whole page is slow enough to matter when the machine is loaded.
+    const table = await screen.findByRole('table');
     expect(screen.getByRole('heading', { level: 1, name: 'Mes plongées' })).toBeTruthy();
     expect(screen.getByText(/127 plongées depuis juin 2019/)).toBeTruthy();
 
-    const dateHeader = screen.getByRole('columnheader', { name: /Date/ });
+    const dateHeader = within(table).getByRole('columnheader', { name: /Date/ });
     expect(dateHeader.getAttribute('aria-sort')).toBe('descending');
-    const months = screen.getAllByRole('rowheader').map((cell) => cell.textContent);
-    expect(months).toEqual([
+    const months = within(table)
+      .getAllByRole('rowheader')
+      .map((cell) => cell.textContent);
+    expect(months).toStrictEqual([
       'Avril 20264 plongées · 2 h 57',
       'Mars 20263 plongées · 1 h 57',
       'Février 20262 plongées · 1 h 09',
       'Décembre 20251 plongée · 0 h 44',
     ]);
-    const links = screen
-      .getAllByRole('link', { name: /./ })
+    const links = within(table)
+      .getAllByRole('link')
       .filter((link) => link.closest('tbody'));
     expect(links).toHaveLength(10);
     expect(links[0]?.getAttribute('href')).toBe('/dives/d127');
@@ -117,7 +133,7 @@ describe('DivesPage', () => {
   it('pages, sorts and changes the page size', async () => {
     const user = userEvent.setup();
     renderAt('/dives');
-    await screen.findByRole('table');
+    const table = await screen.findByRole('table');
 
     await user.click(first(screen.getAllByRole('button', { name: 'Page suivante' })));
     expect(search()).toBe('?page=2');
@@ -130,9 +146,9 @@ describe('DivesPage', () => {
       'Plus profondes',
     );
     expect(search()).toBe('?sort=-depth');
-    const depthHeader = screen.getByRole('columnheader', { name: /Prof\. max/ });
+    const depthHeader = within(table).getByRole('columnheader', { name: /Prof\. max/ });
     expect(depthHeader.getAttribute('aria-sort')).toBe('descending');
-    expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
+    expect(within(table).queryAllByRole('rowheader')).toHaveLength(0);
 
     await user.selectOptions(
       first(screen.getAllByRole('combobox', { name: 'Plongées par page' })),
@@ -227,11 +243,36 @@ describe('DivesPage', () => {
     expect(screen.getByText('Bientôt disponible')).toBeTruthy();
   });
 
-  it('reports a loading error with a retry button', () => {
+  it('announces a loading error and keeps the focus in the page on retry', async () => {
+    const user = userEvent.setup();
+    const get = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError('network', 'The API is unreachable.'))
+      .mockResolvedValueOnce(mockDiveLogResponse);
+    renderAt('/dives', get);
+
+    // One persistent live region, from the first render to the result.
+    const status = liveRegion();
+    expect(status.textContent).toBe('Chargement du carnet');
+    const retry = await screen.findByRole('button', { name: 'Réessayer' });
+    expect(status.textContent).toBe('Impossible de charger tes plongées pour l’instant.');
+    await user.click(retry);
+    // The button is gone: the focus is on the content container, not lost on <body>.
+    const focused = document.activeElement;
+    expect(focused?.getAttribute('tabindex')).toBe('-1');
+    expect(get).toHaveBeenCalledTimes(2);
+
+    const table = await screen.findByRole('table');
+    // The same container now holds the loaded log, and keeps the focus.
+    expect(focused?.contains(table)).toBe(true);
+    expect(document.activeElement).toBe(focused);
+    expect(liveRegion()).toBe(status);
+    expect(status.textContent).toBe('127 plongées dans la sélection');
+  });
+
+  it('announces the forced error state with a retry button', () => {
     renderAt('/dives?state=error');
-    expect(screen.getByRole('alert').textContent).toBe(
-      'Impossible de charger tes plongées pour l’instant.',
-    );
+    expect(liveRegion().textContent).toBe('Impossible de charger tes plongées pour l’instant.');
     expect(screen.getByRole('button', { name: 'Réessayer' })).toBeTruthy();
   });
 
@@ -261,4 +302,177 @@ describe('DivesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Exporter' }));
     expect(screen.getByText('Bientôt disponible')).toBeTruthy();
   });
+
+  it('announces the loading from the first render, then the size of the log, in one region', async () => {
+    const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
+    renderAt('/dives', get);
+
+    const status = liveRegion();
+    expect(status.textContent).toBe('Chargement du carnet');
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+
+    await screen.findByRole('table');
+    expect(liveRegion()).toBe(status);
+    expect(status.textContent).toBe('127 plongées dans la sélection');
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces a blank log served by the API', async () => {
+    renderAt('/dives', vi.fn().mockResolvedValue({ dives: [] }));
+    const status = liveRegion();
+
+    expect(await screen.findByRole('heading', { name: 'Ton carnet est vierge' })).toBeTruthy();
+    expect(liveRegion()).toBe(status);
+    expect(status.textContent).toBe('Ton carnet est vierge');
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('opens on the page of the URL and shows the next dives without calling the API again', async () => {
+    const user = userEvent.setup();
+    const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
+    renderAt('/dives', get);
+    await screen.findByRole('table');
+
+    const tableLinks = () =>
+      within(screen.getByRole('table'))
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href'));
+    expect(tableLinks()[0]).toBe('/dives/d127');
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Page suivante' })));
+    expect(search()).toBe('?page=2');
+    expect(tableLinks()[0]).toBe('/dives/d117');
+    expect(tableLinks()).not.toContain('/dives/d127');
+    expect(screen.getAllByText('11–20')).toHaveLength(2);
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the focus on the step buttons when they reach either end of the log', async () => {
+    const user = userEvent.setup();
+    renderAt('/dives?page=12');
+    await screen.findByRole('table');
+
+    const next = first(screen.getAllByRole('button', { name: 'Page suivante' }));
+    await user.click(next);
+    expect(search()).toBe('?page=13');
+    expect(next.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(next);
+
+    await user.keyboard('{Enter}');
+    expect(search()).toBe('?page=13');
+    expect(document.activeElement).toBe(next);
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Page 1' })));
+    const previous = first(screen.getAllByRole('button', { name: 'Page précédente' }));
+    expect(previous.getAttribute('aria-disabled')).toBe('true');
+    await user.click(previous);
+    expect(search()).toBe('');
+    expect(document.activeElement).toBe(previous);
+  });
+
+  it('keeps the focus on the page buttons used in the middle of the log', async () => {
+    const user = userEvent.setup();
+    renderAt('/dives?page=6');
+    const table = await screen.findByRole('table');
+    const pages = within(first(screen.getAllByRole('navigation', { name: 'Pages' })));
+    const firstLink = () => within(table).getAllByRole('link')[0]?.getAttribute('href');
+
+    const next = pages.getByRole('button', { name: 'Page suivante' });
+    await user.click(next);
+    expect(search()).toBe('?page=7');
+    expect(firstLink()).toBe('/dives/d67');
+    expect(next.hasAttribute('aria-disabled')).toBe(false);
+    expect(document.activeElement).toBe(next);
+
+    // Still focused, so the keyboard carries on from there.
+    await user.keyboard('{Enter}');
+    expect(search()).toBe('?page=8');
+    expect(document.activeElement).toBe(next);
+
+    const page9 = pages.getByRole('button', { name: 'Page 9' });
+    await user.click(page9);
+    expect(search()).toBe('?page=9');
+    expect(firstLink()).toBe('/dives/d47');
+    expect(page9.getAttribute('aria-current')).toBe('page');
+    expect(document.activeElement).toBe(page9);
+  });
+
+  it('filters on a region with a non-Latin name, through the URL and back', async () => {
+    const user = userEvent.setup();
+    const [greek, egyptian, ...rest] = mockDiveLogResponse.dives;
+    if (!greek || !egyptian) throw new Error('No dive');
+    const response = {
+      dives: [
+        { ...greek, site: { ...greek.site, locality: null, region: 'Ελλάδα' } },
+        { ...egyptian, site: { ...egyptian.site, locality: null, region: 'مصر' } },
+        ...rest,
+      ],
+    };
+    const get = vi.fn().mockResolvedValue(response);
+    const { unmount } = renderAt('/dives', get);
+    await screen.findByRole('table');
+
+    await user.click(filterButton('Région'));
+    const popover = screen.getByRole('dialog', { name: 'Filtre Région' });
+    await user.click(within(popover).getByRole('button', { name: /Ελλάδα/ }));
+    const url = search() ?? '';
+    expect(url).toMatch(/^\?region=r-[a-z0-9]+$/);
+    expect(liveRegion().textContent).toBe('1 plongée dans la sélection');
+    unmount();
+
+    renderAt(`/dives${url}`, get);
+    const table = await screen.findByRole('table');
+    expect(
+      within(table)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual([`/dives/${greek.id}`]);
+    expect(screen.getByRole('button', { name: 'Retirer le filtre Région : Ελλάδα' })).toBeTruthy();
+  });
+
+  it('shows page 2 when the URL says so', async () => {
+    renderAt('/dives?page=2');
+    const table = await screen.findByRole('table');
+    expect(within(table).getAllByRole('link')[0]?.getAttribute('href')).toBe('/dives/d117');
+  });
+
+  it('filters the loaded log client side, without calling the API again', async () => {
+    const user = userEvent.setup();
+    const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
+    renderAt('/dives', get);
+    await screen.findByRole('table');
+
+    await user.click(filterButton('Région'));
+    const popover = screen.getByRole('dialog', { name: 'Filtre Région' });
+    await user.click(within(popover).getByRole('button', { name: /Corse/ }));
+    expect(liveRegion().textContent).toBe('31 plongées dans la sélection');
+
+    await user.keyboard('{Escape}');
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Trier les plongées' }),
+      'Plus profondes',
+    );
+    expect(search()).toBe('?region=corse&sort=-depth');
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['loading', 'Chargement du carnet'],
+    ['empty', 'Ton carnet est vierge'],
+    ['error', 'Impossible de charger tes plongées pour l’instant.'],
+  ] as const)(
+    'forces the %s state with ?state= without calling the API',
+    async (state, announcement) => {
+      const get = vi.fn().mockResolvedValue(mockDiveLogResponse);
+      renderAt(`/dives?state=${state}`, get);
+      expect(liveRegion().textContent).toBe(announcement);
+
+      // A request, had one started, would have settled by now and replaced the forced state.
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+      expect(liveRegion().textContent).toBe(announcement);
+      expect(screen.queryByRole('table')).toBeNull();
+      expect(get).not.toHaveBeenCalled();
+    },
+  );
 });

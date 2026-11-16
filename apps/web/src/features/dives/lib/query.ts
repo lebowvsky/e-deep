@@ -5,12 +5,13 @@ import {
   DIVES_SORTS,
   GAS_FAMILIES,
   PAGE_SIZES,
-  REGION_KEYS,
   type DivesFilterKey,
   type DivesPeriod,
   type DivesQuery,
   type PageSize,
+  type RegionKey,
 } from '../types';
+import { isRegionKey } from './region';
 
 export const DEFAULT_QUERY: DivesQuery = {
   q: '',
@@ -52,6 +53,11 @@ function parseIds(value: string | null): string[] {
   return [...new Set(value.split(LIST_SEPARATOR).filter(Boolean))];
 }
 
+/** Regions come from the data: any well-formed key is kept, an unknown one matches nothing. */
+function parseRegions(value: string | null): RegionKey[] {
+  return parseIds(value).filter(isRegionKey);
+}
+
 function parseInteger(value: string | null): number | null {
   if (value === null || !/^\d+$/.test(value)) return null;
   return Number(value);
@@ -86,7 +92,7 @@ export function parseDivesQuery(params: URLSearchParams): DivesQuery {
     // Not trimmed: the search field writes every keystroke, trailing space included.
     q: params.get('q') ?? '',
     period: parsePeriod(params.get('period')),
-    regions: parseList(params.get('region'), REGION_KEYS),
+    regions: parseRegions(params.get('region')),
     depthMin,
     depthMax,
     gases: parseList(params.get('gas'), GAS_FAMILIES),

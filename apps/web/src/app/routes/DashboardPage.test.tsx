@@ -4,13 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { routes } from '@/app/routes';
 import { dashboardResponse } from '@/features/dashboard/api/dashboardResponse.fixture';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
-import { ApiClientContext } from '@/shared/lib/apiClientContext';
+import { TestProviders } from '@/test/TestProviders';
 
 const renderAt = (path: string, get: ApiClient['get'] = vi.fn()) =>
   render(
-    <ApiClientContext value={{ get }}>
+    <TestProviders client={{ get }}>
       <RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />
-    </ApiClientContext>,
+    </TestProviders>,
   );
 
 describe('DashboardPage', () => {

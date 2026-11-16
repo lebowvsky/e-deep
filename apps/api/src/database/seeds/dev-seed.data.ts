@@ -1,90 +1,21 @@
 /**
- * Fictitious development data, consistent with the dashboard mocks
- * (`apps/web/src/features/dashboard/mocks/dashboard.ts`). Deterministic: a fixed-seed PRNG drives
- * the measures, and dates are relative to the day the seed runs (so the last 12 months are filled).
+ * Fictitious development data. Marine Rousseau (the diver of the `DEV_AUTH_STUB`) has the dive log
+ * of the "Mes plongées" mocks (`dive-log.data.ts`, absolute dates); the two other accounts, linked
+ * to two of her buddies, get a few generated dives. Deterministic: a fixed-seed PRNG drives their
+ * measures, and their dates are relative to the day the seed runs.
  */
-import type { GasMix } from '../../modules/dives/gas-mix';
+import { toLocalDateTime } from '../../modules/dives/dive-contract.mapper';
+import { DIVE_LOG_BUDDIES, DIVE_LOG_DIVES, DIVE_LOG_SITES } from './dive-log.data';
+import type { SeedDive, SeedDiver, SeedSite } from './dev-seed.types';
 
-export type LevelCode = 'N1' | 'N2' | 'N3' | 'N4';
-
-export interface SeedSite {
-  readonly key: string;
-  readonly name: string;
-  readonly region: string;
-  readonly latitude: number;
-  readonly longitude: number;
-}
-
-export interface SeedBuddy {
-  readonly key: string;
-  readonly firstName: string;
-  readonly lastName: string;
-  /** Key of the seeded diver account this contact is linked to. */
-  readonly linkedDiverKey?: string;
-}
-
-export interface SeedDive {
-  readonly siteKey: string;
-  readonly daysAgo: number;
-  /** Local wall-clock hour of the dive (France: UTC+1 in winter, UTC+2 in summer). */
-  readonly localHour: number;
-  readonly maxDepthM: number;
-  readonly durationMin: number;
-  readonly waterTemperatureC: number | null;
-  readonly visibilityM: number | null;
-  readonly gasMix: GasMix;
-  readonly hasDecompression: boolean;
-  readonly stopsOk: boolean;
-  readonly notes: string | null;
-  readonly buddyKeys: readonly string[];
-  /** Level snapshot sent by the client; omitted → the diver's current level is copied. */
-  readonly levelCode?: LevelCode;
-  /** Deleted afterwards, to leave a tombstone. */
-  readonly deleted?: boolean;
-}
-
-export interface SeedDiver {
-  readonly key: string;
-  readonly firstName: string;
-  readonly lastName: string;
-  readonly levelCode: LevelCode;
-  readonly sites: readonly SeedSite[];
-  readonly buddies: readonly SeedBuddy[];
-  readonly dives: readonly SeedDive[];
-}
+const MS_PER_DAY = 86_400_000;
+const MS_PER_MINUTE = 60_000;
 
 const SITES = {
-  revellata: {
-    key: 'revellata',
-    name: 'Pointe de la Revellata',
-    region: 'Corse',
-    latitude: 42.583,
-    longitude: 8.725,
-  },
-  gabiniere: {
-    key: 'gabiniere',
-    name: 'Port-Cros — La Gabinière',
-    region: 'Var',
-    latitude: 42.991,
-    longitude: 6.401,
-  },
-  donator: {
-    key: 'donator',
-    name: 'Épave du Donator',
-    region: 'Var',
-    latitude: 42.979,
-    longitude: 6.223,
-  },
-  taillat: {
-    key: 'taillat',
-    name: 'Cap Taillat',
-    region: 'Var',
-    latitude: 43.172,
-    longitude: 6.641,
-  },
   riou: {
     key: 'riou',
     name: 'Grotte à Corail — Riou',
+    locality: null,
     region: 'Marseille',
     latitude: 43.176,
     longitude: 5.39,
@@ -92,6 +23,7 @@ const SITES = {
   planier: {
     key: 'planier',
     name: 'Planier — Le Chaouen',
+    locality: null,
     region: 'Marseille',
     latitude: 43.199,
     longitude: 5.232,
@@ -99,34 +31,23 @@ const SITES = {
   vesse: {
     key: 'vesse',
     name: 'La Vesse',
+    locality: null,
     region: 'Côte Bleue',
     latitude: 43.33,
     longitude: 5.255,
   },
-  fourmigue: {
-    key: 'fourmigue',
-    name: 'Sec de la Fourmigue',
-    region: 'Alpes-Maritimes',
-    latitude: 43.541,
-    longitude: 7.08,
-  },
-  rederis: {
-    key: 'rederis',
-    name: 'Cap Rédéris',
-    region: 'Pyrénées-Orientales',
-    latitude: 42.477,
-    longitude: 3.163,
-  },
-  lavezzi: {
-    key: 'lavezzi',
-    name: 'Îles Lavezzi — Le Mérouville',
-    region: 'Corse',
-    latitude: 41.335,
-    longitude: 9.256,
+  taillat: {
+    key: 'taillat',
+    name: 'Cap Taillat',
+    locality: null,
+    region: 'Var',
+    latitude: 43.172,
+    longitude: 6.641,
   },
   rubis: {
     key: 'rubis',
     name: 'Épave du Rubis',
+    locality: null,
     region: 'Var',
     latitude: 43.183,
     longitude: 6.715,
@@ -151,7 +72,6 @@ interface DiveProfile {
   readonly sites: readonly SiteKey[];
   readonly buddyKeys: readonly string[];
   readonly maxDepthM: number;
-  readonly levelFor?: (daysAgo: number) => LevelCode;
 }
 
 const NOTES = [
@@ -165,9 +85,22 @@ const NOTES = [
   null,
 ] as const;
 
-/** Dives spread evenly over the last 12 months (the dashboard histogram is never empty). */
+/** Dives spread evenly over the last 12 months. */
 const DAYS_AGO_BY_DIVE = (index: number, count: number, random: () => number): number =>
   Math.round(((index + random()) / count) * 360) + 3;
+
+/** Local date of a dive held `daysAgo` days ago at `localHour`, French local time. */
+function frenchLocalDate(daysAgo: number, localHour: number): string {
+  const today = new Date();
+  const day =
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()) -
+    daysAgo * MS_PER_DAY;
+  const month = new Date(day).getUTCMonth();
+  // Approximation of the French summer time (end of March to end of October).
+  const utcOffsetMinutes = month >= 3 && month <= 9 ? 120 : 60;
+  const startedAt = new Date(day + (localHour * 60 - utcOffsetMinutes) * MS_PER_MINUTE);
+  return toLocalDateTime(startedAt, utcOffsetMinutes);
+}
 
 function generateDives(seed: number, count: number, profile: DiveProfile): SeedDive[] {
   const random = createRandom(seed);
@@ -183,15 +116,11 @@ function generateDives(seed: number, count: number, profile: DiveProfile): SeedD
     const daysAgo = DAYS_AGO_BY_DIVE(index, count, random);
     const month = new Date(Date.now() - daysAgo * 86_400_000).getUTCMonth();
     const summer = month >= 5 && month <= 9;
-    const levelCode = profile.levelFor?.(daysAgo);
-    // N1: autonomous dives limited to 20 m.
-    const depthLimit = levelCode === 'N1' ? 20 : profile.maxDepthM;
-    const maxDepthM = Math.round((8 + random() * (depthLimit - 8)) * 10) / 10;
+    const maxDepthM = Math.round((8 + random() * (profile.maxDepthM - 8)) * 10) / 10;
     const deep = maxDepthM > 30;
     return {
       siteKey: pick(profile.sites),
-      daysAgo,
-      localHour: pick([9, 10, 11, 14, 15]),
+      date: frenchLocalDate(daysAgo, pick([9, 10, 11, 14, 15])),
       maxDepthM,
       durationMin: Math.round(deep ? 30 + random() * 15 : 40 + random() * 25),
       waterTemperatureC: Math.round((summer ? 20 + random() * 5 : 13 + random() * 2) * 10) / 10,
@@ -201,22 +130,25 @@ function generateDives(seed: number, count: number, profile: DiveProfile): SeedD
       stopsOk: random() > 0.05,
       notes: pick(NOTES),
       buddyKeys: profile.buddyKeys.filter(() => random() < 0.4).slice(0, 2),
-      ...(levelCode === undefined ? {} : { levelCode }),
     };
   });
 }
 
-/** Marine passed her N2 seven months ago: older dives keep the N1 snapshot. */
-const marineLevel = (daysAgo: number): LevelCode => (daysAgo > 210 ? 'N1' : 'N2');
-
-const MARINE_BUDDIES: readonly SeedBuddy[] = [
-  { key: 'lucas', firstName: 'Lucas', lastName: 'Bernard', linkedDiverKey: 'lucas' },
-  { key: 'thao', firstName: 'Thao', lastName: 'Nguyen', linkedDiverKey: 'thao' },
-  { key: 'elise', firstName: 'Élise', lastName: 'Marchand' },
-  { key: 'remi', firstName: 'Rémi', lastName: 'Pascal' },
-  { key: 'sofia', firstName: 'Sofia', lastName: 'Barros' },
-  { key: 'julien', firstName: 'Julien', lastName: 'Kervella' },
-];
+/** Deleted on another device: leaves a tombstone for the sync pull, absent from the dive log. */
+const DELETED_DIVE: SeedDive = {
+  date: '2026-04-07T18:00:00+02:00',
+  siteKey: 'vaisseau',
+  maxDepthM: 18,
+  durationMin: 50,
+  waterTemperatureC: 14,
+  visibilityM: 12,
+  gasMix: 'NITROX32',
+  hasDecompression: false,
+  stopsOk: true,
+  notes: 'Saisie en double, supprimée.',
+  buddyKeys: ['EM'],
+  deleted: true,
+};
 
 export const SEED_DIVERS: readonly SeedDiver[] = [
   {
@@ -224,86 +156,9 @@ export const SEED_DIVERS: readonly SeedDiver[] = [
     firstName: 'Marine',
     lastName: 'Rousseau',
     levelCode: 'N2',
-    sites: [
-      SITES.revellata,
-      SITES.gabiniere,
-      SITES.donator,
-      SITES.taillat,
-      SITES.riou,
-      SITES.planier,
-      SITES.vesse,
-      SITES.fourmigue,
-      SITES.rederis,
-      SITES.lavezzi,
-    ],
-    buddies: MARINE_BUDDIES,
-    dives: [
-      // Latest dive, shown on the dashboard "Dernière plongée" card.
-      {
-        siteKey: 'revellata',
-        daysAgo: 1,
-        localHour: 16,
-        maxDepthM: 42,
-        durationMin: 38,
-        waterTemperatureC: 14,
-        visibilityM: 25,
-        gasMix: 'AIR',
-        hasDecompression: false,
-        stopsOk: true,
-        notes: 'Tombant superbe, langoustes à 40 m.',
-        buddyKeys: ['lucas', 'thao'],
-        levelCode: 'N2',
-      },
-      {
-        siteKey: 'gabiniere',
-        daysAgo: 2,
-        localHour: 10,
-        maxDepthM: 38,
-        durationMin: 41,
-        waterTemperatureC: 16.5,
-        visibilityM: 30,
-        gasMix: 'AIR',
-        hasDecompression: true,
-        stopsOk: true,
-        notes: 'Bancs de barracudas, mérous partout.',
-        buddyKeys: ['lucas'],
-        levelCode: 'N2',
-      },
-      // Deleted on another device: leaves a tombstone for the sync pull.
-      {
-        siteKey: 'vesse',
-        daysAgo: 5,
-        localHour: 11,
-        maxDepthM: 18,
-        durationMin: 50,
-        waterTemperatureC: 17,
-        visibilityM: 12,
-        gasMix: 'NITROX32',
-        hasDecompression: false,
-        stopsOk: true,
-        notes: 'Saisie en double, supprimée.',
-        buddyKeys: ['elise'],
-        levelCode: 'N2',
-        deleted: true,
-      },
-      ...generateDives(20_261_108, 36, {
-        sites: [
-          'gabiniere',
-          'donator',
-          'taillat',
-          'riou',
-          'planier',
-          'vesse',
-          'fourmigue',
-          'rederis',
-          'lavezzi',
-          'revellata',
-        ],
-        buddyKeys: MARINE_BUDDIES.map((buddy) => buddy.key),
-        maxDepthM: 40,
-        levelFor: marineLevel,
-      }),
-    ],
+    sites: DIVE_LOG_SITES,
+    buddies: DIVE_LOG_BUDDIES,
+    dives: [...DIVE_LOG_DIVES, DELETED_DIVE],
   },
   {
     key: 'lucas',

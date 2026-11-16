@@ -1,5 +1,5 @@
 import { cx } from '@/shared/lib/classNames';
-import { Icon } from '@/shared/ui/Icon';
+import { Icon, type IconName } from '@/shared/ui/Icon';
 import { Select } from '@/shared/ui/Select';
 import { pageItems } from '../../lib/pagination';
 import { PAGE_SIZES, type PageSize } from '../../types';
@@ -33,15 +33,12 @@ export function Pagination({ page, pageCount, size, total, onPage, onSize }: Pag
       <nav aria-label="Pages">
         <ul className={styles.pages}>
           <li>
-            <button
-              type="button"
-              className={styles.page}
-              disabled={page <= 1}
-              aria-label="Page précédente"
+            <StepButton
+              label="Page précédente"
+              icon="chevronLeft"
+              isUnavailable={page <= 1}
               onClick={() => onPage(page - 1)}
-            >
-              <Icon name="chevronLeft" size="md" />
-            </button>
+            />
           </li>
           {pageItems(page, pageCount).map((item, index) =>
             item === 'gap' ? (
@@ -63,15 +60,12 @@ export function Pagination({ page, pageCount, size, total, onPage, onSize }: Pag
             ),
           )}
           <li>
-            <button
-              type="button"
-              className={styles.page}
-              disabled={page >= pageCount}
-              aria-label="Page suivante"
+            <StepButton
+              label="Page suivante"
+              icon="chevronRight"
+              isUnavailable={page >= pageCount}
               onClick={() => onPage(page + 1)}
-            >
-              <Icon name="chevronRight" size="md" />
-            </button>
+            />
           </li>
         </ul>
       </nav>
@@ -88,5 +82,34 @@ export function Pagination({ page, pageCount, size, total, onPage, onSize }: Pag
         <span aria-hidden="true">par page</span>
       </div>
     </div>
+  );
+}
+
+interface StepButtonProps {
+  label: string;
+  icon: IconName;
+  /** At either end: announced and shown as unavailable, but the button keeps the focus. */
+  isUnavailable: boolean;
+  onClick: () => void;
+}
+
+/**
+ * « Page précédente » / « Page suivante ». `aria-disabled` rather than `disabled`: reaching the
+ * last page with the keyboard would otherwise disable the focused button and drop the focus on
+ * `<body>` (WCAG 2.4.3).
+ */
+function StepButton({ label, icon, isUnavailable, onClick }: StepButtonProps) {
+  return (
+    <button
+      type="button"
+      className={styles.page}
+      aria-label={label}
+      aria-disabled={isUnavailable || undefined}
+      onClick={() => {
+        if (!isUnavailable) onClick();
+      }}
+    >
+      <Icon name={icon} size="md" />
+    </button>
   );
 }
