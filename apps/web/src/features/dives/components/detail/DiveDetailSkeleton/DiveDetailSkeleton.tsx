@@ -18,7 +18,7 @@ export function DiveDetailSkeleton({ preview }: DiveDetailSkeletonProps) {
   return (
     <div className={styles.skeleton} aria-busy="true">
       {preview ? (
-        <DiveDetailHeader dive={preview} stopsOk={null} />
+        <DiveDetailHeader dive={preview} stopsOk={null} area={null} entryType={null} />
       ) : (
         <div className={styles.header} aria-hidden="true">
           <Skeleton className={styles.overline} />

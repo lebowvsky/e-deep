@@ -8,7 +8,6 @@ import {
   oxygenPercent,
   placeWithArea,
   repetitiveLabel,
-  stopsLabel,
 } from './labels';
 
 describe('gas labels', () => {
@@ -34,9 +33,7 @@ describe('gas labels', () => {
 });
 
 describe('stop labels', () => {
-  it('words the stops, the decompression and the repetitive dive', () => {
-    expect(stopsLabel(true)).toBe('Respectés');
-    expect(stopsLabel(false)).toBe('À vérifier');
+  it('words the decompression and the repetitive dive', () => {
     expect(decompressionLabel(true)).toBe('Oui');
     expect(decompressionLabel(false)).toBe('Aucun');
     expect(repetitiveLabel(true)).toBe('Oui');

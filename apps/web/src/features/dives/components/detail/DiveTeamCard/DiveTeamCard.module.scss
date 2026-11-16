@@ -40,8 +40,16 @@
   color: $color-text-low;
 }
 
-.shared {
+.detail {
   @include type($type-caption-sm, $font: $font-mono);
 
   color: $color-text-low;
+}
+
+.level {
+  flex-shrink: 0;
+}
+
+.srOnly {
+  @include visually-hidden;
 }

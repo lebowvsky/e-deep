@@ -1,0 +1,173 @@
+import { render, screen, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { toDiveDetailView, toSelfMember } from '../../../api/divesApi';
+import { mockDiveDetail, mockFilledDiveDetail } from '../../../mocks/diveDetailResponse';
+import { mockOwner } from '../../../mocks/diveLogResponse';
+import type { DiveDetailView } from '../../../types';
+import { DiveDetailReady } from './DiveDetailReady';
+
+const self = toSelfMember(mockOwner);
+
+/** The latest mocked dive: filled with the mockup values, or with nothing entered at all. */
+const filled = (): DiveDetailView =>
+  toDiveDetailView({ ...mockFilledDiveDetail('d127'), gasMix: 'AIR' }, self);
+const empty = (): DiveDetailView =>
+  toDiveDetailView(
+    { ...mockDiveDetail('d127'), gasMix: 'AIR', temperatureC: null, notes: null },
+    self,
+  );
+
+const card = (name: RegExp) => screen.getByRole('region', { name });
+
+/** The `<dd>` of a term in a card (description list). */
+function valueOf(region: HTMLElement, term: string): HTMLElement {
+  const dt = within(region).getByText(term, { selector: 'dt' });
+  const dd = dt.nextElementSibling;
+  if (!(dd instanceof HTMLElement) || dd.tagName !== 'DD') throw new Error(`No value for ${term}`);
+  return dd;
+}
+
+describe('DiveDetailReady, filled dive', () => {
+  it('adds the area to the place and the entry type to the tags', () => {
+    render(<DiveDetailReady dive={filled()} insights={null} />);
+
+    expect(screen.getByText(/· Méditerranée$/)).toBeTruthy();
+    const tags = screen.getByRole('list', { name: 'Étiquettes' });
+    expect(
+      within(tags)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toStrictEqual(['Palier OK', 'Air', 'Bateau']);
+  });
+
+  it('captions the bottom temperature with the surface one', () => {
+    render(<DiveDetailReady dive={filled()} insights={null} />);
+    const measures = screen.getByRole('list', { name: 'Mesures' });
+    expect(within(measures).getByText('Surface 16 °C')).toBeTruthy();
+  });
+
+  it('shows the run: safety stop, decompression, repetitive, no more gas', () => {
+    render(<DiveDetailReady dive={filled()} insights={null} />);
+    const run = card(/Déroulé de la plongée/);
+
+    expect(within(run).getByText('3 minutes à 5 mètres')).toBeTruthy();
+    expect(valueOf(run, 'Paliers de déco.').textContent).toBe('Aucun');
+    expect(valueOf(run, 'Successive').textContent).toBe('Non');
+    expect(within(run).queryByText('Gaz')).toBeNull();
+    // The time bar and its caption are decorative: the stop is in the text.
+    const caption = within(run).getByText('palier 3 min à 5 m');
+    expect(caption.closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('shows the equipment, units read with their value', () => {
+    render(<DiveDetailReady dive={filled()} insights={null} />);
+    const equipment = card(/Équipement & gaz/);
+
+    expect(equipment.tagName).toBe('SECTION');
+    expect(within(equipment).getByRole('heading', { level: 2 }).textContent).toContain(
+      'Équipement & gaz',
+    );
+    expect(valueOf(equipment, 'Gaz').textContent).toBe('Air21 % O₂');
+    expect(within(valueOf(equipment, 'Bloc')).getByText('12 litres, acier')).toBeTruthy();
+    const pressure = valueOf(equipment, 'Pression');
+    expect(within(pressure).getByText('200 bars au début, 60 bars à la fin')).toBeTruthy();
+    expect(within(pressure).getByText('140 bar consommés')).toBeTruthy();
+    expect(
+      within(valueOf(equipment, 'Combinaison')).getByText('7 millimètres, semi-étanche'),
+    ).toBeTruthy();
+    expect(valueOf(equipment, 'Lest').textContent).toBe('—Non renseigné');
+  });
+
+  it('shows the conditions', () => {
+    render(<DiveDetailReady dive={filled()} insights={null} />);
+    const conditions = card(/Conditions/);
+
+    expect(valueOf(conditions, 'Type').textContent).toBe('Bateau · jour');
+    expect(valueOf(conditions, 'Météo').textContent).toBe('EnsoleilléAir 19 °C');
+    expect(valueOf(conditions, 'Mer').textContent).toBe('Calme');
+    expect(valueOf(conditions, 'Courant').textContent).toBe('Faible');
+    const water = valueOf(conditions, 'Eau');
+    expect(within(water).getByText('16 degrés en surface, 14 degrés au fond')).toBeTruthy();
+    // The note repeats the spoken form: hidden from screen readers.
+    expect(within(water).getByText('surface → fond').getAttribute('aria-hidden')).toBe('true');
+    expect(valueOf(conditions, 'Structure').textContent).toBe('Calvi Plongée');
+  });
+
+  it('lists the species in the order entered, with their spoken count', () => {
+    render(<DiveDetailReady dive={filled()} insights={null} />);
+    const species = within(card(/Notes & observations/)).getByRole('list', {
+      name: 'Espèces observées',
+    });
+    const items = within(species).getAllByRole('listitem');
+    expect(items).toHaveLength(5);
+    expect(within(items[0] as HTMLElement).getByText('Mérou brun, 2 individus')).toBeTruthy();
+    expect(
+      within(items[1] as HTMLElement).getByText('Barracudas', { ignore: '[aria-hidden]' }),
+    ).toBeTruthy();
+  });
+
+  it('gives each member a level tag, the user their level at the time of the dive', () => {
+    const dive = filled();
+    render(<DiveDetailReady dive={dive} insights={null} />);
+    const team = card(/Palanquée/);
+
+    expect(within(team).getByText('N2 · FFESSM')).toBeTruthy();
+    const levels = dive.team.filter((member) => member.level !== null).length;
+    expect(within(team).getAllByText('Niveau')).toHaveLength(levels);
+  });
+
+  it('dates the creation and the change, in the device time zone', () => {
+    render(<DiveDetailReady dive={filled()} insights={null} />);
+    const times = screen
+      .getAllByText((_content, element) => element?.tagName === 'TIME')
+      .filter((time) => time.closest('p')?.textContent?.startsWith('Créée le'));
+    expect(times.map((time) => time.getAttribute('datetime'))).toStrictEqual([
+      '2026-04-08T18:00:00.000Z',
+      '2026-04-09T07:30:00.000Z',
+    ]);
+  });
+});
+
+describe('DiveDetailReady, nothing entered', () => {
+  it('keeps every card, values missing as « — · Non renseigné(e) »', () => {
+    render(<DiveDetailReady dive={empty()} insights={null} />);
+
+    for (const name of [/Déroulé/, /Équipement/, /Conditions/, /Notes/, /Site/, /Palanquée/]) {
+      expect(card(name)).toBeTruthy();
+    }
+    const run = card(/Déroulé de la plongée/);
+    expect(valueOf(run, 'Palier de sécurité').textContent).toBe('—Non renseigné');
+    expect(valueOf(run, 'Successive').textContent).toBe('—Non renseignée');
+    expect(within(run).queryByText(/^palier /)).toBeNull();
+
+    const equipment = card(/Équipement & gaz/);
+    expect(valueOf(equipment, 'Gaz').textContent).toBe('Air21 % O₂');
+    expect(valueOf(equipment, 'Pression').textContent).toBe('—Non renseignée');
+    // « — » is decorative: the words carry the information.
+    expect(within(equipment).getAllByText('—')[0]?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('says « Rien de renseigné » in an empty card, without a list', () => {
+    render(<DiveDetailReady dive={empty()} insights={null} />);
+
+    for (const name of [/Conditions/, /Notes & observations/]) {
+      const region = card(name);
+      expect(within(region).getByText('Rien de renseigné')).toBeTruthy();
+      expect(region.querySelector('dl, ul')).toBeNull();
+    }
+  });
+
+  it('shows neither area nor entry type, nor a surface caption, nor a buddy level', () => {
+    const dive = empty();
+    render(<DiveDetailReady dive={dive} insights={null} />);
+
+    const header = document.querySelector('header');
+    expect(within(header ?? document.body).getByText(dive.site.place)).toBeTruthy();
+    const tags = screen.getByRole('list', { name: 'Étiquettes' });
+    expect(within(tags).queryByText('Bateau')).toBeNull();
+    expect(screen.queryByText(/^Surface /)).toBeNull();
+    // Only the user's level is known.
+    expect(within(card(/Palanquée/)).getAllByText('Niveau')).toHaveLength(1);
+    expect(screen.queryByText(/modifiée le/)).toBeNull();
+  });
+});

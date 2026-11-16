@@ -1,11 +1,13 @@
+import type { CSSProperties } from 'react';
 import { Badge } from '@/shared/ui/Badge';
 import { cx } from '@/shared/lib/classNames';
+import { safetyStopCaption, safetyStopFact, stopShare } from '../../../lib/diveFacts';
 import { formatExitTime, formatImmersionTime } from '../../../lib/diveTime';
-import { decompressionLabel, gasMixSpoken, oxygenLabel, stopsLabel } from '../../../lib/labels';
+import { decompressionLabel, MISSING_LABELS, repetitiveLabel } from '../../../lib/labels';
 import type { DiveDetailView } from '../../../types';
 import { Quantity } from '../../Quantity';
 import { DetailSection } from '../DetailSection';
-import { FactList } from '../FactList';
+import { contentFact, FactList } from '../FactList';
 import styles from './DiveRunCard.module.scss';
 
 export interface DiveRunCardProps {
@@ -15,11 +17,13 @@ export interface DiveRunCardProps {
 
 /**
  * « Déroulé de la plongée » (V1, manual entry, no profile curve): immersion → duration → exit over
- * a time bar, then the gas and the stops. The bar is decorative: everything is in the text.
+ * a time bar ending with the safety stop, then the stops and the repetitive dive. The bar and its
+ * caption are decorative: everything is in the text.
  */
 export function DiveRunCard({ dive, className }: DiveRunCardProps) {
   const immersion = formatImmersionTime(dive.date, dive.utcOffsetMinutes);
   const exit = formatExitTime(dive.date, dive.utcOffsetMinutes, dive.durationMin);
+  const share = stopShare(dive.safetyStop, dive.durationMin);
 
   return (
     <DetailSection
@@ -53,18 +57,32 @@ export function DiveRunCard({ dive, className }: DiveRunCardProps) {
           </dd>
         </div>
       </dl>
-      <div className={styles.bar} aria-hidden="true" />
+      <div className={styles.timeline} aria-hidden="true">
+        <div className={styles.bar}>
+          {share !== null && (
+            <span className={styles.stop} style={{ '--stop-share': share } as CSSProperties} />
+          )}
+        </div>
+        {dive.safetyStop && (
+          <p className={styles.stopCaption}>{safetyStopCaption(dive.safetyStop)}</p>
+        )}
+      </div>
       <FactList
         layout="cells"
         className={styles.facts}
         facts={[
-          {
-            term: 'Gaz',
-            value: gasMixSpoken(dive.gasMix),
-            note: oxygenLabel(dive.equipment.o2Percent),
-          },
-          { term: 'Paliers', value: stopsLabel(dive.stopsOk) },
+          contentFact(
+            'Palier de sécurité',
+            safetyStopFact(dive.safetyStop),
+            MISSING_LABELS.masculine,
+            'fact',
+          ),
           { term: 'Paliers de déco.', value: decompressionLabel(dive.hadDecompression) },
+          {
+            term: 'Successive',
+            value: dive.isRepetitive === null ? null : repetitiveLabel(dive.isRepetitive),
+            missingLabel: MISSING_LABELS.feminine,
+          },
         ]}
       />
     </DetailSection>

@@ -14,10 +14,3 @@
     @include type($type-body-lg);
   }
 }
-
-.missing {
-  @include type($type-body);
-
-  margin: 0;
-  color: $color-text-muted;
-}

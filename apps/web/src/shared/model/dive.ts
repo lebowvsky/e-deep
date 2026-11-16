@@ -16,11 +16,11 @@ export interface DiveMember {
 }
 
 /** The user first, then the other members in their recorded order. */
-export function selfFirst(team: readonly DiveMember[]): DiveMember[] {
+export function selfFirst<T extends DiveMember>(team: readonly T[]): T[] {
   return [...team.filter((member) => member.isSelf), ...team.filter((member) => !member.isSelf)];
 }
 
 /** The members other than the user. */
-export function othersInTeam(team: readonly DiveMember[]): DiveMember[] {
+export function othersInTeam<T extends DiveMember>(team: readonly T[]): T[] {
   return team.filter((member) => !member.isSelf);
 }

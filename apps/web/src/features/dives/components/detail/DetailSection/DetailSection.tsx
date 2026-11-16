@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react';
 import { cx } from '@/shared/lib/classNames';
 import { Icon, type IconName } from '@/shared/ui/Icon';
+import { NOTHING_ENTERED } from '../../../lib/labels';
 import styles from './DetailSection.module.scss';
 
 export interface DetailSectionProps {
@@ -9,11 +10,20 @@ export interface DetailSectionProps {
   /** Right side of the title row (« Saisie manuelle »). */
   aside?: ReactNode;
   className?: string | undefined;
+  /** Nothing entered at all: the card keeps its title and says so instead of its content. */
+  empty?: boolean;
   children: ReactNode;
 }
 
 /** A card of the dive detail: a titled section (h2 styled as an overline, dive-detail.jsx · CardHead). */
-export function DetailSection({ title, icon, aside, className, children }: DetailSectionProps) {
+export function DetailSection({
+  title,
+  icon,
+  aside,
+  className,
+  empty = false,
+  children,
+}: DetailSectionProps) {
   const titleId = useId();
   return (
     <section className={cx(styles.section, className)} aria-labelledby={titleId}>
@@ -24,7 +34,7 @@ export function DetailSection({ title, icon, aside, className, children }: Detai
         </h2>
         {aside}
       </div>
-      {children}
+      {empty ? <p className={styles.empty}>{NOTHING_ENTERED}</p> : children}
     </section>
   );
 }

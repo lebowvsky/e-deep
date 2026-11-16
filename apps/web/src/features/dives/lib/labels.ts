@@ -72,11 +72,6 @@ export function oxygenLabel(percent: number | null): string | null {
   return percent === null ? null : `${percent} % O₂`;
 }
 
-/** Dive run « Paliers »: « Respectés » / « À vérifier » (the header badge says « Palier OK »). */
-export function stopsLabel(stopsOk: boolean): string {
-  return stopsOk ? 'Respectés' : 'À vérifier';
-}
-
 /** Dive run « Paliers de déco. »: « Aucun » / « Oui ». */
 export function decompressionLabel(hadDecompression: boolean): string {
   return hadDecompression ? 'Oui' : 'Aucun';

@@ -30,3 +30,11 @@
   gap: $space-2;
   margin: 0;
 }
+
+// A card with nothing entered: its title, then « Rien de renseigné » (textLow, AA).
+.empty {
+  @include type($type-body);
+
+  margin: 0;
+  color: $color-text-low;
+}

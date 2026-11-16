@@ -28,6 +28,23 @@
   color: $color-text-low;
 }
 
+// dive-detail.jsx · KV missing: « — » mono textMuted (decorative), then the words in textLow (AA).
+.missing {
+  @include type($type-caption);
+
+  display: inline-flex;
+  align-items: baseline;
+  gap: $space-2;
+  font-weight: 400;
+  color: $color-text-low;
+}
+
+.dash {
+  @include type($type-body, $font: $font-mono);
+
+  color: $color-text-muted;
+}
+
 // dive-detail.jsx · KV: one fact per line, hairline between lines.
 .rows {
   flex-direction: column;
@@ -42,6 +59,13 @@
     &:not(:last-child) {
       border-bottom: 1px solid $color-line;
     }
+  }
+
+  // KV: key sans 13 textLow.
+  .term {
+    @include type($type-body-sm);
+
+    font-weight: 400;
   }
 
   .value {

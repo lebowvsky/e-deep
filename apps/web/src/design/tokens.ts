@@ -64,6 +64,9 @@ export const color = {
   depthBar: 'rgba(154, 186, 224, 0.35)', // depth mini-bar, non-peak
   trackFill: 'rgba(154, 186, 224, 0.14)', // range slider rail
   groupHeader: 'rgba(11, 26, 46, 0.55)', // month header row of the dive table
+
+  // Dive detail (dive-detail.jsx)
+  runStopFill: 'rgba(91, 211, 145, 0.75)', // safety stop segment of the time bar (success × 0.75)
 } as const;
 
 export const font = {

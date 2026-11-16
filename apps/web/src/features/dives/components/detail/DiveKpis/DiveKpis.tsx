@@ -1,4 +1,6 @@
+import { formatMeasure } from '@/shared/lib/format';
 import { KpiCard } from '@/shared/ui/KpiCard';
+import { surfaceCaption } from '../../../lib/diveFacts';
 import { formatExitTime } from '../../../lib/diveTime';
 import type { DiveDetailView } from '../../../types';
 import styles from './DiveKpis.module.scss';
@@ -15,14 +17,15 @@ const MISSING = '—';
 export function DiveKpis({ dive, isPersonalBest }: DiveKpisProps) {
   const exit = formatExitTime(dive.date, dive.utcOffsetMinutes, dive.durationMin);
   const { temperatureC, visibilityM } = dive;
+  const surface = surfaceCaption(dive.surfaceTemperatureC);
 
   return (
     <ul className={styles.kpis} aria-label="Mesures">
       <KpiCard
         label={{ short: 'Prof. max', long: 'Profondeur max' }}
-        value={dive.depthMaxM}
+        value={formatMeasure(dive.depthMaxM)}
         unit="m"
-        srText={`${dive.depthMaxM} mètres`}
+        srText={`${formatMeasure(dive.depthMaxM)} mètres`}
         // Accent stays rare (apps/web/CLAUDE.md): only the deepest dive of the log.
         tone={isPersonalBest ? 'accent' : 'default'}
         caption={isPersonalBest ? 'Ton record personnel' : undefined}
@@ -45,9 +48,10 @@ export function DiveKpis({ dive, isPersonalBest }: DiveKpisProps) {
       ) : (
         <KpiCard
           label="Temp. fond"
-          value={temperatureC}
+          value={formatMeasure(temperatureC)}
           unit="°C"
-          srText={`${temperatureC} degrés au fond`}
+          srText={`${formatMeasure(temperatureC)} degrés au fond`}
+          caption={surface ?? undefined}
         />
       )}
       {visibilityM === null ? (
@@ -61,9 +65,9 @@ export function DiveKpis({ dive, isPersonalBest }: DiveKpisProps) {
       ) : (
         <KpiCard
           label="Visibilité"
-          value={visibilityM}
+          value={formatMeasure(visibilityM)}
           unit="m"
-          srText={`${visibilityM} mètres de visibilité`}
+          srText={`${formatMeasure(visibilityM)} mètres de visibilité`}
         />
       )}
     </ul>

@@ -1,0 +1,10 @@
+@use '@/styles/tokens' as *;
+
+// dive-detail.jsx · mono 10 / ls 0.3 under the sharing note; textLow, not textMuted (AA: it is
+// information, not decoration).
+.dates {
+  @include type($type-meta, $font: $font-mono, $tabular: true);
+
+  margin: 0;
+  color: $color-text-low;
+}

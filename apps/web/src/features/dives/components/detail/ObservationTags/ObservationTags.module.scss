@@ -1,0 +1,15 @@
+@use '@/styles/tokens' as *;
+
+// dive-detail.jsx · NotesCard tags: wrapped, 8 apart.
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

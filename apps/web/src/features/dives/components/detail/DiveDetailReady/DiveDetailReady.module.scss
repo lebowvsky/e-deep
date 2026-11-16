@@ -61,19 +61,41 @@
   order: 2;
 }
 
-.notes {
+// dive-detail.jsx: equipment and conditions side by side on desktop, stacked below.
+.pair {
+  display: grid;
   order: 3;
+  gap: $space-3;
+
+  @include from($bp-tablet) {
+    gap: $space-4;
+  }
+
+  @include from($bp-large) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
-.site {
+.notes {
   order: 4;
 }
 
+.site {
+  order: 5;
+}
+
+// Sharing note, then the record dates (8 apart).
 .sharing {
+  display: flex;
+  flex-direction: column;
+  order: 6;
+  gap: $space-2;
+  padding: $space-1 $space-1 0;
+}
+
+.sharingText {
   @include type($type-caption);
 
-  order: 5;
-  padding: $space-1 $space-1 0;
   margin: 0;
   font-weight: 400;
   color: $color-text-low;
@@ -82,6 +104,7 @@
 @include from($bp-large) {
   .run,
   .team,
+  .pair,
   .notes,
   .site,
   .sharing {
