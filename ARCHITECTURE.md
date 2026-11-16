@@ -34,7 +34,7 @@ dev, D23 et D28). Routes :
 - `GET /api/health` : affichée par les deux fronts ;
 - `GET /api/dashboard` : dashboard du plongeur courant (`apps/web`, `/dashboard`) ;
 - `GET /api/dives` et `GET /api/dives/:id` : carnet complet et détail d'une plongée du plongeur
-  courant (`apps/web`, `/dives`, D25).
+  courant (`apps/web`, `/dives` et `/dives/:diveId`, D25).
 
 Modèle de données : `docs/data-model/` (`schema.md`, `decisions.md`).
 
@@ -472,3 +472,45 @@ Issus du carnet « Mes plongées » (revue et audits, 2026-11-13) :
   « ÉM » (le formateur garde les accents).
 - **Tests web** : un échec isolé de `pnpm test`, non reproduit, a été attribué à l'attente de 1 s
   sous charge et corrigé (3 s) ; `useDashboard.test.tsx` utilise `vi.waitFor`, qui reste à 1 s.
+
+Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
+
+- **Champs de la spec absents du contrat `DiveDetail`** : la page n'affiche que ce que l'API sert,
+  sans mock ni valeur inventée. Inventaire, pistes de modélisation et questions ouvertes :
+  `docs/data-model/evolution-champs-detail-plongee.md`. Par section UI :
+  - en-tête : type Bateau / Bord, mer ou zone (« Méditerranée ») ;
+  - KPI : température de surface (« Surface 16 °C »), qualificatif de visibilité (pas de barème) ;
+  - Déroulé : durée et profondeur du palier de sécurité (seul le booléen `stopsOk` existe), détail
+    des paliers de déco., successive, segment « palier » de la barre de temps ;
+  - Équipement & gaz : bloc, pressions et bar consommés, combinaison, lest. Seul le gaz est connu :
+    il est affiché dans le Déroulé, et la carte n'est pas rendue ;
+  - Conditions : type, météo et air, mer, courant, eau en surface, structure. La carte n'est pas
+    rendue (la température au fond est dans les KPI) ;
+  - Notes : étiquettes d'espèces ;
+  - Palanquée : niveau de chaque membre (celui du plongeur à la plongée est déjà en base, D-09) ;
+  - dates de création et de modification (déjà en base, absentes du contrat).
+- **Actions non rendues** : « Modifier ma plongée », menu « … » (Dupliquer, Exporter, Supprimer),
+  faute de formulaire d'édition et d'endpoint d'écriture ; les champs vides n'ont donc pas de lien
+  « Compléter » (« — · Non renseignée »). Lien « Toutes mes plongées ici » non rendu : la query de
+  `/dives` n'a pas de filtre par site. Raccourcis `←` / `→` / `e` non faits.
+- **Carte** : la mini-carte du site reprend le décor placeholder du dashboard (`MapBackdrop`, passé
+  dans `shared/ui`) avec le marqueur centré et les vraies coordonnées ; `projectToMap` n'est pas
+  utilisée (sa boîte fixe enverrait un site breton au bord). À remplacer par MapLibre avec la carte
+  du dashboard.
+- **`placeholderData` non retenu** : `useQuery` attend un `DiveDetail` complet, que le résumé du
+  carnet ne fournit pas (coordonnées, visibilité, paliers) sans valeur inventée ni cast. À la place,
+  l'état `loading` de `useDive` porte un `preview` lu dans le carnet en cache, qui affiche l'en-tête
+  réel pendant le chargement.
+- **Lecture du carnet** : `useDive` lit aussi `GET /dives` (même cache que la liste, non bloquant)
+  pour précédente / suivante, record personnel, « Tes plongées ici », « Ta prof. max ici » et
+  « N plongées ensemble ». Une API dédiée (voisins, compteurs) éviterait de charger tout le carnet
+  sur un accès direct ; à revoir avec la PWA (D22), où le carnet sera local.
+- **404 et 400** donnent le même état `not-found` (message neutre, sans l'id).
+- **Mobile** : la barre du haut est celle de l'application, pas la barre dédiée de la spec (retour,
+  modifier, « … »), qui demanderait un slot de page dans `AppShell` ; le FAB est masqué sur
+  `/dives/:id`. La maquette met le h1 mobile en 26/30 et les KPI desktop en 40 : on garde `h1` et le
+  `KpiCard` partagé (44).
+- **Bundle** : +4,5 kB gzip de JS et +1,8 kB gzip de CSS (route non chargée à la demande, comme les
+  autres pages).
+- **Doc design** : `apps/web/design/README.md` (lecture seule) situe encore `KpiCard` dans
+  `features/dashboard`.
