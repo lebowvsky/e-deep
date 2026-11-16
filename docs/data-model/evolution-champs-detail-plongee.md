@@ -1,8 +1,9 @@
 # Évolution du modèle : champs de la page « Détail d'une plongée »
 
-> **Statut : à instruire.** Note de cadrage pour une prochaine session (skill `modeling-databases`,
-> puis agent backend). Rédigée le 2026-11-16 pendant le front de `/dives/:diveId`.
-> Rien n'est décidé ici : c'est l'inventaire des écarts et les questions à trancher.
+> **Statut : instruit le 2026-11-16** (décisions D-13 à D-22 de `decisions.md`, schéma dans
+> `schema.md`, mission « Mission 2 » de `backend-prompt.md`). Note de cadrage rédigée le 2026-11-16
+> pendant le front de `/dives/:diveId` ; l'inventaire ci-dessous est conservé tel quel, les réponses
+> sont cochées plus bas.
 
 ## Contexte
 
@@ -62,21 +63,36 @@ La spec de la page propose déjà une répartition, reprise ci-dessous.
 
 ## Questions à trancher en session de modélisation
 
-1. Listes fermées (`text + CHECK`, convention actuelle) ou tables de référence (météo, mer, courant,
-   matière du bloc, type de combinaison) ? Quid de la traduction et de l'évolutivité ?
-2. Équipement : colonnes plates sur la participation (simple, une plongée = un équipement) ou entité
-   réutilisable (« mon bloc 12 L acier ») pour préremplir la duplication ?
-3. Paliers : un palier de sécurité (2 colonnes) ou une liste de paliers (JSONB / table) pour les
-   plongées à décompression ?
-4. Successive : saisie ou dérivée (intervalle de surface) ? Le calcul dépend de l'ordre du carnet.
-5. Structure / club : texte libre ou entité partagée (prépare le futur mode club de D-08) ?
-6. Espèces : référentiel (lequel ? DORIS, WoRMS…) ou étiquettes libres ?
-7. RGPD (`ARCHITECTURE.md` §9) : classer chaque nouvelle colonne (S / L / P). Pressions, paliers et
-   successive sont des données de santé.
-8. Offline-first : chaque colonne ajoutée entre dans le protocole de synchronisation (D-12) et dans le
-   schéma IndexedDB de la PWA (D-22). Mieux vaut les ajouter **en une fois**.
+- [x] **1. Listes fermées** (`text + CHECK`, convention actuelle) ou tables de référence (météo, mer, courant,
+      matière du bloc, type de combinaison) ? Quid de la traduction et de l'évolutivité ?
+      → `text + CHECK`, codes neutres, libellés côté front : [D-14](decisions.md#d-14--listes-fermées-en-text--check-pas-de-tables-de-référence).
+- [x] **2. Équipement** : colonnes plates sur la participation (simple, une plongée = un équipement) ou entité
+      réutilisable (« mon bloc 12 L acier ») pour préremplir la duplication ?
+      → colonnes plates, `o2_percent` réservé à `OTHER` : [D-15](decisions.md#d-15--équipement-et-gaz-à-plat-sur-la-participation).
+- [x] **3. Paliers** : un palier de sécurité (2 colonnes) ou une liste de paliers (JSONB / table) pour les
+      plongées à décompression ?
+      → palier de sécurité sur 2 colonnes, détail de la déco reporté : [D-16](decisions.md#d-16--palier-de-sécurité-sur-deux-colonnes-détail-de-la-déco-reporté).
+- [x] **4. Successive** : saisie ou dérivée (intervalle de surface) ? Le calcul dépend de l'ordre du carnet.
+      → saisie, proposée par le client : [D-17](decisions.md#d-17--plongée-successive-saisie-proposée-par-le-client).
+- [x] **5. Structure / club** : texte libre ou entité partagée (prépare le futur mode club de D-08) ?
+      → texte libre sur l'événement : [D-18](decisions.md#d-18--structure-en-texte-libre-sur-lévénement).
+- [x] **6. Espèces** : référentiel (lequel ? DORIS, WoRMS…) ou étiquettes libres ?
+      → étiquettes libres avec effectif, table `dive_observations` : [D-19](decisions.md#d-19--observations-despèces--étiquettes-libres-dans-dive_observations).
+- [x] **7. RGPD** (`ARCHITECTURE.md` §9) : classer chaque nouvelle colonne (S / L / P). Pressions, paliers et
+      successive sont des données de santé.
+      → colonne PII du dictionnaire (`schema.md` §1) et [D-07](decisions.md#d-07--suppression-et-rgpd).
+- [x] **8. Offline-first** : chaque colonne ajoutée entre dans le protocole de synchronisation (D-12) et dans le
+      schéma IndexedDB de la PWA (D22 d'`ARCHITECTURE.md`). Mieux vaut les ajouter **en une fois**.
+      → une seule migration, tous les champs requis au push : [D-22](decisions.md#d-22--une-seule-migration-tous-les-champs-obligatoires-au-push).
+
+Tranchés en plus de ces questions : zone du site ([D-20](decisions.md#d-20--zone-maritime-sur-le-site--dive_sitesarea)),
+niveau des autres membres sur le contact ([D-21](decisions.md#d-21--niveau-dun-binôme-sur-le-contact)),
+type et conditions sur l'événement ([D-13](decisions.md#d-13--type-de-plongée-et-conditions-sur-lévénement)).
 
 ## Livrables attendus de la prochaine session
+
+> Les documents de modèle sont faits (2026-11-16). Le contrat `DiveDetail` sera proposé dans
+> `backend-prompt.md` (Mission 2, phase 2) et écrit par la session backend.
 
 - Mise à jour de `schema.md`, `decisions.md` et `backend-prompt.md` (numérotation D-xx continue).
 - Évolution du contrat `DiveDetail` dans `packages/shared` (champs nullables : les plongées déjà

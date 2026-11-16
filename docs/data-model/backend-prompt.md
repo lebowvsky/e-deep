@@ -1,6 +1,10 @@
 # Mission : implémenter le modèle de données du carnet de plongée (NestJS + TypeORM + PostgreSQL)
 
 > Destiné à l'agent **Backend NestJS Expert**. Prompt autonome : tout ce qu'il faut est ici.
+>
+> **Deux missions dans ce fichier.** La mission initiale (schéma de 7 tables, migration
+> `InitDiveLogSchema`) est **livrée** : elle reste ici comme référence des conventions. La mission
+> en cours est **« Mission 2 : champs du détail de plongée »**, en fin de fichier.
 
 ## Contexte
 
@@ -429,3 +433,218 @@ Services :
       jour §7/§8 (migration initiale, `test:db`).
 - [ ] En fin de tâche, liste les écarts à cette spécification et les questions (défaut `uuidv7()`, FK
       composites mal générées par TypeORM, contrat front `UserLevel` / `utcOffsetMinutes`).
+
+---
+
+# Mission 2 : champs du détail de plongée (évolution du schéma)
+
+> Destiné à l'agent **Backend NestJS Expert**. Prompt autonome. Mode **évolution** : les 7 tables
+> existent (migrations `InitDiveLogSchema`, `AddDiveSiteLocality`) ; ne recrée rien.
+
+## Contexte
+
+La page « Détail d'une plongée » du front (`/dives/:diveId`, `GET /api/dives/:id`) ne montre que ce
+que sert le contrat `DiveDetail`. La maquette affiche bien plus : type de mise à l'eau, conditions,
+équipement, palier de sécurité, successive, espèces observées, zone du site, niveau des binômes.
+Ces données ont été modélisées le 2026-11-16 : décisions **D-13 à D-22**, règles **RG-23 à RG-30**,
+hypothèses **H-17, H-18** dans `docs/data-model/decisions.md` et `schema.md`, qui font foi en cas
+d'ambiguïté. Lis aussi `ARCHITECTURE.md` (source de vérité, §7 migrations, §9 RGPD) et `CLAUDE.md`
+avant de commencer ; en cas de conflit avec ce prompt, arrête-toi et signale-le.
+
+Rappel du découpage (D-08) : **événement** (`dive_events`, commun à la palanquée, modifiable par le
+seul créateur) / **participation** (`dive_participations`, propre au plongeur) / **palanquée**
+(`dive_buddies`, synchronisée avec la participation).
+
+## Règles de la mission
+
+- **Toutes les nouvelles colonnes sont nullables et sans défaut** (pas de `default` dans les
+  entités) : `NULL` = non renseigné. Les plongées existantes n'ont pas ces données ; aucun backfill.
+- Conventions de la mission initiale (voir plus haut) : `name:` explicite sur chaque colonne,
+  contraintes et index **nommés** et déclarés dans les entités (`@Check`, `@Unique`, `@Index`,
+  `foreignKeyConstraintName`, `primaryKeyConstraintName`) pour qu'un `migration:generate` ne
+  produise **aucun diff** ; `numericTransformer` (`common/database/numeric.transformer.ts`) sur
+  chaque colonne `numeric` ; listes fermées en `text` + `@Check` + union de littéraux (pas d'`enum`).
+- **N'ajoute aucun champ** absent de cette spécification (ni hélium, ni plusieurs blocs, ni détail
+  des paliers de déco, ni consommation en L/min, ni heure de sortie, ni bar consommés : les deux
+  derniers sont **calculés**). S'il te semble en manquer un, signale-le en fin de tâche.
+- **RGPD** (§9) : pressions, paliers, successive, températures, lest sont des données de santé ;
+  structure et zone des données de localisation ; niveau d'un binôme une donnée de tiers. Aucune
+  valeur dans les logs, `logging: false` reste en place.
+
+## Ordre d'implémentation
+
+1. Colonnes de `DiveSite`, `DiveEvent`, `DiveParticipation`, `Buddy`.
+2. Entité `DiveObservation` (`dive-observation.entity.ts` dans le module `dives`), enregistrée dans
+   `TypeOrmModule.forFeature`.
+3. `pnpm --filter api run migration:generate src/database/migrations/AddDiveDetailFields`, relecture,
+   puis SQL brut du trigger. **Une seule migration** (D-22). `down()` complet et symétrique.
+4. Types d'écriture (`dive.types.ts`), `upsertDive`, pull, lecture du détail, mapper.
+5. Seed de développement, puis tests.
+
+## Spécification des colonnes
+
+### `dive_sites`
+
+| Propriété | Colonne | Type | Contrainte                                                                                |
+| --------- | ------- | ---- | ----------------------------------------------------------------------------------------- |
+| area      | area    | text | NULL, `ck_dive_sites__area`: `area IS NULL OR char_length(btrim(area)) BETWEEN 1 AND 120` |
+
+Mer ou zone (« Méditerranée »), texte libre comme `region` (D-20).
+
+### `dive_events`
+
+| Propriété       | Colonne           | Type         | Contrainte (`x IS NULL OR …`)                                                      |
+| --------------- | ----------------- | ------------ | ---------------------------------------------------------------------------------- |
+| entryType       | entry_type        | text         | `ck_dive_events__entry_type`: `IN ('BOAT','SHORE')`                                |
+| timeOfDay       | time_of_day       | text         | `ck_dive_events__time_of_day`: `IN ('DAY','NIGHT')`                                |
+| weather         | weather           | text         | `ck_dive_events__weather`: `IN ('SUNNY','CLOUDY','OVERCAST','RAIN')`               |
+| airTemperatureC | air_temperature_c | numeric(3,1) | `ck_dive_events__air_temperature_c`: `BETWEEN -40 AND 60`, transformer             |
+| seaState        | sea_state         | text         | `ck_dive_events__sea_state`: `IN ('CALM','SLIGHT','MODERATE','ROUGH')`             |
+| currentStrength | current_strength  | text         | `ck_dive_events__current_strength`: `IN ('NONE','WEAK','MODERATE','STRONG')`       |
+| diveCenter      | dive_center       | text         | `ck_dive_events__dive_center`: `char_length(btrim(dive_center)) BETWEEN 1 AND 120` |
+
+Écris chaque `CHECK` sous la forme complète `x IS NULL OR <condition>`.
+
+### `dive_participations`
+
+| Propriété                | Colonne                     | Type         | Contrainte (`x IS NULL OR …`)                                                                                                                |
+| ------------------------ | --------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| surfaceWaterTemperatureC | surface_water_temperature_c | numeric(3,1) | `ck_dive_participations__surface_water_temperature_c`: `BETWEEN -5 AND 45`                                                                   |
+| safetyStopDurationMin    | safety_stop_duration_min    | smallint     | `ck_dive_participations__safety_stop_duration_min`: `(> 0 AND <= 60 AND < duration_min)`                                                     |
+| safetyStopDepthM         | safety_stop_depth_m         | numeric(3,1) | `ck_dive_participations__safety_stop_depth_m`: `(> 0 AND <= 20 AND <= max_depth_m)`                                                          |
+| isRepetitive             | is_repetitive               | boolean      | aucune ; **sans défaut**                                                                                                                     |
+| o2Percent                | o2_percent                  | numeric(4,1) | `ck_dive_participations__o2_percent`: `(gas_mix = 'OTHER' AND o2_percent > 0 AND o2_percent <= 100)`                                         |
+| tankVolumeL              | tank_volume_l               | numeric(3,1) | `ck_dive_participations__tank_volume_l`: `(> 0 AND <= 30)`                                                                                   |
+| tankMaterial             | tank_material               | text         | `ck_dive_participations__tank_material`: `IN ('STEEL','ALUMINIUM')`                                                                          |
+| startPressureBar         | start_pressure_bar          | smallint     | `ck_dive_participations__start_pressure_bar`: `(> 0 AND <= 350)`                                                                             |
+| endPressureBar           | end_pressure_bar            | smallint     | `ck_dive_participations__end_pressure_bar`: `(BETWEEN 0 AND 350 AND (start_pressure_bar IS NULL OR end_pressure_bar <= start_pressure_bar))` |
+| suitType                 | suit_type                   | text         | `ck_dive_participations__suit_type`: `IN ('WET','SEMI_DRY','DRY')`                                                                           |
+| suitThicknessMm          | suit_thickness_mm           | numeric(3,1) | `ck_dive_participations__suit_thickness_mm`: `(> 0 AND <= 15)`                                                                               |
+| weightKg                 | weight_kg                   | numeric(3,1) | `ck_dive_participations__weight_kg`: `BETWEEN 0 AND 40`                                                                                      |
+
+Plus une contrainte de table : `ck_dive_participations__safety_stop` :
+`(safety_stop_duration_min IS NULL) = (safety_stop_depth_m IS NULL)` (palier complet ou absent).
+
+`o2_percent` n'existe que pour `gas_mix = 'OTHER'` : pour Air et Nitrox, le pourcentage découle du
+mélange (21, 32, 36) et n'est jamais stocké (3FN). La température au fond reste
+`water_temperature_c`.
+
+### `buddies`
+
+| Propriété            | Colonne                | Type | Contrainte                                                                                   |
+| -------------------- | ---------------------- | ---- | -------------------------------------------------------------------------------------------- |
+| certificationLevelId | certification_level_id | uuid | NULL, `fk_buddies__certification_level_id` → certification_levels(id) **ON DELETE RESTRICT** |
+
+Niveau **courant** du contact, déclaré par son propriétaire (D-21). Un niveau désactivé est admis.
+FK **non indexée** (niveaux jamais supprimés, comme les deux autres FK de niveau). Ne lis
+**jamais** le niveau du compte lié (`linked_diver_id`) : lier un contact ne partage rien (RG-10).
+
+### Nouvelle table `dive_observations` → entité `DiveObservation`
+
+| Propriété       | Colonne          | Type     | Contrainte                                                                                         |
+| --------------- | ---------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| participationId | participation_id | uuid     | PK (1/2), `fk_dive_observations__participation_id` → dive_participations(id) **ON DELETE CASCADE** |
+| position        | position         | smallint | PK (2/2), `ck_dive_observations__position`: `position BETWEEN 0 AND 49`                            |
+| label           | label            | text     | NOT NULL, `ck_dive_observations__label`: `char_length(btrim(label)) BETWEEN 1 AND 80`              |
+| count           | count            | smallint | NULL, `ck_dive_observations__count`: `count IS NULL OR count BETWEEN 1 AND 9999`                   |
+
+- PK `pk_dive_observations (participation_id, position)` ; `uq_dive_observations__participation_id_label`
+  : `UNIQUE (participation_id, label)`.
+- Ni `created_at`, ni `updated_at`, ni `deleted_at` : la table est synchronisée **avec sa
+  participation**, comme `dive_buddies`. Pas d'`owner_id` (une seule FK, la propriété est vérifiée
+  sur la participation).
+- Aucun index supplémentaire : la PK couvre la FK.
+
+## SQL brut à ajouter à la migration
+
+La fonction existante `touch_participation_on_buddies_change()` ne lit que `participation_id` : on
+la **réutilise**.
+
+```sql
+-- Un changement d'observations fait remonter la participation dans le pull de synchronisation.
+CREATE TRIGGER trg_dive_observations__touch_participation
+  AFTER INSERT OR UPDATE OR DELETE ON dive_observations
+  FOR EACH ROW EXECUTE FUNCTION touch_participation_on_buddies_change();
+```
+
+`down()` : `DROP TRIGGER` d'abord, puis la table, puis les colonnes et contraintes. **Ne supprime
+pas** la fonction, qui appartient à `InitDiveLogSchema`.
+
+## Invariants applicatifs (services)
+
+1. **Agrégat** : `DiveWrite` gagne `observations: readonly { label: string; count: number | null }[]`.
+   `upsertDive` écrit l'événement, la participation, **remplace l'ensemble** des `dive_buddies`
+   **et** des `dive_observations` de la participation, dans **la même transaction**. La
+   `position` est l'index dans le tableau reçu (0 à 49). Le libellé est normalisé par `btrim`
+   avant écriture ; deux libellés identiques après normalisation → erreur métier (pas de 500 sur
+   l'`UNIQUE`). Plus de 50 observations → erreur métier.
+2. **Tous les champs sont requis à l'écriture** (D-22) : les types d'écriture
+   (`DiveEventWrite`, `DiveParticipationWrite`, l'écriture d'un site et d'un binôme) déclarent
+   chaque nouveau champ **obligatoire**, typé `T | null` (pas de propriété optionnelle `?`). Les
+   futurs DTO de synchronisation refuseront (400) un champ absent ; un `null` explicite efface. La
+   règle vaut aussi pour `locality` (site), qui ne doit plus être optionnelle.
+3. **Champs de l'événement** (type, moment, conditions, structure) : seul le créateur les écrit
+   (invariant MVP déjà en place, RG-17 / RG-29).
+4. **Pull** : les nouvelles colonnes remontent avec leur table ; les participations remontent avec
+   leurs `buddyIds` **et** leurs `observations` (triées par `position`) ; les binômes avec leur
+   `certificationLevelId`.
+5. **Rien à calculer ni stocker côté serveur** pour la successive (déclarée, D-17), le % O₂ d'Air
+   ou de Nitrox, les bar consommés, l'heure de sortie.
+
+## Lecture du détail (`GET /api/dives/:id`)
+
+- La requête du détail (`DiveLogService.findOne`) lit les nouvelles colonnes de l'événement, de la
+  participation et du site, plus le niveau de la participation (`certification_levels` par
+  `p.certification_level_id`), `p.created_at` et `GREATEST(e.updated_at, p.updated_at)`.
+- La requête de la palanquée joint en plus `certification_levels` en **LEFT JOIN** par
+  `buddies.certification_level_id`.
+- Une requête de plus pour les observations de la participation, `ORDER BY position`.
+- **La liste (`GET /api/dives`, `DiveSummary`) ne change pas** (D-25 : poids de la liste).
+- Contrat front `DiveDetail` : voir la section « Contrat » ci-dessous (ajoutée après validation de
+  la phase 2 de la modélisation). Le mapper (`dive-contract.mapper.ts`, `DiveDetailRow`) convertit
+  les `numeric` en `number`, et les dates en ISO.
+
+## Seed de développement
+
+Remplis les nouveaux champs pour une partie des plongées du carnet fictif (dont la plongée la plus
+récente, sur le modèle de la maquette : bateau, jour, ensoleillé, air 19 °C, mer calme, courant
+faible, « Calvi Plongée », surface 16 °C, palier 3 min à 5 m, non successive, bloc 12 L acier,
+200 → 60 bar, combinaison 7 mm semi-étanche, espèces « Mérou brun » × 2, « Barracudas »,
+« Gorgones rouges », « Corb », « Murène »), donne une zone aux sites et un niveau à quelques
+binômes. **Laisse au moins une plongée sans aucun nouveau champ**, pour tester le rendu partiel.
+Données fictives uniquement ; le seed ne logge que des compteurs.
+
+## Tests attendus
+
+`test:db` (PostgreSQL 18) :
+
+- chaque nouveau `CHECK` : une valeur hors bornes échoue, `NULL` passe ; en particulier :
+  - `o2_percent` refusé avec `gas_mix = 'AIR'`, accepté avec `OTHER` ;
+  - `end_pressure_bar > start_pressure_bar` refusé, `end` seul accepté ;
+  - palier incomplet (durée sans profondeur) refusé ; profondeur de palier > `max_depth_m`
+    refusée ; durée de palier ≥ `duration_min` refusée ;
+- `dive_observations` : `UNIQUE (participation_id, label)`, `position` 50 refusée, cascade à la
+  suppression physique de la participation (purge et effacement du compte) ;
+- trigger : ajouter, modifier ou retirer une observation fait avancer
+  `dive_participations.updated_at` ; pas d'erreur pendant une cascade ;
+- `fk_buddies__certification_level_id` : supprimer un niveau référencé par un binôme échoue ;
+- migration : noms des contraintes (`pg_constraint`), trigger (`pg_trigger`), `revert` propre ;
+- services : `upsertDive` remplace les observations (ordre conservé), refuse un doublon et plus de
+  50 observations, sans rien écrire (transaction) ; le pull renvoie les observations ; le détail
+  renvoie les nouveaux champs, le niveau des binômes et `null` partout sur une plongée ancienne.
+
+`test` (sans base) : mapper (numeric → number, `null` conservés, observations triées, `updatedAt`
+= le plus récent des deux), e2e `GET /api/dives/:id` avec le nouveau contrat.
+
+## Définition de fini
+
+- [ ] `pnpm migration:run` puis `pnpm migration:revert` passent ; un nouveau `migration:generate`
+      ne produit aucun diff.
+- [ ] Contraintes, trigger et table présents en base, **noms compris**.
+- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm build` verts, plus
+      `pnpm --filter api run test:db`.
+- [ ] Aucun log ne contient de donnée de plongée ni de paramètre SQL.
+- [ ] `ARCHITECTURE.md` : §7 (migration `AddDiveDetailFields`), §8 (tests), §6 (contrat
+      `DiveDetail`) et §11 (« Issus du détail de plongée » : retirer ce qui est servi par l'API).
+- [ ] En fin de tâche, liste les écarts à cette spécification et les questions (valeurs des listes
+      fermées H-18, normalisation de la casse des espèces).

@@ -5,6 +5,13 @@
 > suppression du compte créateur) et origine client du niveau de participation (D-09). Mode création.
 > Décisions prises avec le porteur du projet : Q1 sites privés, Q2 binôme = contact avec lien
 > optionnel vers un compte, Q3 LWW par enregistrement.
+> **Révision du 2026-11-16** (mode évolution) : champs de la page « Détail d'une plongée »
+> (D-13 à D-22, H-17, H-18), à partir de `evolution-champs-detail-plongee.md`. Réponses du
+> porteur : niveau des autres membres sur le contact, détail des paliers de déco reporté, tous les
+> champs obligatoires au push.
+> **Numérotation** : les décisions du modèle s'écrivent `D-xx` (avec tiret) ; celles
+> d'`ARCHITECTURE.md` §10 s'écrivent `Dxx` (sans tiret). D-13 à D-22 ici ne sont pas D13 à D22
+> là-bas.
 
 ## Constats préalables
 
@@ -26,24 +33,26 @@
 
 ## Hypothèses
 
-| Id   | Hypothèse                                                                                                                                                                                                                         | Impact si fausse                                                                 | À valider avec                                                                          |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| H-01 | Un compte = un plongeur ; pas d'organisation (club, structure) ni de multi-tenant                                                                                                                                                 | Ajout d'une table `clubs` (voir évolutions D-08)                                 | Produit                                                                                 |
-| H-02 | Les comptes sont créés **en ligne** (inscription) ; seuls sites, plongées et binômes se créent hors ligne                                                                                                                         | Si création de compte hors ligne : `divers.id` généré client aussi               | Produit                                                                                 |
-| H-03 | L'identité d'authentification (email, fournisseur OAuth…) sera ajoutée avec le module auth ; elle n'est pas modélisée ici faute de source                                                                                         | Ajout de colonnes / table `auth_identities` (migration additive)                 | Tech                                                                                    |
-| H-04 | Un site peut exister sans événement (créé avant, ou dont les plongées ont été supprimées)                                                                                                                                         | Si interdit : nettoyage applicatif des sites orphelins                           | Produit                                                                                 |
-| H-05 | Lier un binôme à un compte E-Deep **ne partage rien** : le compte lié ne voit pas les plongées du propriétaire. Un propriétaire ne lie un compte qu'à un seul de ses contacts. Le lien se fait **en ligne** (recherche du compte) | Partage → participations partagées avec consentement (évolutions D-08)           | Produit + DPO                                                                           |
-| H-06 | ~~Le niveau affiché sur « Dernière plongée » est le niveau courant~~                                                                                                                                                              | —                                                                                | **Résolue par D-09** : snapshot du niveau sur la participation                          |
-| H-07 | Température et visibilité sont **facultatives** (souvent non relevées), alors que le type front les déclare obligatoires. Profondeur, durée, mélange, paliers, site et date restent obligatoires                                  | Passer les colonnes en `NOT NULL`                                                | Produit                                                                                 |
-| H-08 | Une participation peut n'avoir aucun binôme saisi                                                                                                                                                                                 | Si au moins un binôme est obligatoire : invariant applicatif                     | Produit                                                                                 |
-| H-09 | `Buddy.accentColor` est de la présentation, dérivée de l'id côté front ; elle n'est pas stockée                                                                                                                                   | Colonne `avatar_color` si l'utilisateur choisit la couleur                       | Design                                                                                  |
-| H-10 | Bornes de saisie : prof. 0–350 m, durée 1–1440 min, temp. -5–45 °C, visibilité 0–100 m, noms 1–100/120 caractères, notes ≤ 5000                                                                                                   | Ajuster les `CHECK`                                                              | Produit                                                                                 |
-| H-11 | Supprimer un site utilisé par un événement non supprimé est refusé (409) ; l'utilisateur doit d'abord changer le site des plongées                                                                                                | Si cascade souhaitée : tombstoner les plongées en même temps                     | Produit                                                                                 |
-| H-12 | Les tombstones sont purgées physiquement après **90 jours** (horizon de purge) ; un client dont le dernier pull est plus ancien refait une synchronisation complète avant tout push (D-12 d)                                      | Durée à ajuster ; sans purge, les tombstones s'accumulent (RGPD)                 | Tech + DPO                                                                              |
-| H-13 | ~~Les dates sont affichées dans le fuseau de l'appareil qui consulte~~                                                                                                                                                            | —                                                                                | **Résolue par D-10** : `dive_events.utc_offset_minutes`                                 |
-| H-14 | Volume par plongeur : quelques centaines à quelques milliers de plongées. Les statistiques se calculent à la volée                                                                                                                | Au-delà : agrégats mensuels ou copie de `started_at` (D-08)                      | Tech                                                                                    |
-| H-15 | ~~Le niveau snapshot d'une participation peut référencer un niveau désactivé ; seul le niveau courant doit être actif~~                                                                                                           | —                                                                                | **Résolue par D-09** (révision : niveau fixé à la saisie, désactivé ou supérieur admis) |
-| H-16 | En MVP, supprimer une plongée tombstone à la fois l'événement et la participation (le créateur est l'unique participant)                                                                                                          | Avec le partage : retirer sa participation sans toucher à l'événement des autres | Produit                                                                                 |
+| Id   | Hypothèse                                                                                                                                                                                                                                                                                                                                                                                           | Impact si fausse                                                                 | À valider avec                                                                          |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| H-01 | Un compte = un plongeur ; pas d'organisation (club, structure) ni de multi-tenant                                                                                                                                                                                                                                                                                                                   | Ajout d'une table `clubs` (voir évolutions D-08)                                 | Produit                                                                                 |
+| H-02 | Les comptes sont créés **en ligne** (inscription) ; seuls sites, plongées et binômes se créent hors ligne                                                                                                                                                                                                                                                                                           | Si création de compte hors ligne : `divers.id` généré client aussi               | Produit                                                                                 |
+| H-03 | L'identité d'authentification (email, fournisseur OAuth…) sera ajoutée avec le module auth ; elle n'est pas modélisée ici faute de source                                                                                                                                                                                                                                                           | Ajout de colonnes / table `auth_identities` (migration additive)                 | Tech                                                                                    |
+| H-04 | Un site peut exister sans événement (créé avant, ou dont les plongées ont été supprimées)                                                                                                                                                                                                                                                                                                           | Si interdit : nettoyage applicatif des sites orphelins                           | Produit                                                                                 |
+| H-05 | Lier un binôme à un compte E-Deep **ne partage rien** : le compte lié ne voit pas les plongées du propriétaire. Un propriétaire ne lie un compte qu'à un seul de ses contacts. Le lien se fait **en ligne** (recherche du compte)                                                                                                                                                                   | Partage → participations partagées avec consentement (évolutions D-08)           | Produit + DPO                                                                           |
+| H-06 | ~~Le niveau affiché sur « Dernière plongée » est le niveau courant~~                                                                                                                                                                                                                                                                                                                                | —                                                                                | **Résolue par D-09** : snapshot du niveau sur la participation                          |
+| H-07 | Température et visibilité sont **facultatives** (souvent non relevées), alors que le type front les déclare obligatoires. Profondeur, durée, mélange, paliers, site et date restent obligatoires                                                                                                                                                                                                    | Passer les colonnes en `NOT NULL`                                                | Produit                                                                                 |
+| H-08 | Une participation peut n'avoir aucun binôme saisi                                                                                                                                                                                                                                                                                                                                                   | Si au moins un binôme est obligatoire : invariant applicatif                     | Produit                                                                                 |
+| H-09 | `Buddy.accentColor` est de la présentation, dérivée de l'id côté front ; elle n'est pas stockée                                                                                                                                                                                                                                                                                                     | Colonne `avatar_color` si l'utilisateur choisit la couleur                       | Design                                                                                  |
+| H-10 | Bornes de saisie : prof. 0–350 m, durée 1–1440 min, temp. -5–45 °C, visibilité 0–100 m, noms 1–100/120 caractères, notes ≤ 5000                                                                                                                                                                                                                                                                     | Ajuster les `CHECK`                                                              | Produit                                                                                 |
+| H-11 | Supprimer un site utilisé par un événement non supprimé est refusé (409) ; l'utilisateur doit d'abord changer le site des plongées                                                                                                                                                                                                                                                                  | Si cascade souhaitée : tombstoner les plongées en même temps                     | Produit                                                                                 |
+| H-12 | Les tombstones sont purgées physiquement après **90 jours** (horizon de purge) ; un client dont le dernier pull est plus ancien refait une synchronisation complète avant tout push (D-12 d)                                                                                                                                                                                                        | Durée à ajuster ; sans purge, les tombstones s'accumulent (RGPD)                 | Tech + DPO                                                                              |
+| H-13 | ~~Les dates sont affichées dans le fuseau de l'appareil qui consulte~~                                                                                                                                                                                                                                                                                                                              | —                                                                                | **Résolue par D-10** : `dive_events.utc_offset_minutes`                                 |
+| H-14 | Volume par plongeur : quelques centaines à quelques milliers de plongées. Les statistiques se calculent à la volée                                                                                                                                                                                                                                                                                  | Au-delà : agrégats mensuels ou copie de `started_at` (D-08)                      | Tech                                                                                    |
+| H-15 | ~~Le niveau snapshot d'une participation peut référencer un niveau désactivé ; seul le niveau courant doit être actif~~                                                                                                                                                                                                                                                                             | —                                                                                | **Résolue par D-09** (révision : niveau fixé à la saisie, désactivé ou supérieur admis) |
+| H-16 | En MVP, supprimer une plongée tombstone à la fois l'événement et la participation (le créateur est l'unique participant)                                                                                                                                                                                                                                                                            | Avec le partage : retirer sa participation sans toucher à l'événement des autres | Produit                                                                                 |
+| H-17 | Bornes des champs du détail : air -40–60 °C, eau en surface -5–45 °C, palier de sécurité 1–60 min et 0–20 m, bloc 0–30 L et 0–350 bar, combinaison 0–15 mm, lest 0–40 kg, O₂ 0–100 %, effectif 1–9999, étiquette 1–80 caractères, structure et zone 1–120 caractères                                                                                                                                | Ajuster les `CHECK` (migration)                                                  | Produit                                                                                 |
+| H-18 | Valeurs des listes fermées, dont la maquette ne montre qu'un exemple : météo `SUNNY` (Ensoleillé), `CLOUDY` (Nuageux), `OVERCAST` (Couvert), `RAIN` (Pluie) ; mer `CALM` (Calme), `SLIGHT` (Peu agitée), `MODERATE` (Agitée), `ROUGH` (Forte) ; courant `NONE` (Nul), `WEAK` (Faible), `MODERATE` (Moyen), `STRONG` (Fort) ; combinaison `WET` (Humide), `SEMI_DRY` (Semi-étanche), `DRY` (Étanche) | Modifier les `CHECK` et les unions avant la première saisie réelle (D-14)        | Produit                                                                                 |
 
 ## Décisions
 
@@ -159,7 +168,8 @@
 
 ### D-06 — Listes fermées en `text + CHECK`, `region` en texte libre
 
-> Révisée par D-09 : niveau et fédération ne sont plus des listes fermées.
+> Révisée par D-09 : niveau et fédération ne sont plus des listes fermées. Confirmée et étendue par
+> D-14 (listes du détail de plongée).
 
 - **Contexte** : le mélange vient d'une union TypeScript ; aucun backoffice ne l'administre. La
   région est affichée mais ne sert ni de filtre ni de référentiel.
@@ -187,6 +197,17 @@
 - `dive_participations` et `dive_buddies` contiennent des **données de santé** ; `dive_events`
   (date, lieu) en dépend. Jamais dans les logs, accès restreint par l'API (`ARCHITECTURE.md` §9).
   `notes` est du texte libre susceptible de contenir des informations médicales.
+- **Évolution du détail de plongée** (D-13 à D-21) :
+  - **données de santé** (`S`) : température de surface, palier de sécurité, successive, % O₂,
+    pressions du bloc et lest (ce dernier renseigne sur la corpulence) ;
+  - **localisation** (`L`) : `dive_events.dive_center` et `dive_sites.area` (habitudes de lieu) ;
+  - **donnée personnelle d'un tiers** (`P`) : `buddies.certification_level_id`, le niveau d'un
+    contact déclaré par le propriétaire, sans consentement du contact. Il suit le contact (effacé
+    avec lui ou avec le compte du propriétaire) ;
+  - **sans classification propre** (`—`) : conditions de l'événement, matériel (bloc,
+    combinaison), observations d'espèces. Elles vivent dans des lignes déjà classées `S` ou `L` et
+    suivent les mêmes règles (jamais dans les logs, accès par l'API seulement).
+  - `dive_observations` est effacée par cascade avec sa participation (purge, compte).
 - Sauvegardes : la purge doit être prise en compte dans la rétention des sauvegardes (hors schéma).
 
 ### D-08 — Plongée découpée en événement partagé + participations
@@ -414,35 +435,289 @@ leurs tests en font partie.
   (suppression de compte, purge) la garantissent dans le temps. Si un test échoue un jour, protéger
   le trigger en ignorant les participations absentes ou tombstonées, et documenter ici.
 
+### D-13 — Type de plongée et conditions sur l'événement
+
+- **Contexte** : la page de détail affiche une étiquette « Bateau » et une carte « Conditions »
+  (« Bateau · jour », « Ensoleillé · Air 19 °C », mer « Calme », courant « Faible »). Sa spec range
+  ces données dans l'événement partagé. Règle de placement (D-08) : un champ va dans `dive_events`
+  seulement s'il est commun à toute la palanquée et modifiable par le seul créateur.
+- **Options étudiées** :
+  - **sur l'événement** : une même mise à l'eau, une même météo et une même mer pour toute la
+    palanquée ;
+  - sur la participation : chacun pourrait noter « son » courant, mais la donnée serait dupliquée
+    entre membres et divergerait au partage ;
+  - **moment dérivé** de l'heure locale (`started_at + utc_offset_minutes`) : une plongée de nuit
+    se **déclare** (elle commence au crépuscule, l'heure du coucher du soleil dépend du site et de
+    la saison). La déduire demanderait un calcul solaire, faux aux heures limites.
+- **Décision** : sur `dive_events`, toutes nullables et sans défaut :
+  - `entry_type` (`BOAT`, `SHORE`) ;
+  - `time_of_day` (`DAY`, `NIGHT`), saisi ; le formulaire pourra proposer une valeur selon l'heure,
+    que le créateur confirme ;
+  - `weather`, `sea_state`, `current_strength` (listes fermées, D-14, valeurs H-18). Le nom
+    `current_strength` évite `current`, ambigu en SQL (`CURRENT_DATE`, `CURRENT_USER`…) ;
+  - `air_temperature_c numeric(3,1)`.
+- **Conséquences** :
+  - seul le créateur modifie ces champs (RG-29) ; en MVP, le créateur est l'unique participant ;
+  - « Dupliquer » une plongée copiera type et conditions (spec), c'est l'affaire du formulaire ;
+  - la température de l'**eau** reste sur la participation (mesurée par l'ordinateur de chacun),
+    la température de l'**air** est commune (relevé de surface).
+- **Réversibilité** : élevée (colonnes nullables).
+
+### D-14 — Listes fermées en `text + CHECK`, pas de tables de référence
+
+Réponse à la question 1 de la note d'évolution. Confirme D-06.
+
+- **Contexte** : météo, état de la mer, courant, type de mise à l'eau, moment, matière du bloc et
+  type de combinaison sont des listes courtes, sans attribut, qu'aucun backoffice n'administre.
+- **Options étudiées** :
+  - **table de référence** (comme les niveaux, D-09) : administrable et traduisible en base, mais
+    elle ajoute une table au pull, un cache hors ligne et des FK. Or ces valeurs ne portent aucune
+    donnée (pas de rang, d'organisme ni de désactivation) ;
+  - enum PostgreSQL : retirer une valeur est pénible (D-06) ;
+  - **`text + CHECK`** avec des codes neutres en anglais.
+- **Décision** : `text + CHECK (x IS NULL OR x IN (...))` ; union de littéraux dans
+  `@e-deep/shared` (pas d'`enum` TS) ; **libellés français côté front**, comme `gas_mix`
+  (`labels.ts`). La traduction est donc une affaire de présentation, et une seconde langue ne
+  touche pas la base.
+- **Conséquences** :
+  - ajouter une valeur = migration (`DROP`/`ADD CONSTRAINT`) + union du contrat + guard du front.
+    **Ordre de déploiement : le front d'abord**, car un guard qui ne connaît pas une valeur rejette
+    la réponse (hors contrat) ;
+  - retirer une valeur demande de reprendre les données existantes : à éviter, d'où la validation
+    des valeurs (H-18) avant la première saisie réelle.
+- **Réversibilité** : élevée. Passage à une table de référence le jour où une liste devient
+  administrable (backoffice) ou porte des attributs.
+
+### D-15 — Équipement et gaz à plat sur la participation
+
+Réponse à la question 2 de la note d'évolution.
+
+- **Contexte** : la carte « Équipement & gaz » affiche gaz et % O₂ (« Air · 21 % O₂ »), bloc
+  (« 12 L · acier »), pressions (« 200 → 60 bar · 140 bar consommés »), combinaison (« 7 mm ·
+  semi-étanche ») et lest. « Dupliquer » doit préremplir l'équipement (séjour de plusieurs
+  plongées).
+- **Options étudiées** :
+  - **colonnes plates** sur `dive_participations` : une plongée = un équipement ;
+  - entité réutilisable (« mon bloc 12 L acier », « ma combi 7 mm ») : aucun écran ne gère un
+    inventaire, et elle ajoute une table synchronisée, des FK et la question de l'historique (une
+    combinaison modifiée réécrirait les anciennes plongées, ou demanderait un snapshot) ;
+  - table `dive_tanks` (plusieurs blocs) : aucune source ne montre plus d'un bloc ;
+  - consommation en L/min : refusée par la spec (fausse sans profondeur moyenne).
+- **Décision** :
+  - `tank_volume_l numeric(3,1)`, `tank_material` (`STEEL`, `ALUMINIUM`) ;
+  - `start_pressure_bar`, `end_pressure_bar smallint`, avec `end <= start` quand les deux sont
+    saisies (RG-24). Les bar consommés sont **calculés**, jamais stockés ;
+  - `suit_type` (`WET`, `SEMI_DRY`, `DRY`), `suit_thickness_mm numeric(3,1)` ;
+  - `weight_kg numeric(3,1)` ;
+  - `o2_percent numeric(4,1)` **réservé au mélange `OTHER`** (RG-23). Pour Air et Nitrox, le
+    pourcentage découle de `gas_mix` : le stocker violerait la 3FN et permettrait « Nitrox 32 à
+    28 % ». Le front affiche 21, 32 ou 36. L'hélium n'apparaît dans aucune source : il n'est pas
+    ajouté.
+- **Conséquences** :
+  - préremplissage par « Dupliquer » (copie de la plongée source) ou par la dernière plongée du
+    carnet local : aucune donnée de plus ;
+  - passer de `OTHER` à un autre mélange impose de remettre `o2_percent` à `NULL` (le `CHECK` le
+    refuse sinon) : c'est au formulaire de le faire ;
+  - pressions et lest sont des données de santé (D-07).
+- **Réversibilité** : élevée. Blocs multiples → `dive_tanks`, avec reprise des colonnes plates en
+  première ligne (évolutions prévisibles).
+
+### D-16 — Palier de sécurité sur deux colonnes, détail de la déco reporté
+
+Réponse à la question 3 de la note d'évolution.
+
+- **Contexte** : le Déroulé affiche « Palier de sécurité · 3 min à 5 m », « Paliers de déco. ·
+  Aucun » et un segment « palier » en fin de barre de temps. Seuls existent `has_decompression` et
+  `stops_ok`.
+- **Options étudiées** :
+  - **deux colonnes** `safety_stop_duration_min` / `safety_stop_depth_m` : un palier de sécurité
+    par plongée ;
+  - liste de paliers (`jsonb` ou table `dive_stops`) : nécessaire pour la décompression, mais aucune
+    source ne montre de palier de déco détaillé (la maquette affiche « Aucun »).
+- **Décision** : les deux colonnes, **renseignées ensemble ou pas du tout**
+  (`ck_dive_participations__safety_stop`), avec une profondeur au plus égale à la profondeur max et
+  une durée inférieure à la durée de la plongée (RG-25). Détail des paliers de déco **reporté**
+  (décision du porteur) : `has_decompression` continue d'afficher « Aucun » / « Oui ».
+- **Conséquences** : le segment de la barre de temps est calculé (`durée du palier / durée`).
+  `stops_ok` (paliers respectés, D-11) reste indépendant.
+- **Réversibilité** : élevée. Table `dive_stops(participation_id, position, depth_m,
+duration_min)` synchronisée avec la participation (comme D-04) quand la déco détaillée sera
+  demandée.
+
+### D-17 — Plongée successive saisie, proposée par le client
+
+Réponse à la question 4 de la note d'évolution.
+
+- **Contexte** : « Successive · Non » dans le Déroulé. Une plongée est successive si elle suit une
+  autre plongée de près (intervalle de surface court, seuil selon la procédure : MN90, ordinateur).
+- **Options étudiées** :
+  - **dérivée** de l'intervalle avec la plongée précédente du carnet : le carnet peut être
+    incomplet (plongée non saisie, carnet papier non rattrapé), l'ordre change avec les saisies
+    hors ligne sur plusieurs appareils, et le seuil dépend de la procédure. Le résultat serait
+    faux sans que le plongeur le sache ;
+  - **saisie** : c'est ce que le plongeur a déclaré à sa table ou son ordinateur.
+- **Décision** : `is_repetitive boolean NULL`, **sans défaut** (`NULL` = non renseigné, D-11). Le
+  formulaire **propose** une valeur à partir du carnet local (intervalle de moins de 12 h avec la
+  plongée précédente), que le plongeur confirme, sur le modèle du niveau à la plongée (D-09).
+  L'intervalle de surface n'est pas stocké.
+- **Réversibilité** : élevée.
+
+### D-18 — Structure en texte libre sur l'événement
+
+Réponse à la question 5 de la note d'évolution.
+
+- **Contexte** : « Structure · Calvi Plongée » dans les Conditions ; la spec la range dans
+  l'événement partagé, et « Dupliquer » la préremplit.
+- **Options étudiées** :
+  - **texte libre** `dive_events.dive_center` ;
+  - entité `dive_centers` privée (comme les sites) : réutilisable, mais elle ajoute une table
+    synchronisée pour un simple libellé ;
+  - entité partagée : prématurée. Le **club** de D-08 (organisation avec membres et rôles, H-01)
+    n'est pas la **structure** commerciale qui loue le bateau ; les confondre figerait le futur
+    mode club.
+- **Décision** : `dive_center text NULL`, 1 à 120 caractères. L'autocomplétion du formulaire se
+  fait sur les valeurs déjà saisies du carnet, comme les régions (D27 d'`ARCHITECTURE.md`).
+- **Conséquences** : donnée de localisation (`L`, D-07) ; les variantes d'écriture (« Calvi
+  Plongée » / « calvi plongee ») ne sont pas dédupliquées.
+- **Réversibilité** : élevée. Entité `dive_centers` + `dive_center_id` nullable ajoutée à côté,
+  puis reprise des libellés.
+
+### D-19 — Observations d'espèces : étiquettes libres dans `dive_observations`
+
+Réponse à la question 6 de la note d'évolution.
+
+- **Contexte** : la carte « Notes & observations » affiche des étiquettes ordonnées, dont certaines
+  ont un effectif (« Mérou brun · 2 », « Barracudas », « Gorgones rouges », « Corb », « Murène »).
+  Elles appartiennent à la participation (ce que **j'**ai vu).
+- **Options étudiées** :
+  - **référentiel** : DORIS (FFESSM, en français, Méditerranée et Atlantique) ou WoRMS (mondial,
+    identifiant AphiaID, licence CC-BY). L'un comme l'autre demanderait un import, une recherche,
+    un cache hors ligne de milliers d'espèces et un choix de langue : hors périmètre ;
+  - `jsonb` sur la participation (`[{label, count}]`) : simple, mais pas de contrainte d'unicité,
+    validation en service seulement, et un futur lien vers un catalogue ne pourrait pas être une
+    FK ;
+  - `text[]` : perd l'effectif ;
+  - **table `dive_observations`**, entité faible de la participation.
+- **Décision** :
+  - `dive_observations(participation_id, position, label, count)` ;
+  - PK `(participation_id, position)` (ordre de saisie conservé) ;
+  - `UNIQUE (participation_id, label)` (une étiquette une fois) ;
+  - `position BETWEEN 0 AND 49` (plafond de 50, garanti par la base) ;
+  - `count` facultatif ;
+  - FK vers `dive_participations(id)` **CASCADE**.
+
+  Pas de `owner_id` : contrairement à `dive_buddies`, il n'y a pas de seconde FK à contrôler
+  par propriétaire. La propriété est vérifiée sur la participation, dans la transaction de
+  `upsertDive`.
+  - **Synchronisation avec la participation** (comme D-04) : le client envoie le tableau
+    `observations`, le serveur **remplace l'ensemble** dans la transaction de l'agrégat. Le trigger
+    `trg_dive_observations__touch_participation` (même fonction que la palanquée) fait avancer
+    `dive_participations.updated_at`.
+
+- **Conséquences** :
+  - pour le client, la forme ne change pas : un tableau sur la participation (IndexedDB, push) ;
+  - le serveur normalise le libellé (`btrim`) ; la casse n'est pas unifiée (« Murène » et
+    « murène » coexisteraient) ;
+  - classification `—`, dans le périmètre `S` de la participation (D-07).
+- **Réversibilité** : élevée. Catalogue d'espèces (WoRMS conseillé) + `species_id` nullable ajouté
+  à `dive_observations` : changement **additif**, sans migration des données client.
+
+### D-20 — Zone maritime sur le site : `dive_sites.area`
+
+- **Contexte** : l'en-tête du détail affiche « Calvi · Corse · Méditerranée », et le dashboard
+  « Méditerranée occidentale » (`stats.mainArea`, question ouverte n° 8). Les sites ont un nom,
+  une localité (D27) et une région, mais pas de mer ni de zone.
+- **Options étudiées** :
+  - **texte libre** sur le site ;
+  - dérivation géographique depuis les coordonnées : il faudrait des polygones de mers (IHO) et
+    PostGIS, écarté par D-01 ;
+  - liste fermée : les zones (« Méditerranée », « mer Rouge », « lac d'Annecy ») ne se figent pas.
+- **Décision** : `dive_sites.area text NULL`, 1 à 120 caractères, en texte libre comme la région
+  (D27). `stats.mainArea` = la zone la plus fréquente sur les plongées vivantes, calculée.
+- **Conséquences** : donnée de localisation (`L`). Le site étant privé (Q1), la zone l'est aussi.
+  Résout la question ouverte n° 8.
+- **Réversibilité** : élevée (catalogue de sites, D-01, pourra la fournir).
+
+### D-21 — Niveau d'un binôme sur le contact
+
+- **Contexte** : la carte « Palanquée » affiche le niveau de chaque membre (« Lucas Bernard ·
+  N3 »). Celui du plongeur à la plongée existe déjà (snapshot, D-09).
+- **Options étudiées** :
+  - **niveau courant du contact** (`buddies.certification_level_id`) : saisi une fois, affiché sur
+    toutes les plongées ;
+  - snapshot par plongée (`dive_buddies.certification_level_id`) : historiquement exact, mais à
+    saisir pour chaque plongée et chaque membre ;
+  - niveau du compte lié (`linked_diver_id → divers.certification_level_id`) : **interdit** par
+    RG-10 / H-05, car lier un contact ne doit rien partager du compte.
+- **Décision (porteur)** : `buddies.certification_level_id uuid NULL` →
+  `certification_levels(id)` **ON DELETE RESTRICT**, non indexée (niveaux jamais supprimés). Un
+  niveau désactivé est admis (on n'impose rien sur les niveaux d'un tiers).
+- **Conséquences** :
+  - une plongée ancienne affiche le niveau **actuel** du binôme (limite assumée) ;
+  - donnée personnelle d'un tiers (`P`, D-07) ;
+  - le niveau entre dans le pull et le push des binômes (D-22).
+- **Réversibilité** : élevée. Le snapshot par plongée pourra s'ajouter sur `dive_buddies`, prérempli
+  par le niveau du contact.
+
+### D-22 — Une seule migration, tous les champs obligatoires au push
+
+Réponse à la question 8 de la note d'évolution (impact offline).
+
+- **Contexte** : chaque colonne ajoutée entre dans le protocole de synchronisation (D-12) et dans
+  le schéma IndexedDB de la PWA (D22 d'`ARCHITECTURE.md`). Une montée de version IndexedDB se joue
+  sur chaque appareil. Par ailleurs, l'upsert LWW écrit l'enregistrement **entier** (D-03) : un
+  champ omis par un client ancien deviendrait `NULL` et effacerait la donnée (point ouvert de
+  `ARCHITECTURE.md` §11 sur `locality`).
+- **Options étudiées** :
+  - migrations au fil de l'eau : plusieurs versions IndexedDB et autant de clients en retard ;
+  - **« omis = conservé »** : l'upsert ne réécrit que les champs présents. Plus tolérant, mais on
+    ne distingue plus « effacé » de « inconnu », et LWW n'est plus « par enregistrement » ;
+  - **tous les champs obligatoires** dans le corps du push, `null` explicite compris.
+- **Décision (porteur)** :
+  - **une seule migration** `AddDiveDetailFields`, avant l'existence de l'endpoint de
+    synchronisation et de la PWA (aucun client déployé : rien à migrer côté appareil) ;
+  - **au push, chaque champ synchronisé est obligatoire** (DTO class-validator : propriété requise,
+    `null` permis si la colonne est nullable). Un client périmé reçoit un **400** au lieu d'effacer
+    des données. La règle vaut pour **toutes** les tables synchronisées, `locality` compris, ce qui
+    tranche le point de §11.
+- **Conséquences** : un client doit être mis à jour avant de pousser après une évolution de
+  schéma ; à prévoir avec la PWA (version de protocole ou message « mise à jour requise »).
+- **Réversibilité** : moyenne. Assouplir la règle plus tard est facile ; la durcir après des
+  clients déployés le serait moins.
+
 ## Dénormalisations et snapshots
 
 | Donnée copiée                    | Où                    | Type                             | Mécanisme                                                                                                                                                                         |
 | -------------------------------- | --------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `owner_id`                       | `dive_buddies`        | dénormalisation de contrôle      | fourni par le service ; cohérence garantie par les FK composites                                                                                                                  |
 | `certification_level_id`         | `dive_participations` | **snapshot** (donnée historique) | fixé à la saisie par le client (niveau courant proposé, modifiable) ; copie serveur du niveau courant seulement en l'absence de valeur ; corrigeable, jamais resynchronisé (D-09) |
-| `updated_at` de la participation | `dive_participations` | propagation                      | trigger `touch_participation_on_buddies_change`                                                                                                                                   |
+| `updated_at` de la participation | `dive_participations` | propagation                      | trigger `touch_participation_on_buddies_change`, sur `dive_buddies` et `dive_observations` (D-19)                                                                                 |
 
-Aucun compteur stocké ; `started_at` n'est pas copié dans les participations (D-08).
+Aucun compteur stocké ; `started_at` n'est pas copié dans les participations (D-08). Ni les bar
+consommés, ni l'heure de sortie, ni le % O₂ d'Air ou de Nitrox ne sont stockés (D-15).
 
 ## Validation par écran
 
 « Vivant » = `p.deleted_at IS NULL AND e.deleted_at IS NULL` (`p` participation, `e` événement).
 
-| Écran / bloc                                                   | Tables lues                                                                                                                                     | Requêtes                                                                                   | Verdict                                                                                                     |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| UserCard « Marine Rousseau · N2 · FFESSM », « Bonjour Marine » | divers ⋈ certification_levels                                                                                                                   | 1 (PK + PK)                                                                                | OK                                                                                                          |
-| KPI « Plongées totales », « Temps sous l'eau »                 | dive_participations ⋈ dive_events                                                                                                               | 1 agrégat                                                                                  | OK, `idx_dive_participations__diver_id_dive_event_id` + PK événement                                        |
-| KPI « Profondeur max » (+ site, date)                          | dive_participations ⋈ dive_events ⋈ dive_sites                                                                                                  | 1 (`ORDER BY max_depth_m DESC LIMIT 1`)                                                    | OK                                                                                                          |
-| KPI « Sites explorés · 6 régions »                             | dive_participations ⋈ dive_events ⋈ dive_sites                                                                                                  | 1 (`COUNT(DISTINCT e.site_id)`, `COUNT(DISTINCT region)`)                                  | OK                                                                                                          |
-| Carte (marqueurs, popover, filtres de période)                 | dive_sites ⟕ (dive_events ⋈ dive_participations)                                                                                                | 1 (`GROUP BY e.site_id`, `COUNT`, `MAX(p.max_depth_m)`, `e.started_at >= now() - période`) | OK, jointure ≤ 3 tables ; pas de PostGIS                                                                    |
-| Dernière plongée (badges « Palier OK », « Air · N2 », binômes) | dive_participations ⋈ dive_events ⋈ dive_sites ⋈ certification_levels ; dive_buddies ⋈ buddies                                                  | 2 (`ORDER BY e.started_at DESC LIMIT 1`, puis binômes de la participation)                 | OK : tri en mémoire sur ≤ quelques milliers de lignes (D-08) ; 4 tables mais toutes par PK sauf la première |
-| Plongées par mois (12 mois, mois local), « +3 ce mois »        | dive_participations ⋈ dive_events                                                                                                               | 1 (`date_trunc('month', e.started_at + e.utc_offset_minutes * interval '1 minute')`)       | OK                                                                                                          |
-| « 14 jours depuis ta dernière plongée »                        | dive_participations ⋈ dive_events                                                                                                               | inclus dans la requête « Dernière plongée »                                                | OK                                                                                                          |
-| Binômes fréquents                                              | dive_buddies ⋈ buddies ⋈ dive_participations ⋈ dive_events                                                                                      | 1 (`GROUP BY buddy_id ORDER BY count DESC`)                                                | OK, `idx_dive_buddies__owner_id_buddy_id`                                                                   |
-| État vide                                                      | dive_participations                                                                                                                             | `EXISTS`                                                                                   | OK                                                                                                          |
-| Synchronisation (pull)                                         | certification_levels, dive_sites, buddies, dive_events, dive_participations, dive_buddies                                                       | 1 par table                                                                                | OK, index `(…, updated_at, id)` ; `dive_events` via `creator_id` en MVP                                     |
-| Synchronisation (push d'une plongée)                           | dive_events, dive_participations, dive_buddies (+ dive_sites, buddies si restauration D-12 b ; divers si le niveau de participation est absent) | 1 transaction                                                                              | OK                                                                                                          |
-| Effacement du compte (MVP ; cible RG-22 avec le partage)       | divers (+ cascade) ; cible : dive_participations, dive_sites, dive_events avant le `DELETE`                                                     | 1 transaction                                                                              | OK en MVP ; cible : 1 requête par événement partagé (désignation, copie du site, repointage)                |
+| Écran / bloc                                                                                  | Tables lues                                                                                                                                                        | Requêtes                                                                                   | Verdict                                                                                                     |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| UserCard « Marine Rousseau · N2 · FFESSM », « Bonjour Marine »                                | divers ⋈ certification_levels                                                                                                                                      | 1 (PK + PK)                                                                                | OK                                                                                                          |
+| KPI « Plongées totales », « Temps sous l'eau »                                                | dive_participations ⋈ dive_events                                                                                                                                  | 1 agrégat                                                                                  | OK, `idx_dive_participations__diver_id_dive_event_id` + PK événement                                        |
+| KPI « Profondeur max » (+ site, date)                                                         | dive_participations ⋈ dive_events ⋈ dive_sites                                                                                                                     | 1 (`ORDER BY max_depth_m DESC LIMIT 1`)                                                    | OK                                                                                                          |
+| KPI « Sites explorés · 6 régions »                                                            | dive_participations ⋈ dive_events ⋈ dive_sites                                                                                                                     | 1 (`COUNT(DISTINCT e.site_id)`, `COUNT(DISTINCT region)`)                                  | OK                                                                                                          |
+| Carte (marqueurs, popover, filtres de période)                                                | dive_sites ⟕ (dive_events ⋈ dive_participations)                                                                                                                   | 1 (`GROUP BY e.site_id`, `COUNT`, `MAX(p.max_depth_m)`, `e.started_at >= now() - période`) | OK, jointure ≤ 3 tables ; pas de PostGIS                                                                    |
+| Dernière plongée (badges « Palier OK », « Air · N2 », binômes)                                | dive_participations ⋈ dive_events ⋈ dive_sites ⋈ certification_levels ; dive_buddies ⋈ buddies                                                                     | 2 (`ORDER BY e.started_at DESC LIMIT 1`, puis binômes de la participation)                 | OK : tri en mémoire sur ≤ quelques milliers de lignes (D-08) ; 4 tables mais toutes par PK sauf la première |
+| Plongées par mois (12 mois, mois local), « +3 ce mois »                                       | dive_participations ⋈ dive_events                                                                                                                                  | 1 (`date_trunc('month', e.started_at + e.utc_offset_minutes * interval '1 minute')`)       | OK                                                                                                          |
+| « 14 jours depuis ta dernière plongée »                                                       | dive_participations ⋈ dive_events                                                                                                                                  | inclus dans la requête « Dernière plongée »                                                | OK                                                                                                          |
+| Binômes fréquents                                                                             | dive_buddies ⋈ buddies ⋈ dive_participations ⋈ dive_events                                                                                                         | 1 (`GROUP BY buddy_id ORDER BY count DESC`)                                                | OK, `idx_dive_buddies__owner_id_buddy_id`                                                                   |
+| État vide                                                                                     | dive_participations                                                                                                                                                | `EXISTS`                                                                                   | OK                                                                                                          |
+| Synchronisation (pull)                                                                        | certification_levels, dive_sites, buddies, dive_events, dive_participations, dive_buddies, dive_observations                                                       | 1 par table (jonctions avec leur participation)                                            | OK, index `(…, updated_at, id)` ; `dive_events` via `creator_id` en MVP                                     |
+| Synchronisation (push d'une plongée)                                                          | dive_events, dive_participations, dive_buddies, dive_observations (+ dive_sites, buddies si restauration D-12 b ; divers si le niveau de participation est absent) | 1 transaction                                                                              | OK ; tous les champs requis (D-22)                                                                          |
+| Effacement du compte (MVP ; cible RG-22 avec le partage)                                      | divers (+ cascade) ; cible : dive_participations, dive_sites, dive_events avant le `DELETE`                                                                        | 1 transaction                                                                              | OK en MVP ; cible : 1 requête par événement partagé (désignation, copie du site, repointage)                |
+| Détail de plongée `/dives/:id` (en-tête, KPI, Déroulé, Équipement, Conditions, Site, mention) | dive_events ⋈ dive_participations ⋈ dive_sites ⋈ certification_levels                                                                                              | 1 (PK de l'événement + `diver_id`)                                                         | OK : toutes les nouvelles colonnes sont sur les tables déjà jointes                                         |
+| Détail : Palanquée (niveau des membres) et Notes (espèces)                                    | dive_buddies ⋈ buddies ⟕ certification_levels ; dive_observations                                                                                                  | 2 (par `participation_id`)                                                                 | OK, PK `dive_buddies` et `dive_observations` (colonne `participation_id` en tête)                           |
+| Liste « Mes plongées » (`DiveSummary`)                                                        | inchangées                                                                                                                                                         | inchangées                                                                                 | OK : aucune nouvelle colonne lue (D-25, poids de la liste)                                                  |
 
 Le payload `GET /api/dashboard` se construit en ~7 requêtes indexées. Le découpage D-08 ajoute une
 jointure par PK à chaque requête de statistiques, sans coût mesurable au volume H-14.
@@ -452,20 +727,25 @@ jointure par PK à chaque requête de statistiques, sans coût mesurable au volu
 Données de plongée absentes des sources, **non ajoutées** :
 
 1. **Gaz** : `OTHER` perd l'information. Pourcentage d'O₂/He, plusieurs blocs (volume, pression
-   début/fin), plusieurs mélanges par plongée ?
+   début/fin), plusieurs mélanges par plongée ? _En partie résolue par D-15_ : % O₂ pour `OTHER`,
+   un bloc (volume, matière, pressions). Restent ouverts : hélium, plusieurs blocs ou mélanges.
 2. **Paliers** : seuls deux booléens. Faut-il le détail (profondeur × durée), l'ordinateur ou les
-   tables utilisées, le profil importé ?
+   tables utilisées, le profil importé ? _En partie résolue par D-16_ : palier de sécurité (durée,
+   profondeur). Restent ouverts : détail des paliers de déco (reporté par le porteur), ordinateur
+   ou tables, profil (V2).
 3. **Matériel** (combinaison, lestage, ordinateur), **type de plongée** (exploration, formation,
    nuit, épave…), **rôle** dans la palanquée (guide, encadrant, élève), **conditions** (courant,
-   météo).
+   météo). _En partie résolue par D-13 et D-15_ : combinaison, lest, bateau / bord, jour / nuit,
+   météo, mer, courant. Restent ouverts : ordinateur, type (exploration, formation, épave), rôle
+   (hors périmètre de la spec du détail).
 4. **Incidents** et données médicales (`ARCHITECTURE.md` §9) : entité dédiée, accès renforcé ?
 5. **Authentification** : email, fournisseur, rôles (admin du backoffice) ? (H-03)
 6. **Notifications** (cloche avec pastille) : quel contenu ? (invitations à une plongée partagée ?)
 7. **Recherche** : sur quoi (sites, notes, binômes) ? Déterminera `pg_trgm` ou plein texte.
-8. **`stats.mainArea`** (« Méditerranée » / « Méditerranée occidentale ») : saisie, calculée ou
-   constante ? Aucun champ « zone » n'existe sur les sites.
-9. **Région** : le mock donne « Calvi, Corse » pour le site s1 dans `lastDive` et « Corse » dans
-   `sites`. Texte libre unique, ou découpage localité / région ?
+8. ~~**`stats.mainArea`**~~ : résolue par D-20 (`dive_sites.area`, zone la plus fréquente
+   calculée).
+9. ~~**Région**~~ : résolue par D27 d'`ARCHITECTURE.md` (`dive_sites.locality` à côté de la
+   région).
 10. ~~**Fuseau**~~ : résolue par D-10.
 11. **Lien binôme ↔ compte** : comment trouver un compte (pseudo, email, QR code), faut-il son
     consentement pour être lié ? Le même consentement servira à l'invitation (D-08). (H-05)
@@ -476,6 +756,17 @@ Données de plongée absentes des sources, **non ajoutées** :
     niveaux FFESSM intermédiaires et d'encadrement ?
 16. ~~**Niveau snapshot corrigé**~~ : résolue par D-09 (niveau désactivé ou supérieur au niveau
     courant accepté sur une participation).
+17. **Valeurs des listes fermées** du détail (météo, mer, courant, combinaison) : à valider avant la
+    première saisie réelle (H-18, D-14).
+18. **Écarts entre la spec du détail et le modèle** (spec en lecture seule) : son tableau « Modèle »
+    range la palanquée dans l'événement partagé et les heures d'immersion et de sortie dans la
+    participation, alors que D-04 / D-08 font l'inverse ; la mention « Site, date et palanquée sont
+    partagés entre les plongeurs » est donc inexacte pour la palanquée. Le modèle est conservé ; la
+    copie de la page est à revoir avec le partage.
+19. **Suppression depuis le détail** : la spec ne retire que « ta participation », H-16 tombstone en
+    MVP l'événement et la participation. À trancher avec les endpoints d'écriture.
+20. **Mise à jour d'un client périmé** (D-22) : comment la PWA signale-t-elle qu'elle doit se mettre
+    à jour avant de pousser (version de protocole, code d'erreur dédié) ?
 
 ## Évolutions prévisibles
 
@@ -488,7 +779,18 @@ Données de plongée absentes des sources, **non ajoutées** :
 - **Catalogue partagé de sites** : `catalog_sites` (backoffice) + `dive_sites.catalog_site_id`
   nullable ; PostGIS devient pertinent (recherche de proximité, déduplication) (D-01).
 - **Gaz détaillés** : table `dive_tanks` (`participation_id`, `position`, `volume_l`, `o2_pct`,
-  `he_pct`, `start_bar`, `end_bar`) en remplacement de `gas_mix` (seulement si la question ouverte n° 1 le confirme).
+  `he_pct`, `start_bar`, `end_bar`) en remplacement de `gas_mix` et des colonnes plates de D-15
+  (reprises en première ligne), seulement si la question ouverte n° 1 le confirme.
+- **Paliers de décompression détaillés** : table `dive_stops` (`participation_id`, `position`,
+  `depth_m`, `duration_min`), synchronisée avec la participation (D-16).
+- **Équipement réutilisable** : table `equipment` privée (bloc, combinaison) pour préremplir la
+  saisie, avec snapshot sur la participation (D-15).
+- **Structures** : entité `dive_centers` + `dive_events.dive_center_id` nullable, à distinguer des
+  clubs de D-08 (D-18).
+- **Catalogue d'espèces** (WoRMS conseillé, ou DORIS) : `species` + `dive_observations.species_id`
+  nullable, additif (D-19).
+- **Niveau d'un binôme à la plongée** : snapshot `dive_buddies.certification_level_id`, prérempli
+  par le niveau du contact (D-21).
 - **Profil de plongée importé** (ordinateur) : séries temporelles par participation, en `jsonb` ou
   table dédiée ; volumétrie à évaluer.
 - **Conflits** : `client_updated_at` ou `version` si la limite de D-03 gêne en pratique.
