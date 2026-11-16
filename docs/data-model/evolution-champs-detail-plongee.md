@@ -91,8 +91,8 @@ type et conditions sur l'événement ([D-13](decisions.md#d-13--type-de-plongée
 
 ## Livrables attendus de la prochaine session
 
-> Les documents de modèle sont faits (2026-11-16). Le contrat `DiveDetail` sera proposé dans
-> `backend-prompt.md` (Mission 2, phase 2) et écrit par la session backend.
+> Les documents de modèle sont faits (2026-11-16). Le contrat `DiveDetail` est proposé dans
+> `backend-prompt.md` (Mission 2, section « Contrat ») et sera écrit par la session backend.
 
 - Mise à jour de `schema.md`, `decisions.md` et `backend-prompt.md` (numérotation D-xx continue).
 - Évolution du contrat `DiveDetail` dans `packages/shared` (champs nullables : les plongées déjà

@@ -600,9 +600,121 @@ pas** la fonction, qui appartient à `InitDiveLogSchema`.
   `buddies.certification_level_id`.
 - Une requête de plus pour les observations de la participation, `ORDER BY position`.
 - **La liste (`GET /api/dives`, `DiveSummary`) ne change pas** (D-25 : poids de la liste).
-- Contrat front `DiveDetail` : voir la section « Contrat » ci-dessous (ajoutée après validation de
-  la phase 2 de la modélisation). Le mapper (`dive-contract.mapper.ts`, `DiveDetailRow`) convertit
-  les `numeric` en `number`, et les dates en ISO.
+- Contrat front `DiveDetail` : section suivante. Le mapper (`dive-contract.mapper.ts`,
+  `DiveDetailRow`, `DiveTeamRow`) convertit les `numeric` en `number` et les dates en ISO.
+
+## Contrat `DiveDetail` (`packages/shared/src/dives.ts`)
+
+Le paquet `@e-deep/shared` ne contient que des types (`ARCHITECTURE.md` §6) : unions de littéraux,
+pas d'`enum`, `import type`. Les nouveaux noms portent leur unité (`airTemperatureC`,
+`startPressureBar`…). Tous les nouveaux champs sont **présents** dans la réponse et valent `null`
+quand ils ne sont pas renseignés (pas de propriété optionnelle `?`), sauf `observations` (tableau,
+vide par défaut) et `diverLevel` (toujours en base, D-09). Les champs restent **à plat**, comme
+l'existant : c'est le front qui les regroupe en cartes dans son modèle de vue.
+
+```ts
+/** How the divers entered the water (shared by the dive team). */
+export type EntryType = 'BOAT' | 'SHORE';
+export type TimeOfDay = 'DAY' | 'NIGHT';
+export type Weather = 'SUNNY' | 'CLOUDY' | 'OVERCAST' | 'RAIN';
+export type SeaState = 'CALM' | 'SLIGHT' | 'MODERATE' | 'ROUGH';
+export type CurrentStrength = 'NONE' | 'WEAK' | 'MODERATE' | 'STRONG';
+export type TankMaterial = 'STEEL' | 'ALUMINIUM';
+export type SuitType = 'WET' | 'SEMI_DRY' | 'DRY';
+
+/** A certification level from the reference table (any agency, unlike `UserLevel`). */
+export interface CertificationLevelRef {
+  agency: string;
+  code: string;
+  label: string;
+}
+
+/** A species seen during the dive, in the order the diver entered them. */
+export interface DiveObservation {
+  label: string;
+  /** Number of individuals, `null` when not counted. */
+  count: number | null;
+}
+
+/** A buddy of the dive team with the level their contact card declares (D-21). */
+export interface DiveDetailBuddy extends DiveBuddyRef {
+  level: CertificationLevelRef | null;
+}
+
+/** A dive with every field of the event, the participation and the site. */
+export interface DiveDetail extends DiveSummary {
+  site: DiveSiteRef & {
+    latitude: number;
+    longitude: number;
+    /** Sea or area of the site (e.g. `Méditerranée`). */
+    area: string | null;
+  };
+  buddies: DiveDetailBuddy[];
+
+  // Participation (existing)
+  visibilityM: number | null;
+  hadDecompression: boolean;
+  stopsOk: boolean;
+  /** Level of the diver at the time of the dive (snapshot, D-09). */
+  diverLevel: CertificationLevelRef;
+
+  // Event: type and conditions, edited by the creator only (D-13, D-18)
+  entryType: EntryType | null;
+  timeOfDay: TimeOfDay | null;
+  weather: Weather | null;
+  airTemperatureC: number | null;
+  seaState: SeaState | null;
+  currentStrength: CurrentStrength | null;
+  diveCenter: string | null;
+
+  // Participation: dive profile (D-16, D-17)
+  surfaceTemperatureC: number | null;
+  /** Safety stop: both set or both `null`. */
+  safetyStopDurationMin: number | null;
+  safetyStopDepthM: number | null;
+  isRepetitive: boolean | null;
+
+  // Participation: gas and equipment (D-15)
+  /** Only for `gasMix: 'OTHER'`; AIR, NITROX32 and NITROX36 imply 21, 32 and 36. */
+  o2Percent: number | null;
+  tankVolumeL: number | null;
+  tankMaterial: TankMaterial | null;
+  startPressureBar: number | null;
+  endPressureBar: number | null;
+  suitType: SuitType | null;
+  suitThicknessMm: number | null;
+  weightKg: number | null;
+
+  // Participation: notes (D-19)
+  observations: DiveObservation[];
+
+  /** Creation of the participation, ISO 8601 instant (UTC). */
+  createdAt: string;
+  /** Latest change of the event or the participation, ISO 8601 instant (UTC). */
+  updatedAt: string;
+}
+```
+
+- Exporte les nouveaux types depuis `packages/shared/src/index.ts`.
+- `temperatureC` (hérité de `DiveSummary`) reste la température **au fond** ;
+  `surfaceTemperatureC` est la nouvelle.
+- Dérivés **non servis** : heure de sortie, bar consommés, % O₂ d'Air ou de Nitrox, segment
+  « palier » de la barre de temps, qualificatif de visibilité. Le front les calcule.
+- **`DiveSummary` et `DiveSiteRef` ne changent pas** (D-25) : aucun de ces champs ne sert à la
+  liste, à ses filtres, ses tris ou ses facettes. Le carnet garde son poids (~4 kB gzip pour
+  127 plongées). `area` n'entre pas dans `DiveSiteRef`, que la liste partage.
+- `DashboardResponse` ne change pas dans cette mission (`stats.mainArea` pourra être calculé depuis
+  `dive_sites.area` plus tard, D-20).
+
+**Impact sur le front** (hors de cette mission, signale-le en fin de tâche) :
+
+- Le guard actuel `isDiveDetail` (`apps/web/src/features/dives/api/divesApi.ts`) ignore les
+  champs en plus. L'API peut donc livrer le nouveau contrat **avant** le front sans rien casser.
+- Le front devra ensuite vérifier chaque nouveau champ : ensembles de littéraux pour chaque union
+  (comme `GAS_MIXES`), guards `isCertificationLevelRef` et `isDiveObservation`, et un guard de
+  binôme du détail (celui de la liste ne connaît pas `level`).
+- Une fois ces guards en place, **tout ajout de valeur à une union se déploie front d'abord**
+  (D-14) : un guard qui ne connaît pas la valeur rejette la réponse.
 
 ## Seed de développement
 
