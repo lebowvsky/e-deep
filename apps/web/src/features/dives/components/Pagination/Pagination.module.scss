@@ -48,11 +48,12 @@
   background: transparent;
   border-radius: $radius-sm;
 
-  &:hover:not(:disabled) {
+  &:hover:not([aria-disabled='true']) {
     color: $color-text-high;
   }
 
-  &:disabled {
+  // Step buttons at either end: unavailable but still focusable (see StepButton).
+  &[aria-disabled='true'] {
     color: $color-text-muted;
     cursor: default;
   }
@@ -63,7 +64,7 @@
   background: $color-accent-soft;
   box-shadow: inset 0 0 0 1px $color-accent-line;
 
-  &:hover:not(:disabled) {
+  &:hover:not([aria-disabled='true']) {
     color: $color-accent;
   }
 }

@@ -17,6 +17,8 @@ import { DiveSite } from './dive-site.entity';
 export interface DiveSiteWrite extends SyncedWrite {
   readonly id: string;
   readonly name: string;
+  /** Omitted → `null`. */
+  readonly locality?: string | null;
   readonly region: string;
   readonly latitude: number;
   readonly longitude: number;
@@ -61,6 +63,7 @@ export class DiveSitesService {
         id: write.id,
         ownerId,
         name: write.name,
+        locality: write.locality ?? null,
         region: write.region,
         latitude: write.latitude,
         longitude: write.longitude,

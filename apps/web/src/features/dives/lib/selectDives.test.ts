@@ -11,13 +11,15 @@ const marseille = {
   id: 's06',
   name: 'Les Moyades',
   place: 'Riou · Marseille',
-  region: 'marseille' as const,
+  region: 'marseille',
+  regionName: 'Marseille',
 };
 const brittanyWreck = {
   id: 's18',
   name: 'Épave de l’Amoco Cadiz',
   place: 'Portsall · Bretagne',
-  region: 'bretagne' as const,
+  region: 'bretagne',
+  regionName: 'Bretagne',
 };
 
 const dives = [
@@ -181,7 +183,12 @@ describe('selectDives — no result', () => {
 describe('facets and log overview', () => {
   it('counts the dives per region and per member, most frequent first', () => {
     const facets = computeFacets(dives);
-    expect(facets.regions).toEqual({ corse: 3, var: 0, marseille: 1, esterel: 0, bretagne: 1 });
+    // Only the regions of the log, by count then by name.
+    expect(facets.regions).toEqual([
+      { key: 'corse', name: 'Corse', count: 3 },
+      { key: 'bretagne', name: 'Bretagne', count: 1 },
+      { key: 'marseille', name: 'Marseille', count: 1 },
+    ]);
     expect(facets.members.map(({ member, count }) => [member.firstName, count])).toEqual([
       ['Lucas', 4],
       ['Élise', 2],

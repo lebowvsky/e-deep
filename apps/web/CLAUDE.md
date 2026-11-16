@@ -45,10 +45,13 @@ CSS-in-JS, pas de lib de composants UI.
   `React.FC`, pas de `any`.
 - Classes CSS Modules en camelCase (`styles.kpiValue`) ; variantes via `data-*` ou classes
   modificatrices (`styles.primary`), combinées avec `cx` (`@/shared/lib/classNames`, pas de clsx).
-- Données : `GET /api/dashboard` (contrat `DashboardResponse` de `@e-deep/shared`, validé et converti
-  dans `features/dashboard/api/dashboardApi.ts`) ; types de vue `@/features/dashboard/types` ; mock
-  `@/features/dashboard/mocks/dashboard` pour `?state=` (dev) et les tests ; formatage via
-  `@/shared/lib/format` (jamais de formatage inline).
+- Données : via TanStack Query (`QueryClientProvider` dans `app/providers.tsx`, client
+  `@/shared/lib/queryClient`, clés dans `features/<domaine>/api/queryKeys.ts`) ;
+  `GET /api/dashboard` (contrat `DashboardResponse`, validé et converti dans
+  `features/dashboard/api/dashboardApi.ts`) et `GET /api/dives` (contrat `DiveLogResponse`, dans
+  `features/dives/api/divesApi.ts`) ; types de vue dans `features/<domaine>/types.ts` ; mocks pour
+  `?state=` (dev) et les tests uniquement, jamais importés par le code des dives hors tests ;
+  formatage via `@/shared/lib/format` (jamais de formatage inline).
 - Un seul composant par écran pour desktop et mobile : le responsive passe par le SCSS, pas par
   des composants `Mobile*` ni par `window.innerWidth` (sauf pour le passage sidebar ↔ drawer, via
   un hook `useMediaQuery` dans `src/shared/hooks/`).

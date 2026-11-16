@@ -18,6 +18,7 @@ const CONSTRAINTS = [
   'fk_dive_sites__owner_id',
   'uq_dive_sites__owner_id_id',
   'ck_dive_sites__name',
+  'ck_dive_sites__locality',
   'ck_dive_sites__region',
   'ck_dive_sites__latitude',
   'ck_dive_sites__longitude',
@@ -88,7 +89,7 @@ interface NameRow {
   name: string;
 }
 
-describe('InitDiveLogSchema migration', () => {
+describe('dive log schema migrations', () => {
   let dataSource: DataSource;
 
   beforeAll(async () => {
@@ -176,7 +177,9 @@ describe('InitDiveLogSchema migration', () => {
 
   // Last: leaves the schema migrated again.
   it('reverts completely, then migrates again', async () => {
-    await dataSource.undoLastMigration({ transaction: 'all' });
+    for (let reverted = 0; reverted < dataSource.migrations.length; reverted += 1) {
+      await dataSource.undoLastMigration({ transaction: 'all' });
+    }
     expect(
       await names(
         "SELECT tablename AS name FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'migrations'",

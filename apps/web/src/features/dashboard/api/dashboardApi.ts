@@ -10,27 +10,22 @@ import type {
 } from '@e-deep/shared';
 import type { ApiClient, RequestOptions } from '@/shared/lib/apiClient';
 import { formatInitials, formatMonthLabel } from '@/shared/lib/format';
-import { isOneOf, isRecord } from '@/shared/lib/guards';
+import {
+  isArrayOf,
+  isBoolean,
+  isDateString,
+  isNullable,
+  isNumber,
+  isOneOf,
+  isRecord,
+  isString,
+} from '@/shared/lib/guards';
 import type { DiveMember } from '@/shared/model/dive';
 import type { Buddy, DashboardState, Dive, User } from '../types';
 
 const USER_LEVELS = ['N1', 'N2', 'N3', 'N4'] as const satisfies readonly UserLevel[];
 const FEDERATIONS = ['FFESSM', 'CMAS', 'OTHER'] as const satisfies readonly Federation[];
 const GAS_MIXES = ['AIR', 'NITROX32', 'NITROX36', 'OTHER'] as const satisfies readonly GasMix[];
-
-const isNumber = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
-const isString = (value: unknown): value is string => typeof value === 'string';
-const isDate = (value: unknown): value is string =>
-  isString(value) && !Number.isNaN(Date.parse(value));
-const isNullable =
-  <T>(guard: (value: unknown) => value is T) =>
-  (value: unknown): value is T | null =>
-    value === null || guard(value);
-const isArrayOf =
-  <T>(guard: (value: unknown) => value is T) =>
-  (value: unknown): value is T[] =>
-    Array.isArray(value) && value.every(guard);
 
 function isUser(value: unknown): value is DashboardUser {
   return (
@@ -71,7 +66,7 @@ function isDive(value: unknown): value is DashboardDive {
   return (
     isRecord(value) &&
     isString(value.id) &&
-    isDate(value.date) &&
+    isDateString(value.date) &&
     isNumber(value.utcOffsetMinutes) &&
     isRecord(value.site) &&
     isString(value.site.id) &&
@@ -82,8 +77,8 @@ function isDive(value: unknown): value is DashboardDive {
     isNullable(isNumber)(value.temperatureC) &&
     isNullable(isNumber)(value.visibilityM) &&
     isOneOf(value.gasMix, GAS_MIXES) &&
-    typeof value.hadDecompression === 'boolean' &&
-    typeof value.stopsOk === 'boolean' &&
+    isBoolean(value.hadDecompression) &&
+    isBoolean(value.stopsOk) &&
     isNullable(isString)(value.notes) &&
     isArrayOf(isBuddy)(value.buddies)
   );
@@ -100,7 +95,10 @@ function isMonthCount(value: unknown): value is { month: string; count: number }
 
 function isMaxDepth(value: unknown): value is { depthM: number; siteName: string; date: string } {
   return (
-    isRecord(value) && isNumber(value.depthM) && isString(value.siteName) && isDate(value.date)
+    isRecord(value) &&
+    isNumber(value.depthM) &&
+    isString(value.siteName) &&
+    isDateString(value.date)
   );
 }
 

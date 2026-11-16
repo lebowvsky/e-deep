@@ -1,22 +1,15 @@
 // Dive log — French labels of the filters, sorts and gases.
 import type { GasMix } from '@e-deep/shared';
-import type { DiveMember } from '@/shared/model/dive';
+import { formatDiveCount } from '@/shared/lib/format';
 import type {
+  DivesFacets,
   DivesFilterKey,
   DivesPeriod,
   DivesQuery,
   DivesSort,
+  DivesState,
   GasFamily,
-  RegionKey,
 } from '../types';
-
-export const REGION_LABELS: Record<RegionKey, string> = {
-  corse: 'Corse',
-  var: 'Var',
-  marseille: 'Marseille',
-  esterel: 'Esterel',
-  bretagne: 'Bretagne',
-};
 
 export const GAS_FAMILY_LABELS: Record<GasFamily, string> = {
   air: 'Air',
@@ -91,25 +84,27 @@ export interface FilterDescription {
   label: string;
 }
 
-function filterValue(
-  query: DivesQuery,
-  key: DivesFilterKey,
-  members: readonly DiveMember[],
-): string {
+/** The names behind the region and member ids of the query. */
+export type FilterNames = Pick<DivesFacets, 'regions' | 'members'>;
+
+function filterValue(query: DivesQuery, key: DivesFilterKey, names: FilterNames): string {
   switch (key) {
     case 'q':
       return `« ${query.q} »`;
     case 'period':
       return query.period === '12m' ? '12 derniers mois' : query.period;
     case 'regions':
-      return query.regions.map((region) => REGION_LABELS[region]).join(', ');
+      // A key from a shared link may be absent from this log: shown as is.
+      return query.regions
+        .map((key) => names.regions.find((region) => region.key === key)?.name ?? key)
+        .join(', ');
     case 'depth':
       return depthRangeLabel(query.depthMin, query.depthMax) ?? '';
     case 'gases':
       return query.gases.map((gas) => GAS_FAMILY_LABELS[gas]).join(', ');
     case 'with':
       return query.with
-        .map((id) => members.find((member) => member.id === id))
+        .map((id) => names.members.find(({ member }) => member.id === id)?.member)
         .filter((member) => member !== undefined)
         .map((member) => `${member.firstName} ${member.lastName}`)
         .join(', ');
@@ -119,9 +114,23 @@ function filterValue(
 export function describeFilter(
   query: DivesQuery,
   key: DivesFilterKey,
-  members: readonly DiveMember[],
+  names: FilterNames,
 ): FilterDescription {
-  const value = filterValue(query, key, members);
+  const value = filterValue(query, key, names);
   const label = key === 'q' ? `Recherche ${value}` : `${FILTER_TITLES[key]} : ${value}`;
   return { key, value, label };
+}
+
+/** What the page live region says for each state (the selection size once loaded). */
+export function stateAnnouncement(state: DivesState): string {
+  switch (state.status) {
+    case 'loading':
+      return 'Chargement du carnet';
+    case 'error':
+      return 'Impossible de charger tes plongées pour l’instant.';
+    case 'empty':
+      return 'Ton carnet est vierge';
+    case 'ready':
+      return `${formatDiveCount(state.total)} dans la sélection`;
+  }
 }

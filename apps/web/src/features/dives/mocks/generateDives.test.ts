@@ -53,7 +53,13 @@ describe('mocked dive log', () => {
 
   it('matches the counters of the filters sheet', () => {
     const facets = computeFacets(mockDives);
-    expect(facets.regions).toEqual({ corse: 31, var: 48, marseille: 22, esterel: 9, bretagne: 17 });
+    expect(facets.regions.map(({ name, count }) => [name, count])).toEqual([
+      ['Var', 48],
+      ['Corse', 31],
+      ['Marseille', 22],
+      ['Bretagne', 17],
+      ['Esterel', 9],
+    ]);
     expect(
       facets.members.slice(0, 3).map(({ member, count }) => [member.firstName, count]),
     ).toEqual([
@@ -66,7 +72,7 @@ describe('mocked dive log', () => {
 
     const sheet = {
       ...DEFAULT_QUERY,
-      regions: ['corse' as const],
+      regions: ['corse'],
       depthMin: 20,
       depthMax: 40,
       with: ['b1'],
@@ -75,7 +81,7 @@ describe('mocked dive log', () => {
   });
 
   it('matches the no-result mockup: 3 wrecks in Brittany, none beyond 40 m', () => {
-    const query = { ...DEFAULT_QUERY, q: 'épave', regions: ['bretagne' as const], depthMin: 40 };
+    const query = { ...DEFAULT_QUERY, q: 'épave', regions: ['bretagne'], depthMin: 40 };
     const result = selectDives(mockDives, query);
     expect(result.total).toBe(0);
     expect(result.relaxation).toEqual({ filter: 'depth', total: 3 });

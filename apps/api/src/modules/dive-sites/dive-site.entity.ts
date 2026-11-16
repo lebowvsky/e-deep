@@ -19,6 +19,10 @@ import { Diver } from '../divers/diver.entity';
 @Unique('uq_dive_sites__owner_id_id', ['ownerId', 'id'])
 @Index('idx_dive_sites__owner_id_updated_at_id', ['ownerId', 'updatedAt', 'id'])
 @Check('ck_dive_sites__name', 'char_length(btrim(name)) BETWEEN 1 AND 120')
+@Check(
+  'ck_dive_sites__locality',
+  'locality IS NULL OR char_length(btrim(locality)) BETWEEN 1 AND 120',
+)
 @Check('ck_dive_sites__region', 'char_length(btrim(region)) BETWEEN 1 AND 120')
 @Check('ck_dive_sites__latitude', 'latitude BETWEEN -90 AND 90')
 @Check('ck_dive_sites__longitude', 'longitude BETWEEN -180 AND 180')
@@ -36,6 +40,10 @@ export class DiveSite extends SyncedEntity {
 
   @Column({ type: 'text', name: 'name' })
   name: string;
+
+  /** Town or spot the site belongs to (e.g. `Calvi`), shown before the region. Optional. */
+  @Column({ type: 'text', name: 'locality', nullable: true })
+  locality: string | null;
 
   @Column({ type: 'text', name: 'region' })
   region: string;

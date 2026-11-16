@@ -4,14 +4,8 @@ import { Avatar } from '@/shared/ui/Avatar';
 import { Chip } from '@/shared/ui/Chip';
 import { Overline } from '@/shared/ui/Overline';
 import { SegmentedControl } from '@/shared/ui/SegmentedControl';
-import { depthRangeLabel, GAS_FAMILY_LABELS, periodOptions, REGION_LABELS } from '../../lib/labels';
-import {
-  DEPTH_SCALE_MAX,
-  GAS_FAMILIES,
-  REGION_KEYS,
-  type DivesFacets,
-  type DivesQuery,
-} from '../../types';
+import { depthRangeLabel, GAS_FAMILY_LABELS, periodOptions } from '../../lib/labels';
+import { DEPTH_SCALE_MAX, GAS_FAMILIES, type DivesFacets, type DivesQuery } from '../../types';
 import styles from './FilterSection.module.scss';
 
 export type FilterSectionKey = 'period' | 'regions' | 'depth' | 'gases' | 'with';
@@ -58,15 +52,14 @@ export function FilterSection({ filter, query, onChange, facets, now }: FilterSe
       return (
         <Section title="Région" aside={selectedCount(query.regions.length, true)}>
           <ul className={styles.chips}>
-            {REGION_KEYS.map((region) => (
-              <li key={region}>
+            {facets.regions.map(({ key, name, count }) => (
+              <li key={key}>
                 <Chip
-                  selected={query.regions.includes(region)}
-                  onClick={() => onChange({ regions: toggle(query.regions, region) })}
+                  selected={query.regions.includes(key)}
+                  onClick={() => onChange({ regions: toggle(query.regions, key) })}
                 >
                   <span>
-                    {REGION_LABELS[region]} ·{' '}
-                    <span className={styles.count}>{facets.regions[region]}</span>
+                    {name} · <span className={styles.count}>{count}</span>
                   </span>
                 </Chip>
               </li>

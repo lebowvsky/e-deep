@@ -2,6 +2,7 @@ import { Transform, plainToInstance, type ClassConstructor } from 'class-transfo
 import {
   ArrayNotEmpty,
   IsBoolean,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsString,
@@ -9,14 +10,38 @@ import {
   Matches,
   Max,
   Min,
+  Validate,
+  ValidatorConstraint,
   validateSync,
+  type ValidationArguments,
   type ValidationError,
+  type ValidatorConstraintInterface,
 } from 'class-validator';
 import { DEFAULT_PURGE_HORIZON_DAYS } from '../common/sync/sync-settings';
 
 const MIN_PORT = 1;
 const MAX_PORT = 65_535;
 const MAX_PURGE_HORIZON_DAYS = 3_650;
+
+export const NODE_ENVIRONMENTS = ['development', 'test', 'production'] as const;
+
+export type NodeEnvironment = (typeof NODE_ENVIRONMENTS)[number];
+
+/**
+ * Refuses the development authentication stub in production: the API must not boot with it.
+ * The message names the variables only, never their values.
+ */
+@ValidatorConstraint({ name: 'devAuthStubForbiddenInProduction' })
+class DevAuthStubForbiddenInProduction implements ValidatorConstraintInterface {
+  validate(enabled: unknown, args: ValidationArguments): boolean {
+    const { NODE_ENV } = args.object as Partial<EnvironmentVariables>;
+    return !(enabled === true && NODE_ENV === 'production');
+  }
+
+  defaultMessage(): string {
+    return 'DEV_AUTH_STUB must not be enabled when NODE_ENV is production';
+  }
+}
 
 /** Variables required to reach the database. Shared by the Nest app and the TypeORM CLI. */
 export class DatabaseEnvironment {
@@ -44,6 +69,10 @@ export class DatabaseEnvironment {
 
 /** Every variable the API reads. Validated once at startup by `ConfigModule`. */
 export class EnvironmentVariables extends DatabaseEnvironment {
+  /** Optional, `development` by default. `production` forbids `DEV_AUTH_STUB`. */
+  @IsIn(NODE_ENVIRONMENTS)
+  NODE_ENV: NodeEnvironment = 'development';
+
   @IsInt()
   @Min(MIN_PORT)
   @Max(MAX_PORT)
@@ -70,13 +99,15 @@ export class EnvironmentVariables extends DatabaseEnvironment {
 
   /**
    * DEVELOPMENT ONLY, until authentication exists: when `true`, the current diver is the first one
-   * created (see `CurrentDiverGuard`). Any other value, or no value, disables it.
+   * created (see `CurrentDiverGuard`). Any other value, or no value, disables it. Refused when
+   * `NODE_ENV=production`.
    */
   @Transform(({ obj }: { obj: Record<string, unknown> }) => {
     const raw = obj['DEV_AUTH_STUB'];
     return raw === true || raw === 'true';
   })
   @IsBoolean()
+  @Validate(DevAuthStubForbiddenInProduction)
   DEV_AUTH_STUB: boolean = false;
 }
 

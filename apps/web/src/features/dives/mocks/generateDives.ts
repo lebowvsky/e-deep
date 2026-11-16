@@ -411,11 +411,12 @@ function temperatureOf(random: Random, draft: Draft): number {
   return (table[draft.slot.month] ?? 15) + random.int(-1, 1);
 }
 
-const toSiteRef = ({ id, name, place, region }: MockSite): DiveSiteRef => ({
+const toSiteRef = ({ id, name, place, region, regionName }: MockSite): DiveSiteRef => ({
   id,
   name,
   place,
   region,
+  regionName,
 });
 
 const toTeam = (keys: readonly BuddyKey[]): DiveMember[] => [
