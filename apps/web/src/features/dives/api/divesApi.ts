@@ -43,19 +43,34 @@ import type {
 
 // Every value of each union: a value the front does not know breaks the contract (D-14, deployed
 // front first).
-const GAS_MIXES = ['AIR', 'NITROX32', 'NITROX36', 'OTHER'] as const satisfies readonly GasMix[];
-const ENTRY_TYPES = ['BOAT', 'SHORE'] as const satisfies readonly EntryType[];
-const TIMES_OF_DAY = ['DAY', 'NIGHT'] as const satisfies readonly TimeOfDay[];
-const WEATHERS = ['SUNNY', 'CLOUDY', 'OVERCAST', 'RAIN'] as const satisfies readonly Weather[];
-const SEA_STATES = ['CALM', 'SLIGHT', 'MODERATE', 'ROUGH'] as const satisfies readonly SeaState[];
-const CURRENT_STRENGTHS = [
+export const GAS_MIXES = [
+  'AIR',
+  'NITROX32',
+  'NITROX36',
+  'OTHER',
+] as const satisfies readonly GasMix[];
+export const ENTRY_TYPES = ['BOAT', 'SHORE'] as const satisfies readonly EntryType[];
+export const TIMES_OF_DAY = ['DAY', 'NIGHT'] as const satisfies readonly TimeOfDay[];
+export const WEATHERS = [
+  'SUNNY',
+  'CLOUDY',
+  'OVERCAST',
+  'RAIN',
+] as const satisfies readonly Weather[];
+export const SEA_STATES = [
+  'CALM',
+  'SLIGHT',
+  'MODERATE',
+  'ROUGH',
+] as const satisfies readonly SeaState[];
+export const CURRENT_STRENGTHS = [
   'NONE',
   'WEAK',
   'MODERATE',
   'STRONG',
 ] as const satisfies readonly CurrentStrength[];
-const TANK_MATERIALS = ['STEEL', 'ALUMINIUM'] as const satisfies readonly TankMaterial[];
-const SUIT_TYPES = ['WET', 'SEMI_DRY', 'DRY'] as const satisfies readonly SuitType[];
+export const TANK_MATERIALS = ['STEEL', 'ALUMINIUM'] as const satisfies readonly TankMaterial[];
+export const SUIT_TYPES = ['WET', 'SEMI_DRY', 'DRY'] as const satisfies readonly SuitType[];
 
 // ── Guards (the contract is checked at the boundary, `invalid-response` otherwise) ─────────────
 

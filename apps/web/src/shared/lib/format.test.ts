@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   calendarDaysSince,
+  formatClockValue,
+  formatInterval,
+  formatNumberInputValue,
+  formatSpeciesCount,
   formatDayCount,
   formatDiveCount,
   formatDiveDate,
@@ -99,5 +103,19 @@ describe('formatMeasure', () => {
     expect(formatMeasure(16)).toBe('16');
     expect(formatMeasure(17.5)).toBe('17,5');
     expect(formatMeasure(0)).toBe('0');
+  });
+});
+
+describe('dive form', () => {
+  it('formats the values of the form', () => {
+    expect(formatClockValue(605)).toBe('10:05');
+    expect(formatClockValue(0)).toBe('00:00');
+    expect(formatInterval(90)).toBe('1:30');
+    expect(formatInterval(605)).toBe('10:05');
+    expect(formatSpeciesCount(1)).toBe('1 espèce');
+    expect(formatSpeciesCount(5)).toBe('5 espèces');
+    expect(formatNumberInputValue(12.5)).toBe('12,5');
+    expect(formatNumberInputValue(-2)).toBe('-2');
+    expect(formatNumberInputValue(1200)).toBe('1200');
   });
 });

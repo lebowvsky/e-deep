@@ -196,3 +196,28 @@ export function formatMeasure(value: number): string {
 export function formatDiverCount(count: number): string {
   return count > 1 ? `${count} plongeurs différents` : `${count} plongeur différent`;
 }
+
+// ── Dive form ────────────────────────────────────────────────────────────────────────────────
+
+const twoDigits = (value: number) => value.toString().padStart(2, '0');
+
+/** Minutes since midnight → value of a native time input: 605 → "10:05" · 0 → "00:00" */
+export function formatClockValue(minutesOfDay: number): string {
+  return `${twoDigits(Math.floor(minutesOfDay / 60))}:${twoDigits(minutesOfDay % 60)}`;
+}
+
+/** Surface interval (h:mm): 90 → "1:30" · 605 → "10:05" */
+export function formatInterval(totalMinutes: number): string {
+  const { hours, minutes } = splitMinutes(totalMinutes);
+  return `${hours}:${twoDigits(minutes)}`;
+}
+
+/** 1 → "1 espèce" · 5 → "5 espèces" */
+export function formatSpeciesCount(count: number): string {
+  return `${count} ${count > 1 ? 'espèces' : 'espèce'}`;
+}
+
+/** Number as written back into a number field: 12.5 → "12,5" · 200 → "200" (no grouping). */
+export function formatNumberInputValue(value: number): string {
+  return String(value).replace('.', ',');
+}
