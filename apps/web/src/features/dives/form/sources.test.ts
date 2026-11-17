@@ -63,6 +63,7 @@ describe('diveNumberFor', () => {
       utcOffsetMinutes: 120,
       observationCounts: new Map(),
       isRepetitive: null,
+      baseUpdatedAt: '2026-04-09T07:30:00.000Z',
     }) as const;
 
   it('gives the rank the dive will have in the log, by its start (D26)', () => {
@@ -107,6 +108,7 @@ describe('proposeSurfaceInterval', () => {
       utcOffsetMinutes: 120,
       observationCounts: new Map(),
       isRepetitive: null,
+      baseUpdatedAt: '2026-04-09T07:30:00.000Z',
     } as const;
     const entry = { date: '2026-04-08', entryTime: '14:00' };
     expect(proposeSurfaceIntervalFor(log, entry, update)).toBe(255);

@@ -3,26 +3,14 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockFilledDiveDetail } from '@/features/dives/mocks/diveDetailResponse';
-import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
-import type { ApiClient } from '@/shared/lib/apiClient';
+import { createFakeDiveApi, type FakeDiveApi } from '@/features/dives/mocks/fakeDiveApi';
 import { ApiClientContext } from '@/shared/lib/apiClientContext';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { DiveDetailPage } from './DiveDetailPage';
 import { DiveFormPage } from './DiveFormPage';
 
-const DETAIL_PREFIX = 'dives/';
-
-/** The log, and the filled detail of the mocked dives; a saved dive lives in the cache only. */
-const get: ApiClient['get'] = vi.fn().mockImplementation((path: string) => {
-  const id = path.slice(DETAIL_PREFIX.length);
-  if (!path.startsWith(DETAIL_PREFIX)) return Promise.resolve(mockDiveLogResponse);
-  return mockDiveLogResponse.dives.some((dive) => dive.id === id)
-    ? Promise.resolve(mockFilledDiveDetail(id))
-    : Promise.reject(new Error(`Unexpected request for ${id}`));
-});
-
-function renderApp() {
+/** The log and the filled detail of the mocked dives; a saved dive is served by the next reads. */
+function renderApp(api: FakeDiveApi) {
   const router = createMemoryRouter(
     [
       { path: '/dives/new', element: <DiveFormPage /> },
@@ -31,13 +19,13 @@ function renderApp() {
     ],
     { initialEntries: ['/dives/new'] },
   );
-  // Like the app (`staleTime` 60 s): the detail reads the dive the in-memory repository wrote,
-  // without asking the API for it again.
+  // Cached for good, unlike the app (`staleTime` 60 s): only the invalidation of the save makes
+  // the log and the detail read again.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: Infinity } },
   });
   render(
-    <ApiClientContext value={{ get }}>
+    <ApiClientContext value={api.client}>
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           <RouterProvider router={router} />
@@ -60,15 +48,16 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
 });
 
-// Every field of the form, saved through the in-memory repository (V1), then read on the detail.
+// Every field of the form, sent by `POST /dives`, then read back from the API on the detail.
 // Not checked, being out of the dive model: the decompression stop lines, the surface interval and
 // the level of a member (see each section below). The region and position of a site created by
-// name are entered later, from the site sheet (spec).
+// name are entered later, from the site sheet (spec, D-23).
 describe('dive form → detail round trip', () => {
   // Fills about forty fields: longer than the default 5 s when the three apps test in parallel.
   it('shows on the detail every value entered in the form', { timeout: 20_000 }, async () => {
     const user = userEvent.setup();
-    const router = renderApp();
+    const api = createFakeDiveApi();
+    const router = renderApp(api);
     await screen.findByRole('form', { name: 'Nouvelle plongée' });
 
     // 1. L'essentiel. The logbook number is not saved: the API numbers the dives (D26).
@@ -131,6 +120,16 @@ describe('dive form → detail round trip', () => {
     // Header and KPI: site, number (#128, after #127 of 2026-04-09), date, entry, depth, duration,
     // exit (derived), temperatures, visibility, stops done, gas and entry type.
     await screen.findByRole('heading', { level: 1, name: 'Tombant des Américains' });
+    // The header shows from the refetched log at once; the cards wait for the detail.
+    await screen.findByRole('region', { name: /^Déroulé/ });
+    // Created, then read back: the detail of the new dive comes from the API.
+    const created = api.requests.find(({ method }) => method === 'POST');
+    if (created?.body === undefined) throw new Error('No dive created');
+    const id = router.state.location.pathname.slice('/dives/'.length);
+    expect(created).toMatchObject({ path: 'dives', body: { event: { id }, baseUpdatedAt: null } });
+    expect(
+      api.requests.some(({ method, path }) => method === 'GET' && path === `dives/${id}`),
+    ).toBe(true);
     const page = document.body.textContent ?? '';
     for (const text of [
       'Plongée #128',
@@ -188,7 +187,9 @@ describe('dive form → detail round trip', () => {
     expect(team).toContain('Lucas Bernard');
     expect(team).toContain('Zoé Martin');
 
-    // The site card reads the log: the saved dive is the deepest one here.
+    // The site card reads the log: the saved dive is the deepest one here. A site created by its
+    // name has no position yet.
     expect(card(/^Site/)).toContain('23,4 mètres');
+    expect(card(/^Site/)).toContain('Position non renseignée');
   });
 });

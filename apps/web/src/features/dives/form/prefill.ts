@@ -132,6 +132,7 @@ export function editTarget(dive: DiveDetailView): DiveFormTarget {
       ),
     ),
     isRepetitive: dive.isRepetitive,
+    baseUpdatedAt: dive.updatedAt,
   };
 }
 

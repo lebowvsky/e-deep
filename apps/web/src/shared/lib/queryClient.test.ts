@@ -30,6 +30,20 @@ describe('shouldRetry', () => {
     ['an HTTP 400', http(400)],
     ['an HTTP 401', http(401)],
     ['an HTTP 404', http(404)],
+    // Refusals of a write: retrying would only get the same answer (writes do not go through
+    // `useQuery` anyway).
+    [
+      'a 400 validation-failed',
+      new ApiError('http', 'HTTP 400', { status: 400, code: 'validation-failed', fieldErrors: {} }),
+    ],
+    [
+      'a 409 identifier-conflict',
+      new ApiError('http', 'HTTP 409', { status: 409, code: 'identifier-conflict' }),
+    ],
+    [
+      'a 422 invalid-reference',
+      new ApiError('http', 'HTTP 422', { status: 422, code: 'invalid-reference' }),
+    ],
     ['an invalid response', invalid],
     ['an http error without status', new ApiError('http', 'HTTP ?')],
     ['an error that is not an ApiError', new TypeError('boom')],

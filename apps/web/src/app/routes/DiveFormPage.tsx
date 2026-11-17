@@ -1,4 +1,3 @@
-import type { CertificationLevelRef } from '@e-deep/shared';
 import { useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { mockUser } from '@/features/dashboard/mocks/dashboard';
@@ -27,7 +26,6 @@ import { useDiveFormSources } from '@/features/dives/form/useDiveFormSources';
 import { useDive } from '@/features/dives/hooks/useDive';
 import { useSaveDive } from '@/features/dives/hooks/useSaveDive';
 import { DIVE_LOAD_ERROR_HINT, DIVE_LOAD_ERROR_MESSAGE } from '@/features/dives/lib/labels';
-import { toCertificationLevelRef } from '@/features/dives/lib/levels';
 import type { DiveDetailView, LoggedDive } from '@/features/dives/types';
 import { DiveFormTopBar } from '@/features/dives/components/form/DiveFormTopBar';
 import { pageTitle } from '@/shared/config/app';
@@ -35,7 +33,6 @@ import { useToast } from '@/shared/ui/Toast';
 
 // TODO(auth): the diver will come from the session, as in AppShell.
 const DIVER = mockUser;
-const DIVER_LEVEL: CertificationLevelRef = toCertificationLevelRef(DIVER.level, DIVER.federation);
 const SELF = { firstName: DIVER.firstName, lastName: DIVER.lastName, level: DIVER.level };
 /**
  * V1: every diver creates their own dives, so the shared event of an edited dive is theirs to edit.
@@ -245,7 +242,7 @@ function SuggestedDiveForm({ suggestionId, ...props }: SharedFormProps & { sugge
 function PageDiveForm({ today, ...props }: SharedFormProps & Pick<DiveFormProps, 'prefill'>) {
   const navigate = useNavigate();
   const { notify } = useToast();
-  const saveDive = useSaveDive(DIVER_LEVEL);
+  const saveDive = useSaveDive();
   // Read once per form: the memoised actions of the form depend on it.
   const [context] = useState(() => ({ today, diverLevel: DIVER.level }));
 

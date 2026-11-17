@@ -12,13 +12,14 @@ import { DEFAULT_QUERY } from '../lib/query';
 import { mockDiveLogResponse, mockOwner } from '../mocks/diveLogResponse';
 import type { DivesQuery, DivesState } from '../types';
 import { useDives } from './useDives';
+import { fakeApiClient } from '@/test/fakeApiClient';
 
 const now = new Date(2026, 3, 10);
 
 const at = (path: string, get: ApiClient['get']) =>
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <TestProviders client={{ get }}>
+      <TestProviders client={fakeApiClient({ get })}>
         <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>
       </TestProviders>
     );
@@ -175,7 +176,7 @@ describe('useDives with the app query client', () => {
     const queryClient: QueryClient = createQueryClient();
     function Wrapper({ children }: { children: ReactNode }) {
       return (
-        <ApiClientContext value={{ get }}>
+        <ApiClientContext value={fakeApiClient({ get })}>
           <QueryClientProvider client={queryClient}>
             <MemoryRouter initialEntries={['/dives']}>{children}</MemoryRouter>
           </QueryClientProvider>

@@ -10,6 +10,7 @@ import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { TestProviders } from '@/test/TestProviders';
 import { DivesPage } from './DivesPage';
+import { fakeApiClient } from '@/test/fakeApiClient';
 
 function Location() {
   const { search } = useLocation();
@@ -21,7 +22,7 @@ function renderAt(
   get: ApiClient['get'] = vi.fn().mockResolvedValue(mockDiveLogResponse),
 ) {
   return render(
-    <TestProviders client={{ get }}>
+    <TestProviders client={fakeApiClient({ get })}>
       <ToastProvider>
         <MemoryRouter initialEntries={[path]}>
           <Routes>

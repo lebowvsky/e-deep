@@ -1,20 +1,21 @@
-import type { CertificationLevelRef } from '@e-deep/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { createInMemoryDiveRepository } from '../api/inMemoryDiveRepository';
+import { useApiClient } from '@/shared/hooks/useApiClient';
+import { createHttpDiveRepository } from '../api/httpDiveRepository';
 import type { SaveDive } from '../api/saveDive';
 
 /**
- * The `saveDive` of the form. V1: the in-memory repository over the query cache (temporary); the
- * HTTP adapter will take its place here, with the same signature.
+ * The `saveDive` of the form: the HTTP adapter of the port, which refreshes the cached log and
+ * detail once the dive is saved.
  *
  * No `useMutation`: the form reducer already holds the submit state (submitting, errors), a second
  * copy of it would only have to be kept in sync.
  */
-export function useSaveDive(diverLevel: CertificationLevelRef): SaveDive {
+export function useSaveDive(): SaveDive {
+  const apiClient = useApiClient();
   const queryClient = useQueryClient();
   return useMemo(
-    () => createInMemoryDiveRepository({ queryClient, diverLevel }),
-    [queryClient, diverLevel],
+    () => createHttpDiveRepository({ apiClient, queryClient }),
+    [apiClient, queryClient],
   );
 }

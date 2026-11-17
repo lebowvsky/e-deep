@@ -17,6 +17,7 @@ import {
   toLoggedDive,
   toSelfMember,
 } from './divesApi';
+import { fakeApiClient } from '@/test/fakeApiClient';
 
 function summary(overrides: Partial<DiveSummary> = {}): DiveSummary {
   return {
@@ -295,7 +296,7 @@ describe('fetchDiveLog', () => {
     const get = vi.fn().mockResolvedValue({ dives: [] });
     const controller = new AbortController();
 
-    await fetchDiveLog({ get }, { signal: controller.signal });
+    await fetchDiveLog(fakeApiClient({ get }), { signal: controller.signal });
     expect(get).toHaveBeenCalledWith('dives', isDiveLogResponse, { signal: controller.signal });
   });
 
@@ -367,7 +368,7 @@ describe('fetchDive', () => {
     const get = vi.fn().mockResolvedValue(detail());
     const controller = new AbortController();
 
-    await fetchDive({ get }, 'd1', { signal: controller.signal });
+    await fetchDive(fakeApiClient({ get }), 'd1', { signal: controller.signal });
     expect(get).toHaveBeenCalledWith('dives/d1', isDiveDetail, { signal: controller.signal });
   });
 

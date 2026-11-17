@@ -4,13 +4,14 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { routes } from '@/app/routes';
 import { TestProviders } from '@/test/TestProviders';
+import { fakeApiClient } from '@/test/fakeApiClient';
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   // These tests are about the shell: the dashboard stays loading (API call never settles).
   const get = vi.fn(() => new Promise<never>(() => undefined));
   render(
-    <TestProviders client={{ get }}>
+    <TestProviders client={fakeApiClient({ get })}>
       <RouterProvider router={router} />
     </TestProviders>,
   );

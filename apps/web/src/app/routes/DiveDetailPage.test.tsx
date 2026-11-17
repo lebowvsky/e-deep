@@ -9,6 +9,7 @@ import { ToastProvider } from '@/shared/ui/Toast';
 import { TestProviders } from '@/test/TestProviders';
 import { DiveDetailPage } from './DiveDetailPage';
 import { DivesPage } from './DivesPage';
+import { fakeApiClient } from '@/test/fakeApiClient';
 
 const DETAIL_PREFIX = 'dives/';
 
@@ -32,7 +33,7 @@ function Location() {
 
 function renderAt(path: string, get: ApiClient['get'] = apiLike()) {
   render(
-    <TestProviders client={{ get }}>
+    <TestProviders client={fakeApiClient({ get })}>
       <ToastProvider>
         <MemoryRouter initialEntries={[path]}>
           <Routes>
