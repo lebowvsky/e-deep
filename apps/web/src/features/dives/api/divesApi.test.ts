@@ -113,6 +113,12 @@ describe('isDiveSummary', () => {
     ).toBe(true);
   });
 
+  it('accepts a site without region (created by its name, D-23)', () => {
+    expect(
+      isDiveSummary(summary({ site: { id: 's2', name: 'Le Sec', locality: null, region: null } })),
+    ).toBe(true);
+  });
+
   it.each(['id', 'number', 'date', 'site', 'depthMaxM', 'gasMix', 'buddies'] as const)(
     'rejects a dive without %s',
     (key) => {
@@ -133,6 +139,7 @@ describe('isDiveSummary', () => {
     ['a numeric locality', withSiteField('locality', 42)],
     ['an undefined locality', withSiteField('locality', undefined)],
     ['a missing region', withSiteField('region', undefined)],
+    ['a numeric region', withSiteField('region', 42)],
     ['null', null],
     ['an array', [summary()]],
   ])('rejects %s', (_label, body) => {
@@ -161,6 +168,12 @@ describe('isDiveDetail', () => {
   it('accepts a dive with the detail-only fields', () => {
     expect(isDiveDetail(detail())).toBe(true);
     expect(isDiveDetail(detail({ visibilityM: null }))).toBe(true);
+  });
+
+  it('accepts a site without position (D-23)', () => {
+    expect(
+      isDiveDetail(detail({ site: { ...detail().site, latitude: null, longitude: null } })),
+    ).toBe(true);
   });
 
   it('rejects a summary: the detail-only fields are required', () => {
@@ -242,6 +255,8 @@ describe('isDiveDetail', () => {
     ['without updatedAt', { ...detail(), updatedAt: undefined }],
     ['without coordinates', { ...detail(), site: summary().site }],
     ['with a string latitude', { ...detail(), site: { ...detail().site, latitude: '42.58' } }],
+    ['with a latitude alone', { ...detail(), site: { ...detail().site, longitude: null } }],
+    ['with a longitude alone', { ...detail(), site: { ...detail().site, latitude: null } }],
     ['with a string visibility', { ...detail(), visibilityM: '20' }],
     ['without hadDecompression', { ...detail(), hadDecompression: undefined }],
     ['with a numeric stopsOk', { ...detail(), stopsOk: 1 }],
@@ -468,6 +483,20 @@ describe('toLoggedDive', () => {
       regionName: 'Côte d’Azur',
     });
   });
+
+  it('shows the locality alone, or no place, when the region was not entered', () => {
+    const site = (locality: string | null) =>
+      toLoggedDive(summary({ site: { id: 's4', name: 'Le Sec', locality, region: null } }), self)
+        .site;
+    expect(site('Agay')).toStrictEqual({
+      id: 's4',
+      name: 'Le Sec',
+      place: 'Agay',
+      region: null,
+      regionName: null,
+    });
+    expect(site(null).place).toBeNull();
+  });
 });
 
 describe('toDiveLog', () => {
@@ -519,7 +548,7 @@ describe('toDiveDetailView', () => {
 
     expect(view).toStrictEqual({
       ...logged,
-      site: { ...logged.site, latitude: 42.58, longitude: 8.72, area: null },
+      site: { ...logged.site, position: { latitude: 42.58, longitude: 8.72 }, area: null },
       team: logged.team.map((member) => ({
         ...member,
         level: member.isSelf ? { agency: 'FFESSM', code: 'N2', label: 'Niveau 2' } : null,
@@ -553,6 +582,14 @@ describe('toDiveDetailView', () => {
       createdAt: '2026-04-08T18:00:00.000Z',
       updatedAt: '2026-04-08T18:00:00.000Z',
     });
+  });
+
+  it('has no position when the site has none', () => {
+    const view = toDiveDetailView(
+      detail({ site: { ...detail().site, latitude: null, longitude: null } }),
+      self,
+    );
+    expect(view.site.position).toBeNull();
   });
 
   it('groups a filled detail into the cards, with the mockup values', () => {

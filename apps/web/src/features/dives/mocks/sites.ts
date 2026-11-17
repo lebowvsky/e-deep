@@ -1,10 +1,14 @@
 // Dive log mocks — the 23 sites (Mediterranean and Brittany), as in the dev seed of the API.
 import { toRegionKey } from '../lib/region';
-import type { DiveSiteRef } from '../types';
+import type { DiveSiteRef, RegionKey } from '../types';
 
+/** Every mocked site has a locality and a region. */
 export interface MockSite extends DiveSiteRef {
   /** Town or spot, as the API serves it. */
   locality: string;
+  place: string;
+  region: RegionKey;
+  regionName: string;
   /** Usual depth range of the site (m), for the generator. */
   depthRange: [number, number];
 }

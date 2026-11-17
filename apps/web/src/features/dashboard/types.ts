@@ -14,12 +14,19 @@ export interface User {
   avatarUrl?: string;
 }
 
+/** WGS84 position of a site, in degrees. */
+export interface SitePosition {
+  latitude: number;
+  longitude: number;
+}
+
 export interface DiveSite {
   id: string;
   name: string;
-  region: string;
-  latitude: number;
-  longitude: number;
+  /** `null` when not entered (site created by its name). */
+  region: string | null;
+  /** `null` when not entered: the site has no marker on the map. */
+  position: SitePosition | null;
   diveCount: number;
   maxDepthM: number;
 }
@@ -57,8 +64,11 @@ export interface DashboardStats {
   divesPerMonth: { month: string; count: number }[];
   /** Dives of the current month (« +3 ce mois »). */
   recentMonthDelta: number;
-  /** Where most dives happen: short name (header, KPI) and map title. */
-  mainArea: { name: string; mapTitle: string };
+  /**
+   * Where most dives happen: short name (header, KPI) and map title; `null` when no dived site has
+   * a region.
+   */
+  mainArea: { name: string; mapTitle: string } | null;
 }
 
 export interface DashboardPayload {

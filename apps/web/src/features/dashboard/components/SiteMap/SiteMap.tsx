@@ -5,7 +5,7 @@ import { formatDiveCount } from '@/shared/lib/format';
 import { Overline } from '@/shared/ui/Overline';
 import { TextLink } from '@/shared/ui/TextLink';
 import { projectToMap } from '../../lib/mapProjection';
-import type { DiveSite } from '../../types';
+import type { DiveSite, SitePosition } from '../../types';
 import { MapBackdrop } from '@/shared/ui/MapBackdrop';
 import styles from './SiteMap.module.scss';
 
@@ -16,8 +16,10 @@ export interface SiteMapProps {
   sites: readonly DiveSite[];
   /** Total of visited sites (stats), which can exceed the plotted ones. */
   siteCount: number;
-  areaName: string;
-  mapTitle: string;
+  /** `null` when no dived site has a region. */
+  areaName: string | null;
+  /** `null` when no dived site has a region: a generic title is shown. */
+  mapTitle: string | null;
   /** Site highlighted on load (last dive). */
   initialActiveSiteId?: string | undefined;
 }
@@ -25,22 +27,30 @@ export interface SiteMapProps {
 /** Sites with many dives get the larger marker (mockup: 6, 8 and 11 dives). */
 const BIG_MARKER_MIN_DIVES = 6;
 
+const FALLBACK_TITLE = 'Mes sites';
+
+/** A site with a known position: the only ones the map can place. */
+type PlottedSite = DiveSite & { position: SitePosition };
+
+const isPlotted = (site: DiveSite): site is PlottedSite => site.position !== null;
+
 /** Marker / popover anchor, as CSS custom properties read by the stylesheet. */
-const anchor = (site: DiveSite): CSSProperties => {
-  const { x, y } = projectToMap(site.latitude, site.longitude);
+const anchor = ({ position }: PlottedSite): CSSProperties => {
+  const { x, y } = projectToMap(position.latitude, position.longitude);
   return { '--x': `${x * 100}%`, '--y': `${y * 100}%` } as CSSProperties;
 };
 
 /** Near an edge the popover opens towards the centre so it stays inside the card. */
-const popoverAlign = (site: DiveSite): 'start' | 'center' | 'end' => {
-  const { x } = projectToMap(site.latitude, site.longitude);
+const popoverAlign = ({ position }: PlottedSite): 'start' | 'center' | 'end' => {
+  const { x } = projectToMap(position.latitude, position.longitude);
   if (x < 0.2) return 'start';
   return x > 0.8 ? 'end' : 'center';
 };
 
 /**
  * Dive-site map — SVG placeholder (no MapLibre in V1). Markers are buttons that select a site;
- * the desktop popover shows the selected one. Period filters are visual only in V1.
+ * the desktop popover shows the selected one. Period filters are visual only in V1. A site whose
+ * position was not entered has no marker (it still counts in `siteCount`).
  */
 export function SiteMap({
   sites,
@@ -49,10 +59,11 @@ export function SiteMap({
   mapTitle,
   initialActiveSiteId,
 }: SiteMapProps) {
-  const [activeId, setActiveId] = useState(initialActiveSiteId ?? sites[0]?.id);
+  const plotted = sites.filter(isPlotted);
+  const [activeId, setActiveId] = useState(initialActiveSiteId ?? plotted[0]?.id);
   const [period, setPeriod] = useState<MapPeriod>('3M');
   const titleId = useId();
-  const active = sites.find((site) => site.id === activeId);
+  const active = plotted.find((site) => site.id === activeId);
 
   return (
     <section className={styles.section} aria-labelledby={titleId}>
@@ -68,10 +79,10 @@ export function SiteMap({
           <div className={styles.heading}>
             <Overline className={styles.desktopOnly}>Carte · {siteCount} sites</Overline>
             <Overline className={styles.phoneOnly}>
-              {siteCount} sites · {areaName}
+              {siteCount} sites{areaName !== null && ` · ${areaName}`}
             </Overline>
             <h2 id={titleId} className={styles.title}>
-              {mapTitle}
+              {mapTitle ?? FALLBACK_TITLE}
             </h2>
           </div>
           <div className={styles.periods} role="group" aria-label="Période">
@@ -93,7 +104,7 @@ export function SiteMap({
         </div>
 
         <ul className={styles.markers} aria-label="Sites de plongée">
-          {sites.map((site) => {
+          {plotted.map((site) => {
             const isActive = site.id === activeId;
             return (
               <li key={site.id} className={styles.markerItem} style={anchor(site)}>

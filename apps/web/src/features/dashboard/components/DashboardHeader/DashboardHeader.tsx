@@ -13,7 +13,8 @@ export interface DashboardHeaderProps {
   firstName: string;
   /** ISO date of the last dive, or null when there is none yet. */
   lastDiveDate: string | null;
-  areaName: string;
+  /** Region of most dives; `null` when no dived site has one (the time zone stays alone). */
+  areaName: string | null;
   /** Injected for tests; defaults to the current time. */
   now?: Date;
 }
@@ -34,7 +35,8 @@ export function DashboardHeader({
           </time>
           <span className={styles.where}>
             <span className={styles.dot} aria-hidden="true" />
-            {areaName} · {formatUtcOffset(now)}
+            {areaName !== null && `${areaName} · `}
+            {formatUtcOffset(now)}
           </span>
         </p>
         <h1 className={styles.title}>Tableau de bord</h1>

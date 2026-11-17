@@ -6,7 +6,7 @@ import {
   observationSpoken,
   oxygenLabel,
   oxygenPercent,
-  placeWithArea,
+  placeLabel,
   repetitiveLabel,
 } from './labels';
 
@@ -42,9 +42,12 @@ describe('stop labels', () => {
 });
 
 describe('detail labels', () => {
-  it('adds the area to the place when entered', () => {
-    expect(placeWithArea('Calvi · Corse', 'Méditerranée')).toBe('Calvi · Corse · Méditerranée');
-    expect(placeWithArea('Calvi · Corse', null)).toBe('Calvi · Corse');
+  it('joins the parts of a place that were entered, or gives none', () => {
+    expect(placeLabel('Calvi · Corse', 'Méditerranée')).toBe('Calvi · Corse · Méditerranée');
+    expect(placeLabel('Calvi · Corse', null)).toBe('Calvi · Corse');
+    expect(placeLabel('Calvi', null)).toBe('Calvi');
+    expect(placeLabel(null, 'Corse')).toBe('Corse');
+    expect(placeLabel(null, null)).toBeNull();
   });
 
   it('shows the count of a species, spoken with its noun', () => {

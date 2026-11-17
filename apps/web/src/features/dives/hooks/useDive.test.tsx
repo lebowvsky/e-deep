@@ -112,7 +112,7 @@ describe('useDive', () => {
     const detailRequest = requests.find((request) => request.path === DETAIL_PATH);
     expect(detailRequest?.options?.signal).toBeInstanceOf(AbortSignal);
     expect(dive.number).toBe(100);
-    expect(dive.site.latitude).toBe(42.58);
+    expect(dive.site.position).toEqual({ latitude: 42.58, longitude: 8.725 });
     expect(dive.team[0]?.isSelf).toBe(true);
     expect(insights?.previous?.number).toBe(99);
     expect(insights?.next?.number).toBe(101);

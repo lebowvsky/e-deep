@@ -17,10 +17,10 @@ export interface DiveSiteCardProps {
 export function DiveSiteCard({ site, stats, className }: DiveSiteCardProps) {
   return (
     <DetailSection title="Site" icon="pin" className={className}>
-      <SiteMiniMap latitude={site.latitude} longitude={site.longitude} />
+      <SiteMiniMap position={site.position} />
       <div className={styles.identity}>
         <h3 className={styles.name}>{site.name}</h3>
-        <p className={styles.place}>{site.place}</p>
+        {site.place !== null && <p className={styles.place}>{site.place}</p>}
       </div>
       {stats && (
         <FactList

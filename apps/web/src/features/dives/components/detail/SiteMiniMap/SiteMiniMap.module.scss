@@ -46,6 +46,28 @@
   color: $color-text-low;
 }
 
+// No position (site created by its name): the FactList « missing » reading, where the
+// coordinates would be.
+.missing {
+  @include type($type-caption);
+
+  position: absolute;
+  bottom: $space-3;
+  left: $space-3;
+  display: inline-flex;
+  align-items: baseline;
+  gap: $space-2;
+  margin: 0;
+  font-weight: 400;
+  color: $color-text-low;
+}
+
+.dash {
+  @include type($type-body, $font: $font-mono);
+
+  color: $color-text-muted;
+}
+
 .srOnly {
   @include visually-hidden;
 }

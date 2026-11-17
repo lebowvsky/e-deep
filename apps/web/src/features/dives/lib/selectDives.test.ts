@@ -196,6 +196,26 @@ describe('facets and log overview', () => {
     ]);
   });
 
+  it('leaves the dives on a site without region out of the region facets and filter (D-23)', () => {
+    const unknownSite = { id: 's99', name: 'Le Sec', place: null, region: null, regionName: null };
+    const withNewSite = [...dives, makeDive({ number: 6, site: unknownSite })];
+
+    expect(computeFacets(withNewSite).regions.map(({ key }) => key)).toEqual([
+      'corse',
+      'bretagne',
+      'marseille',
+    ]);
+    const regionFiltered = selectDives(
+      withNewSite,
+      { ...DEFAULT_QUERY, regions: ['corse'], size: 50 },
+      now,
+    );
+    expect(regionFiltered.items.map((d) => d.number)).toEqual([5, 4, 3]);
+    // Still found by its name.
+    const searched = selectDives(withNewSite, { ...DEFAULT_QUERY, q: 'le sec' }, now);
+    expect(searched.items.map((d) => d.number)).toEqual([6]);
+  });
+
   it('describes the whole log', () => {
     expect(describeLog(dives)).toEqual({
       totalDives: 5,

@@ -22,7 +22,7 @@ import {
 } from '@/shared/lib/guards';
 import type { DiveMember } from '@/shared/model/dive';
 import { avatarColorOf } from '../lib/avatarColor';
-import { oxygenPercent } from '../lib/labels';
+import { oxygenPercent, placeLabel } from '../lib/labels';
 import { toRegionKey } from '../lib/region';
 import {
   CURRENT_STRENGTHS,
@@ -38,6 +38,7 @@ import type {
   DiveDetailMember,
   DiveDetailView,
   DiveSiteRef,
+  GeoPoint,
   LoggedDive,
   SafetyStop,
 } from '../types';
@@ -50,7 +51,7 @@ function isSiteRef(value: unknown): value is DiveSiteContract {
     isString(value.id) &&
     isString(value.name) &&
     isNullable(isString)(value.locality) &&
-    isString(value.region)
+    isNullable(isString)(value.region)
   );
 }
 
@@ -95,6 +96,11 @@ function isDiveDetailBuddy(value: unknown): value is DiveDetailBuddy {
   return isRecord(value) && isNullable(isCertificationLevelRef)(value.level) && isBuddyRef(value);
 }
 
+/** Latitude and longitude come both set or both `null` (D-23): a lone half is a broken body. */
+function isPositionPair(latitude: unknown, longitude: unknown): boolean {
+  return (latitude === null && longitude === null) || (isNumber(latitude) && isNumber(longitude));
+}
+
 const isNullableNumber = isNullable(isNumber);
 const isNullableString = isNullable(isString);
 
@@ -102,8 +108,7 @@ export function isDiveDetail(value: unknown): value is DiveDetail {
   return (
     isRecord(value) &&
     isRecord(value.site) &&
-    isNumber(value.site.latitude) &&
-    isNumber(value.site.longitude) &&
+    isPositionPair(value.site.latitude, value.site.longitude) &&
     isNullableString(value.site.area) &&
     isArrayOf(isDiveDetailBuddy)(value.buddies) &&
     isNullableNumber(value.visibilityM) &&
@@ -202,13 +207,13 @@ function toBuddyMember(buddy: DiveBuddyRef): DiveMember {
   };
 }
 
-/** « Calvi · Corse », or « Corse » alone when the locality was not entered. */
+/** « Calvi · Corse », or whichever of the locality and the region was entered. */
 function toSiteRef(site: DiveSiteContract): DiveSiteRef {
   return {
     id: site.id,
     name: site.name,
-    place: site.locality === null ? site.region : `${site.locality} · ${site.region}`,
-    region: toRegionKey(site.region),
+    place: placeLabel(site.locality, site.region),
+    region: site.region === null ? null : toRegionKey(site.region),
     regionName: site.region,
   };
 }
@@ -235,6 +240,11 @@ export function toDiveLog(response: DiveLogResponse, owner: DiveLogOwner): Logge
   return response.dives.map((summary) => toLoggedDive(summary, self));
 }
 
+/** The contract pairs both coordinates (D-23): no position rather than half of one. */
+function toGeoPoint(latitude: number | null, longitude: number | null): GeoPoint | null {
+  return latitude === null || longitude === null ? null : { latitude, longitude };
+}
+
 /** The contract pairs both values (D-16); a lone half is not shown rather than guessed. */
 function toSafetyStop(durationMin: number | null, depthM: number | null): SafetyStop | null {
   return durationMin === null || depthM === null ? null : { durationMin, depthM };
@@ -254,8 +264,7 @@ export function toDiveDetailView(detail: DiveDetail, self: DiveMember): DiveDeta
     ...dive,
     site: {
       ...dive.site,
-      latitude: detail.site.latitude,
-      longitude: detail.site.longitude,
+      position: toGeoPoint(detail.site.latitude, detail.site.longitude),
       area: detail.site.area,
     },
     team,

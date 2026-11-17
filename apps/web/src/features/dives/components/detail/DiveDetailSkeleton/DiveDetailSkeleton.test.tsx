@@ -12,7 +12,8 @@ describe('DiveDetailSkeleton', () => {
     render(<DiveDetailSkeleton preview={preview} />);
 
     expect(screen.getByRole('heading', { level: 1, name: preview.site.name })).toBeTruthy();
-    expect(screen.getByText(preview.site.place).textContent).toBe(preview.site.place);
+    const place = preview.site.place ?? '';
+    expect(screen.getByText(place).textContent).toBe(place);
     const tags = screen.getByRole('list', { name: 'Étiquettes' });
     // The gas only: no stops, no Bateau / Bord.
     expect(within(tags).getAllByRole('listitem')).toHaveLength(1);

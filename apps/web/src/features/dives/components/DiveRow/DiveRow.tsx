@@ -37,7 +37,7 @@ export function DiveRow({ dive, isPeak }: DiveRowProps) {
           {/* Same site, several dives: the number makes each link unique (WCAG 2.4.4). */}
           <span className={styles.srOnly}>, plongée n° {dive.number}</span>
         </DiveLink>
-        <span className={styles.place}>{dive.site.place}</span>
+        {dive.site.place !== null && <span className={styles.place}>{dive.site.place}</span>}
       </td>
       <td>
         <span className={styles.depth}>

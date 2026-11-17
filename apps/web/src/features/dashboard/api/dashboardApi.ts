@@ -21,7 +21,7 @@ import {
   isString,
 } from '@/shared/lib/guards';
 import type { DiveMember } from '@/shared/model/dive';
-import type { Buddy, DashboardState, Dive, User } from '../types';
+import type { Buddy, DashboardState, Dive, DiveSite, User } from '../types';
 
 const USER_LEVELS = ['N1', 'N2', 'N3', 'N4'] as const satisfies readonly UserLevel[];
 const FEDERATIONS = ['FFESSM', 'CMAS', 'OTHER'] as const satisfies readonly Federation[];
@@ -49,14 +49,18 @@ function isBuddy(value: unknown): value is DashboardBuddy {
   );
 }
 
+/** Latitude and longitude come both set or both `null` (D-23): a lone half is a broken body. */
+function isPositionPair(latitude: unknown, longitude: unknown): boolean {
+  return (latitude === null && longitude === null) || (isNumber(latitude) && isNumber(longitude));
+}
+
 function isSite(value: unknown): value is DashboardSite {
   return (
     isRecord(value) &&
     isString(value.id) &&
     isString(value.name) &&
-    isString(value.region) &&
-    isNumber(value.latitude) &&
-    isNumber(value.longitude) &&
+    isNullable(isString)(value.region) &&
+    isPositionPair(value.latitude, value.longitude) &&
     isNumber(value.diveCount) &&
     isNumber(value.maxDepthM)
   );
@@ -71,7 +75,7 @@ function isDive(value: unknown): value is DashboardDive {
     isRecord(value.site) &&
     isString(value.site.id) &&
     isString(value.site.name) &&
-    isString(value.site.region) &&
+    isNullable(isString)(value.site.region) &&
     isNumber(value.depthMaxM) &&
     isNumber(value.durationMin) &&
     isNullable(isNumber)(value.temperatureC) &&
@@ -159,6 +163,13 @@ function toMember(person: DashboardUser | DashboardBuddy, isSelf: boolean): Dive
   };
 }
 
+function toSite({ latitude, longitude, ...site }: DashboardSite): DiveSite {
+  return {
+    ...site,
+    position: latitude === null || longitude === null ? null : { latitude, longitude },
+  };
+}
+
 /** The contract lists the buddies of the dive; the view model holds the whole team, user first. */
 function toDive(dive: DashboardDive, user: DashboardUser): Dive {
   return {
@@ -184,7 +195,7 @@ function toDive(dive: DashboardDive, user: DashboardUser): Dive {
 export function toDashboardState(response: DashboardResponse): DashboardState {
   const { stats } = response;
   const user = toUser(response.user);
-  if (stats.totalDives === 0 || stats.maxDepthEver === null || stats.mainRegion === null) {
+  if (stats.totalDives === 0 || stats.maxDepthEver === null) {
     return { status: 'empty', user };
   }
 
@@ -206,10 +217,11 @@ export function toDashboardState(response: DashboardResponse): DashboardState {
           count,
         })),
         recentMonthDelta: stats.divesThisMonth,
-        mainArea: { name: stats.mainRegion, mapTitle: stats.mainRegion },
+        mainArea:
+          stats.mainRegion === null ? null : { name: stats.mainRegion, mapTitle: stats.mainRegion },
       },
       lastDive: response.lastDive === null ? null : toDive(response.lastDive, response.user),
-      sites: response.sites,
+      sites: response.sites.map(toSite),
       frequentBuddies: response.frequentBuddies.map(toBuddy),
     },
   };

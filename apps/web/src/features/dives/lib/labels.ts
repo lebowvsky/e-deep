@@ -134,9 +134,13 @@ export const SUIT_TYPE_LABELS: Record<SuitType, string> = {
   DRY: 'étanche',
 };
 
-/** Header: « Calvi · Corse · Méditerranée », or the place alone when the area is unknown. */
-export function placeWithArea(place: string, area: string | null): string {
-  return area === null ? place : `${place} · ${area}`;
+/**
+ * « Calvi · Corse »: the parts entered, from the most local, joined; `null` when none is (a site
+ * created by its name alone).
+ */
+export function placeLabel(...parts: readonly (string | null)[]): string | null {
+  const entered = parts.filter((part) => part !== null);
+  return entered.length === 0 ? null : entered.join(' · ');
 }
 
 /** Species tag: « Mérou brun · 2 », or the species alone when not counted. */

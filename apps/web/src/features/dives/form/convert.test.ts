@@ -120,7 +120,15 @@ describe('round trip form → DiveDetail → form', () => {
     const input = toSaveDiveInput(values, editTarget(dive), IDS);
     if (input === null) throw new Error('Invalid values');
     const detail = buildDiveDetail(input, {
-      site: { ...dive.site, locality: null, region: dive.site.regionName },
+      site: {
+        id: dive.site.id,
+        name: dive.site.name,
+        locality: null,
+        region: dive.site.regionName,
+        latitude: dive.site.position?.latitude ?? null,
+        longitude: dive.site.position?.longitude ?? null,
+        area: dive.site.area,
+      },
       diverLevel: { agency: 'FFESSM', code: 'N2', label: 'Niveau 2' },
       createdAt: dive.createdAt,
       updatedAt: dive.updatedAt,

@@ -36,7 +36,7 @@ export function LastDiveCard({ dive, level }: LastDiveCardProps) {
             {dive.site.name}
           </h2>
           <p className={styles.place}>
-            {dive.site.region} ·{' '}
+            {dive.site.region !== null && `${dive.site.region} · `}
             <time dateTime={dive.date}>
               <ResponsiveText
                 text={{ short: formatDayMonth(dive.date), long: formatDiveDate(dive.date) }}

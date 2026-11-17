@@ -185,12 +185,55 @@ describe('DiveDetailReady, nothing entered', () => {
     renderReady(<DiveDetailReady dive={dive} insights={null} />);
 
     const header = document.querySelector('header');
-    expect(within(header ?? document.body).getByText(dive.site.place)).toBeTruthy();
+    expect(within(header ?? document.body).getByText(dive.site.place ?? '')).toBeTruthy();
     const tags = screen.getByRole('list', { name: 'Étiquettes' });
     expect(within(tags).queryByText('Bateau')).toBeNull();
     expect(screen.queryByText(/^Surface /)).toBeNull();
     // Only the user's level is known.
     expect(within(card(/Palanquée/)).getAllByText('Niveau')).toHaveLength(1);
     expect(screen.queryByText(/modifiée le/)).toBeNull();
+  });
+
+  it('shows the coordinates and the marker of a site with a position', () => {
+    const { container } = renderReady(<DiveDetailReady dive={empty()} insights={null} />);
+    const site = card(/^Site/);
+    expect(within(site).getByText('Latitude 42,580 nord, longitude 8,725 est')).toBeTruthy();
+    expect(container.querySelector('[class*="marker"]')).not.toBeNull();
+    expect(container.querySelectorAll('[class*="place"]').length).toBeGreaterThan(0);
+    expect(within(site).queryByText('Position non renseignée')).toBeNull();
+  });
+});
+
+describe('DiveDetailReady, site created by its name (D-23)', () => {
+  const nameOnly = (): DiveDetailView =>
+    toDiveDetailView(
+      {
+        ...mockDiveDetail('d127'),
+        site: {
+          id: 's-new',
+          name: 'Le Sec',
+          locality: null,
+          region: null,
+          latitude: null,
+          longitude: null,
+          area: null,
+        },
+      },
+      self,
+    );
+
+  it('says « Position non renseignée » instead of coordinates and marker', () => {
+    const { container } = renderReady(<DiveDetailReady dive={nameOnly()} insights={null} />);
+    const site = card(/^Site/);
+
+    expect(within(site).getByText('Position non renseignée')).toBeTruthy();
+    expect(within(site).queryByText(/^Latitude/)).toBeNull();
+    expect(container.querySelector('[class*="marker"]')).toBeNull();
+  });
+
+  it('shows no place line, in the header nor in the site card', () => {
+    const { container } = renderReady(<DiveDetailReady dive={nameOnly()} insights={null} />);
+    expect(container.querySelectorAll('[class*="place"]')).toHaveLength(0);
+    expect(screen.getByRole('heading', { level: 1, name: 'Le Sec' })).toBeTruthy();
   });
 });

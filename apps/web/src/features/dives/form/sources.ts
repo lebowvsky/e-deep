@@ -12,8 +12,8 @@ import { parseClock } from './timeLink';
 export interface DiveFormSiteOption {
   id: string;
   name: string;
-  /** « Calvi · Corse » */
-  place: string;
+  /** « Calvi · Corse »; `null` when neither the locality nor the region was entered. */
+  place: string | null;
   diveCount: number;
 }
 

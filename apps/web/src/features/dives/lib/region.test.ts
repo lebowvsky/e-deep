@@ -62,16 +62,17 @@ describe('toRegionKey', () => {
 describe('a non-Latin region in the URL', () => {
   const greece = { id: 's90', name: 'Kyra Leni', place: 'Ελλάδα', regionName: 'Ελλάδα' };
   const egypt = { id: 's91', name: 'Thistlegorm', place: 'مصر', regionName: 'مصر' };
-  const greekDive = makeDive({ number: 1, site: { ...greece, region: toRegionKey('Ελλάδα') } });
+  const greekKey = toRegionKey('Ελλάδα');
+  const greekDive = makeDive({ number: 1, site: { ...greece, region: greekKey } });
   const egyptianDive = makeDive({ number: 2, site: { ...egypt, region: toRegionKey('مصر') } });
 
   it('survives the round trip and still filters the log', () => {
-    const query = { ...DEFAULT_QUERY, regions: [greekDive.site.region] };
+    const query = { ...DEFAULT_QUERY, regions: [greekKey] };
     const params = new URLSearchParams(serializeDivesQuery(query).toString());
 
-    expect(params.get('region')).toBe(greekDive.site.region);
+    expect(params.get('region')).toBe(greekKey);
     const parsed = parseDivesQuery(params);
-    expect(parsed.regions).toEqual([greekDive.site.region]);
+    expect(parsed.regions).toEqual([greekKey]);
 
     const matches = matchesQuery(parsed, new Date(2026, 3, 10));
     expect([greekDive, egyptianDive].filter(matches)).toEqual([greekDive]);
