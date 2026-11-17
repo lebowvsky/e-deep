@@ -2,18 +2,88 @@
 
 .actions {
   display: flex;
+  flex-direction: column;
   gap: $space-3; // mockup 10px, rounded to the 4px scale
 }
 
 // dive-form.jsx · FormAside — full width buttons, save first.
 .column {
-  flex-direction: column;
   align-items: stretch;
 }
 
-// dive-form.jsx · bottom of the form — right aligned, cancel then save.
-.row {
+// dive-form.jsx · DiveFormMobile barre d'action — glass bar stuck to the bottom of the screen, full
+// width save button and the draft mention, above the home indicator. It bleeds into the page
+// gutters of the app shell (`AppShell` main padding: 20px on phones, 32px from the tablet).
+.bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  gap: $space-2;
+  padding: $space-3 $space-5 calc(#{$space-6} + env(safe-area-inset-bottom));
+  margin: 0 (-$space-5);
+  background: $color-abyss-glass;
+  backdrop-filter: blur($layout-blur-glass);
+  border-top: 1px solid $color-line;
+
+  @include from($bp-tablet) {
+    padding-inline: $space-7;
+    margin-inline: -$space-7;
+  }
+
+  // dive-form.jsx · bottom of the form — a plain row: cancel then save, right aligned; the draft
+  // mention lives in the right column.
+  @include from($bp-large) {
+    position: static;
+    padding: $space-2 0 0;
+    margin: 0;
+    background: none;
+    backdrop-filter: none;
+    border-top: 0;
+  }
+}
+
+.buttons {
+  display: flex;
   flex-wrap: wrap;
+  gap: $space-3;
   justify-content: flex-end;
-  padding-top: $space-2;
+}
+
+.save {
+  .bar & {
+    flex: 1;
+
+    @include from($bp-large) {
+      flex: none;
+    }
+  }
+}
+
+.cancel {
+  .bar & {
+    display: none;
+
+    @include from($bp-large) {
+      display: inline-flex;
+    }
+  }
+}
+
+.draft {
+  @include type($type-field-hint);
+
+  display: flex;
+  gap: $layout-field-gap;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: $color-text-low;
+
+  .bar & {
+    @include type($type-caption-sm);
+
+    @include from($bp-large) {
+      display: none;
+    }
+  }
 }

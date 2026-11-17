@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { formatInterval } from '@/shared/lib/format';
 import { Button } from '@/shared/ui/Button';
 import { FormField } from '@/shared/ui/FormField';
@@ -9,18 +10,25 @@ import { TextInput } from '@/shared/ui/TextInput';
 import type { DiveFormValues } from '../../../form/model';
 import type { DiveForm } from '../../../form/useDiveForm';
 import { fieldBinder, fieldId, numberProps, textProps } from '../fieldBinding';
-import { FormSection } from '../FormSection';
+import { FormSection, type FormSectionCollapse } from '../FormSection';
 import styles from './RunSection.module.scss';
 
 export interface RunSectionProps {
   form: DiveForm;
   canEditEvent: boolean;
+  /** Phones: folded section (accordion). */
+  collapse?: FormSectionCollapse | undefined;
   /** Surface interval since the previous dive of the log (minutes), `null` beyond 12 h. */
   proposeSurfaceInterval: (values: DiveFormValues) => number | null;
 }
 
 /** Section 2: safety stop, decompression stops, stops done as planned, repetitive dive. */
-export function RunSection({ form, canEditEvent, proposeSurfaceInterval }: RunSectionProps) {
+export function RunSection({
+  form,
+  canEditEvent,
+  collapse,
+  proposeSurfaceInterval,
+}: RunSectionProps) {
   const bind = fieldBinder(form, canEditEvent);
   const { values } = form;
 
@@ -32,7 +40,7 @@ export function RunSection({ form, canEditEvent, proposeSurfaceInterval }: RunSe
   };
 
   return (
-    <FormSection section="run" optional>
+    <FormSection section="run" optional collapse={collapse}>
       <div className={styles.rows}>
         <div className={styles.row}>
           <Switch
@@ -123,6 +131,9 @@ interface DecoStopsProps {
 function DecoStops({ form }: DecoStopsProps) {
   const { decoStops } = form.values;
   const error = form.errors.decoStops;
+  const errorId = useId();
+  // The message sits under the whole list, not under one field: each stop field points to it.
+  const errorProps = error ? { 'aria-invalid': true, 'aria-describedby': errorId } : {};
 
   return (
     <div className={styles.stops}>
@@ -138,6 +149,7 @@ function DecoStops({ form }: DecoStopsProps) {
                 decimal
                 unit="m"
                 unitLabel="mètres"
+                {...errorProps}
               />
             </FormField>
             <FormField label="Durée">
@@ -147,6 +159,7 @@ function DecoStops({ form }: DecoStopsProps) {
                 onBlur={() => form.blur('decoStops')}
                 unit="min"
                 unitLabel="minutes"
+                {...errorProps}
               />
             </FormField>
             <IconButton
@@ -160,7 +173,7 @@ function DecoStops({ form }: DecoStopsProps) {
         </fieldset>
       ))}
       {error && (
-        <p className={styles.error}>
+        <p id={errorId} className={styles.error}>
           <Icon name="alert" size="sm" className={styles.errorIcon} />
           <span>{error}</span>
         </p>
@@ -170,6 +183,7 @@ function DecoStops({ form }: DecoStopsProps) {
         icon="plus"
         className={styles.add}
         onClick={form.addDecoStop}
+        aria-describedby={error ? errorId : undefined}
         {...(decoStops.length === 0 ? { id: fieldId('decoStops') } : {})}
       >
         Ajouter un palier

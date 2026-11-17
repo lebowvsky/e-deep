@@ -3,21 +3,23 @@ import { TagInput } from '@/shared/ui/TagInput';
 import { Textarea } from '@/shared/ui/Textarea';
 import type { DiveForm } from '../../../form/useDiveForm';
 import { fieldBinder } from '../fieldBinding';
-import { FormSection } from '../FormSection';
+import { FormSection, type FormSectionCollapse } from '../FormSection';
 
 export interface NotesSectionProps {
   form: DiveForm;
   canEditEvent: boolean;
+  /** Phones: folded section (accordion). */
+  collapse?: FormSectionCollapse | undefined;
   /** Species already entered, offered under the field. */
   species: readonly string[];
 }
 
 /** Section 6: free notes and the species seen, as tags. */
-export function NotesSection({ form, canEditEvent, species }: NotesSectionProps) {
+export function NotesSection({ form, canEditEvent, collapse, species }: NotesSectionProps) {
   const bind = fieldBinder(form, canEditEvent);
 
   return (
-    <FormSection section="notes" optional>
+    <FormSection section="notes" optional collapse={collapse}>
       <FormField label="Notes" {...bind('notes')}>
         <Textarea
           value={form.values.notes}

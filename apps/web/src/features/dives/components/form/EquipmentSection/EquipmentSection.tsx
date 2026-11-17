@@ -8,12 +8,14 @@ import { AIR_O2_PERCENT, type GasChoice } from '../../../form/model';
 import type { DiveForm } from '../../../form/useDiveForm';
 import { SUIT_TYPE_LABELS, TANK_MATERIAL_LABELS } from '../../../lib/labels';
 import { choiceOptions, fieldBinder, numberProps } from '../fieldBinding';
-import { FormSection } from '../FormSection';
+import { FormSection, type FormSectionCollapse } from '../FormSection';
 import styles from './EquipmentSection.module.scss';
 
 export interface EquipmentSectionProps {
   form: DiveForm;
   canEditEvent: boolean;
+  /** Phones: folded section (accordion). */
+  collapse?: FormSectionCollapse | undefined;
 }
 
 const GAS_OPTIONS: SegmentedOption<GasChoice>[] = [
@@ -27,14 +29,14 @@ const SUIT_OPTIONS = choiceOptions(SUIT_TYPES, SUIT_TYPE_LABELS);
 const CONSUMED_HINT = '→ bar consommés calculés à l’enregistrement';
 
 /** Section 4: gas, tank, pressures, suit and weight (the diver's own kit). */
-export function EquipmentSection({ form, canEditEvent }: EquipmentSectionProps) {
+export function EquipmentSection({ form, canEditEvent, collapse }: EquipmentSectionProps) {
   const bind = fieldBinder(form, canEditEvent);
   const { values } = form;
   const isAir = values.gas === 'AIR';
   const consumed = consumedBarOf(values);
 
   return (
-    <FormSection section="equipment" optional>
+    <FormSection section="equipment" optional collapse={collapse}>
       <div className={styles.gasRow}>
         <FormField label="Gaz" {...bind('gas')}>
           <SegmentedControl

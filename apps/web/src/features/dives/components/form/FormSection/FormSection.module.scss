@@ -13,6 +13,11 @@
   @include from($bp-tablet) {
     padding: $space-6;
   }
+
+  // dive-form.jsx · Collapsed — a single 60px row: number, title over summary, state, chevron.
+  &[data-folded] {
+    padding-block: $space-3;
+  }
 }
 
 // The legend floats so that it lays out like a block next to the aside, not in the border.
@@ -25,6 +30,15 @@
   min-height: $layout-step-badge;
   padding: 0;
   margin-bottom: $space-5;
+
+  // The accordion button spans the whole card.
+  [data-collapsible] > & {
+    width: 100%;
+  }
+
+  [data-folded] > & {
+    margin-bottom: 0;
+  }
 }
 
 .title {
@@ -35,6 +49,11 @@
   align-items: center;
   margin: 0;
   color: $color-text-high;
+
+  [data-collapsible] & {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 .number {
@@ -53,6 +72,14 @@
 }
 
 .titleText {
+  min-width: 0;
+}
+
+// Title over the summary of a folded section.
+.heading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   min-width: 0;
 }
 
@@ -81,7 +108,7 @@
   }
 }
 
-// Accordion header (mobile, phase 4): the whole row is the button.
+// Accordion header (phones): the whole row is the button.
 .toggle {
   @include focus-ring;
   @include hit-target;
@@ -101,23 +128,17 @@
   border-radius: $radius-sm;
 }
 
-.folded {
-  display: flex;
-  flex: 1;
-  gap: $space-3;
-  align-items: center;
-  min-width: 0;
-}
-
 .summary {
   @include type($type-field-hint);
 
-  flex: 1;
-  min-width: 0;
   overflow: hidden;
   color: $color-text-low;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  &[data-empty] {
+    color: $color-text-muted;
+  }
 }
 
 .chevron {

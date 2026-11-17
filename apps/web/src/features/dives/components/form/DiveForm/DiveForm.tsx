@@ -1,12 +1,24 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
+import { flushSync } from 'react-dom';
+import { breakpoint } from '@/design/tokens';
+import { useLeaveConfirmation } from '@/shared/hooks/useLeaveConfirmation';
+import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import { useScrollSpy } from '@/shared/hooks/useScrollSpy';
 import { useSubmitShortcut } from '@/shared/hooks/useSubmitShortcut';
+import { scrollToAndFocus } from '@/shared/lib/focus';
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { Icon } from '@/shared/ui/Icon';
 import type { SaveDive } from '../../../api/saveDive';
 import type { DiveFormTarget } from '../../../form/convert';
-import { divePreview, sectionStatus } from '../../../form/derived';
+import { divePreview, sectionStatus, sectionSummary } from '../../../form/derived';
 import type { DraftStore } from '../../../form/draftStore';
-import { DIVE_FORM_SECTIONS, type DiveFormValues } from '../../../form/model';
+import {
+  DIVE_FORM_SECTIONS,
+  FIELD_SECTIONS,
+  type DiveFormField,
+  type DiveFormSection,
+  type DiveFormValues,
+} from '../../../form/model';
 import type { DiveFormMode } from '../../../form/prefill';
 import { proposeSurfaceInterval, type DiveFormSources } from '../../../form/sources';
 import { deviceUtcOffsetMinutes, toLocalIso } from '../../../form/timeLink';
@@ -22,6 +34,7 @@ import { ErrorSummary } from '../ErrorSummary';
 import { EssentialSection } from '../EssentialSection';
 import { fieldId, sectionId } from '../fieldBinding';
 import { FormAside } from '../FormAside';
+import type { FormSectionCollapse } from '../FormSection';
 import { NotesSection } from '../NotesSection';
 import { PalanqueeSection, type PalanqueeSelf } from '../PalanqueeSection';
 import { PrefillBanner } from '../PrefillBanner';
@@ -60,9 +73,22 @@ export interface DiveFormProps {
 
 const SECTION_IDS = DIVE_FORM_SECTIONS.map(sectionId);
 
+/** Same bound as `until($bp-tablet)` in SCSS. */
+const PHONE = `(max-width: ${breakpoint.tablet - 1}px)`;
+
+/** `open` with `sections` added; the same set when none is new (no re-render). */
+function withSections(
+  open: ReadonlySet<DiveFormSection>,
+  sections: readonly DiveFormSection[],
+): ReadonlySet<DiveFormSection> {
+  return sections.every((section) => open.has(section)) ? open : new Set([...open, ...sections]);
+}
+
 /**
- * The dive form (« Nouvelle plongée », duplicate, « Modifier »): header, banners, the six sections
- * and the sticky right column. Mount it once its initial values are known, with a `key` per mode.
+ * The dive form (« Nouvelle plongée », duplicate, « Modifier »): header, banners, the six sections,
+ * and the sticky right column from 1280px or the sticky bottom bar below; on phones, sections 2 to 6
+ * fold. Asks before leaving with unsaved changes. Mount it once its initial values are known, with
+ * a `key` per mode.
  */
 export function DiveForm({
   mode,
@@ -86,15 +112,55 @@ export function DiveForm({
   const [isPrefillDismissed, setPrefillDismissed] = useState(false);
   const activeId = useScrollSpy(SECTION_IDS);
   useSubmitShortcut(() => formRef.current?.requestSubmit());
+  // The accordion changes the DOM (header button, hidden fields), not only the layout: SCSS alone
+  // cannot do it. Sections 2 to 6 fold on phones only; the open ones stay open across resizes.
+  const isPhone = useMediaQuery(PHONE);
+  const [openSections, setOpenSections] = useState<ReadonlySet<DiveFormSection>>(() => new Set());
+  const { submitStatus } = form;
+  const leave = useLeaveConfirmation(form.isDirty && submitStatus.status !== 'saved');
 
   const isEdit = mode.kind === 'edit';
-  const { submitStatus } = form;
   const preview = divePreview(form.values, sources.sites);
   const sections = DIVE_FORM_SECTIONS.map((section) => ({
     section,
     status: sectionStatus(section, form.values),
   }));
   const activeSection = DIVE_FORM_SECTIONS.find((section) => sectionId(section) === activeId);
+
+  const collapseOf = (section: DiveFormSection): FormSectionCollapse | undefined =>
+    isPhone
+      ? {
+          open: openSections.has(section),
+          onOpenChange: (open) =>
+            setOpenSections((current) => {
+              const next = new Set(current);
+              if (open) next.add(section);
+              else next.delete(section);
+              return next;
+            }),
+          summary: sectionSummary(section, form.values),
+          status: sectionStatus(section, form.values),
+        }
+      : undefined;
+
+  /**
+   * Opens the sections of `fields` — committed at once, so that their controls are no longer
+   * hidden — then scrolls to the first field and focuses it.
+   */
+  const revealFields = (fields: readonly DiveFormField[]) => {
+    const [first] = fields;
+    if (first === undefined) return;
+    flushSync(() =>
+      setOpenSections((current) =>
+        withSections(
+          current,
+          fields.map((field) => FIELD_SECTIONS[field]),
+        ),
+      ),
+    );
+    const control = document.getElementById(fieldId(first));
+    if (control) scrollToAndFocus(control);
+  };
 
   const intervalSincePreviousDive = (values: DiveFormValues): number | null => {
     const offset =
@@ -108,10 +174,21 @@ export function DiveForm({
 
   const save = async () => {
     const outcome = await form.submit();
-    if (outcome.status === 'saved') onSaved(outcome.id);
-    if (outcome.status === 'invalid') {
-      const [first] = outcome.fields;
-      if (first !== undefined) document.getElementById(fieldId(first))?.focus();
+    switch (outcome.status) {
+      case 'saved':
+        // The redirect runs before the next render: the blocker must not stop it.
+        leave.release();
+        onSaved(outcome.id);
+        break;
+      case 'invalid':
+        revealFields(outcome.fields);
+        break;
+      case 'failed':
+        // Unexpected (network, bug): the alert tells the diver, the error goes to the browser.
+        reportError(outcome.error);
+        break;
+      case 'busy':
+        break;
     }
   };
 
@@ -126,14 +203,17 @@ export function DiveForm({
     setPrefillDismissed(true);
   };
 
-  const actions = (layout: 'column' | 'row') => (
+  const actions = (layout: 'column' | 'bar') => (
     <DiveFormActions
       layout={layout}
       submitLabel={isEdit ? 'Enregistrer les modifications' : 'Enregistrer la plongée'}
       isBusy={submitStatus.status === 'submitting'}
       cancelHref={cancelHref}
+      draftSavedAt={form.draft.savedAt}
     />
   );
+
+  const { blocker } = leave;
 
   return (
     <div className={styles.page}>
@@ -151,7 +231,12 @@ export function DiveForm({
         onSubmit={handleSubmit}
       >
         <div className={styles.main}>
-          {submitStatus.status === 'invalid' && <ErrorSummary fields={submitStatus.fields} />}
+          {submitStatus.status === 'invalid' && (
+            <ErrorSummary
+              fields={submitStatus.fields}
+              onSelect={(field) => revealFields([field])}
+            />
+          )}
           {submitStatus.status === 'failed' && (
             <p role="alert" className={styles.failure}>
               <Icon name="alert" size="md" className={styles.failureIcon} />
@@ -171,32 +256,52 @@ export function DiveForm({
           <RunSection
             form={form}
             canEditEvent={canEditEvent}
+            collapse={collapseOf('run')}
             proposeSurfaceInterval={intervalSincePreviousDive}
           />
           <PalanqueeSection
             form={form}
             canEditEvent={canEditEvent}
+            collapse={collapseOf('team')}
             self={self}
             divers={sources.divers}
             frequentDivers={sources.frequentDivers}
           />
-          <EquipmentSection form={form} canEditEvent={canEditEvent} />
+          <EquipmentSection
+            form={form}
+            canEditEvent={canEditEvent}
+            collapse={collapseOf('equipment')}
+          />
           <ConditionsSection
             form={form}
             canEditEvent={canEditEvent}
+            collapse={collapseOf('conditions')}
             diveCenters={sources.diveCenters}
           />
-          <NotesSection form={form} canEditEvent={canEditEvent} species={sources.species} />
-          {actions('row')}
+          <NotesSection
+            form={form}
+            canEditEvent={canEditEvent}
+            collapse={collapseOf('notes')}
+            species={sources.species}
+          />
+          {actions('bar')}
         </div>
         <FormAside
           preview={preview}
           sections={sections}
           activeSection={activeSection}
-          draftSavedAt={form.draft.savedAt}
           actions={actions('column')}
         />
       </form>
+      <ConfirmDialog
+        open={blocker.state === 'blocked'}
+        title="Quitter sans enregistrer ?"
+        description="Ton brouillon reste disponible sur cet appareil."
+        cancelLabel="Rester"
+        confirmLabel="Quitter"
+        onCancel={() => blocker.reset?.()}
+        onConfirm={() => blocker.proceed?.()}
+      />
     </div>
   );
 }

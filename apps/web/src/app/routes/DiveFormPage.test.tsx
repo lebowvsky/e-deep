@@ -1,12 +1,13 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockFilledDiveDetail } from '@/features/dives/mocks/diveDetailResponse';
 import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
+import { ToastProvider } from '@/shared/ui/Toast';
 import { TestProviders } from '@/test/TestProviders';
-import { DiveFormPage } from './DiveFormPage';
+import { DiveFormPage, type DiveFormPageProps } from './DiveFormPage';
 
 const DETAIL_PREFIX = 'dives/';
 
@@ -23,24 +24,23 @@ function apiLike(): ApiClient['get'] {
     );
 }
 
-function Location() {
-  const { pathname } = useLocation();
-  return <output data-testid="location">{pathname}</output>;
-}
-
-function renderAt(path: string) {
+function renderAt(path: string, props: DiveFormPageProps = {}) {
+  const router = createMemoryRouter(
+    [
+      { path: '/dives/new', element: <DiveFormPage {...props} /> },
+      { path: '/dives/:diveId/edit', element: <DiveFormPage {...props} /> },
+      { path: '*', element: null },
+    ],
+    { initialEntries: [path] },
+  );
   render(
     <TestProviders client={{ get: apiLike() }}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/dives/new" element={<DiveFormPage />} />
-          <Route path="/dives/:diveId/edit" element={<DiveFormPage />} />
-          <Route path="*" element={null} />
-        </Routes>
-        <Location />
-      </MemoryRouter>
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </TestProviders>,
   );
+  return router;
 }
 
 /** The form itself (named by its h1), once the log and the source dive are loaded. */
@@ -54,6 +54,8 @@ const sectionLink = (name: RegExp) =>
 
 beforeEach(() => {
   localStorage.clear();
+  // jsdom does not scroll.
+  Element.prototype.scrollIntoView = vi.fn();
 });
 
 afterEach(() => {
@@ -171,9 +173,9 @@ describe('DiveFormPage — duplicate', () => {
 });
 
 describe('DiveFormPage — edit', () => {
-  it('shows the dive values, without banner, and saves back to the detail', async () => {
+  it('shows the dive values, without banner, and saves back to the detail with a toast', async () => {
     const user = userEvent.setup();
-    renderAt('/dives/d127/edit');
+    const router = renderAt('/dives/d127/edit');
 
     await title('Modifier la plongée #127');
     expect(screen.getByText('Carnet · plongée #127')).toBeTruthy();
@@ -184,8 +186,39 @@ describe('DiveFormPage — edit', () => {
     const saves = screen.getAllByRole('button', { name: 'Enregistrer les modifications' });
     expect(saves).toHaveLength(2);
 
+    // Unsaved changes do not hold back the redirect of a successful save.
+    await user.clear(field('Pression fin'));
+    await user.type(field('Pression fin'), '50');
     await user.click(saves[0] ?? document.body);
-    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/dives/d127'));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dives/d127'));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe('Plongée #127 enregistrée');
+  });
+
+  it('locks the shared event when the diver cannot edit it', async () => {
+    renderAt('/dives/d127/edit', { canEditEvent: false });
+
+    await title('Modifier la plongée #127');
+    expect(siteField().readOnly).toBe(true);
+    expect(field(/^Date/).readOnly).toBe(true);
+    expect(
+      screen.getAllByText(
+        'Partagé avec la palanquée — modifiable par la personne qui a créé la plongée',
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(field(/^Profondeur max/).readOnly).toBe(false);
+  });
+
+  it('shows ✕, the title and the number in the phone top bar', async () => {
+    renderAt('/dives/d127/edit');
+
+    await title('Modifier la plongée #127');
+    const close = screen.getAllByRole('link', { name: 'Annuler' })[0] ?? document.body;
+    expect(close.getAttribute('href')).toBe('/dives/d127');
+    const topBar = within(close.parentElement ?? document.body);
+    expect(topBar.getByText('Modifier la plongée')).toBeTruthy();
+    expect(topBar.getByText('#127')).toBeTruthy();
   });
 
   it('says when the dive does not exist', async () => {
@@ -196,13 +229,15 @@ describe('DiveFormPage — edit', () => {
           ? Promise.reject(new ApiError('http', 'HTTP 404', { status: 404 }))
           : Promise.resolve(mockDiveLogResponse),
       );
+    const router = createMemoryRouter(
+      [{ path: '/dives/:diveId/edit', element: <DiveFormPage /> }],
+      {
+        initialEntries: ['/dives/unknown/edit'],
+      },
+    );
     render(
       <TestProviders client={{ get }}>
-        <MemoryRouter initialEntries={['/dives/unknown/edit']}>
-          <Routes>
-            <Route path="/dives/:diveId/edit" element={<DiveFormPage />} />
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider router={router} />
       </TestProviders>,
     );
     expect(

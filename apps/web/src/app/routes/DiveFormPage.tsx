@@ -28,7 +28,9 @@ import { useDive } from '@/features/dives/hooks/useDive';
 import { useSaveDive } from '@/features/dives/hooks/useSaveDive';
 import { DIVE_LOAD_ERROR_HINT, DIVE_LOAD_ERROR_MESSAGE } from '@/features/dives/lib/labels';
 import type { DiveDetailView, LoggedDive } from '@/features/dives/types';
+import { DiveFormTopBar } from '@/features/dives/components/form/DiveFormTopBar';
 import { pageTitle } from '@/shared/config/app';
+import { useToast } from '@/shared/ui/Toast';
 
 // TODO(auth): the diver will come from the session, as in AppShell.
 const DIVER = mockUser;
@@ -38,7 +40,10 @@ const DIVER_LEVEL: CertificationLevelRef = {
   label: TEAM_LEVELS.find(({ code }) => code === DIVER.level)?.label ?? DIVER.level,
 };
 const SELF = { firstName: DIVER.firstName, lastName: DIVER.lastName, level: DIVER.level };
-/** V1: every diver creates their own dives, so every field is theirs to edit. */
+/**
+ * V1: every diver creates their own dives, so the shared event of an edited dive is theirs to edit.
+ * Club use will check who created the dive.
+ */
 const CAN_EDIT_EVENT = true;
 const draftStore = createLocalDraftStore();
 
@@ -55,11 +60,38 @@ function useDiveFormMode(): DiveFormMode {
 const titleOf = (mode: DiveFormMode) =>
   mode.kind === 'edit' ? 'Modifier la plongée' : 'Nouvelle plongée';
 
+/** Where « Annuler » and ✕ go: the log, or the dive duplicated or edited. */
+function exitHref(mode: DiveFormMode): string {
+  switch (mode.kind) {
+    case 'new':
+      return '/dives';
+    case 'duplicate':
+      return `/dives/${mode.sourceId}`;
+    case 'edit':
+      return `/dives/${mode.diveId}`;
+  }
+}
+
+/** Number shown in the phone top bar once the log is known: the next one, or the edited dive's. */
+function topBarNumber(mode: DiveFormMode, log: readonly LoggedDive[], sources: DiveFormSources) {
+  if (mode.kind !== 'edit') return sources.maxNumber + 1;
+  return log.find(({ id }) => id === mode.diveId)?.number ?? null;
+}
+
+export interface DiveFormPageProps {
+  /**
+   * Edit mode: the diver may change the shared event (site, date, conditions…). `false` locks those
+   * fields. A new or duplicated dive is always the diver's own event.
+   */
+  canEditEvent?: boolean;
+}
+
 /**
  * « Nouvelle plongée », its duplicate and « Modifier la plongée ». Waits for the log (next number,
- * numbers taken) and, when needed, for the source dive, then mounts the form once per mode.
+ * numbers taken) and, when needed, for the source dive, then mounts the form once per mode. The phone
+ * top bar stays in every state, so that ✕ always leaves.
  */
-export function DiveFormPage() {
+export function DiveFormPage({ canEditEvent = CAN_EDIT_EVENT }: DiveFormPageProps) {
   const mode = useDiveFormMode();
   const sources = useDiveFormSources(DIVER);
   const title = titleOf(mode);
@@ -67,6 +99,13 @@ export function DiveFormPage() {
   return (
     <>
       <title>{pageTitle(title)}</title>
+      <DiveFormTopBar
+        title={title}
+        number={
+          sources.status === 'ready' ? topBarNumber(mode, sources.log, sources.sources) : null
+        }
+        cancelHref={exitHref(mode)}
+      />
       {sources.status === 'loading' && <DiveFormSkeleton title={title} />}
       {sources.status === 'error' && (
         <DivesError overline="Erreur" onRetry={sources.retry} hint={DIVE_LOAD_ERROR_HINT} />
@@ -78,6 +117,7 @@ export function DiveFormPage() {
           mode={mode}
           log={sources.log}
           sources={sources.sources}
+          canEditEvent={canEditEvent}
         />
       )}
     </>
@@ -88,9 +128,10 @@ interface ModeFormProps {
   mode: DiveFormMode;
   log: LoggedDive[];
   sources: DiveFormSources;
+  canEditEvent: boolean;
 }
 
-function ModeForm({ mode, log, sources }: ModeFormProps) {
+function ModeForm({ mode, log, sources, canEditEvent }: ModeFormProps) {
   // Read once: the day and the suggestion must not move while the diver types.
   const [now] = useState(() => new Date());
   const today = toDayValue(now);
@@ -108,7 +149,8 @@ function ModeForm({ mode, log, sources }: ModeFormProps) {
         target: { kind: 'create' },
         today,
         editedId: null,
-        cancelHref: '/dives',
+        cancelHref: exitHref(mode),
+        canEditEvent: true,
       };
       return suggestion ? (
         <SuggestedDiveForm {...props} suggestionId={suggestion.id} />
@@ -129,7 +171,8 @@ function ModeForm({ mode, log, sources }: ModeFormProps) {
               target={{ kind: 'create' }}
               today={today}
               editedId={null}
-              cancelHref={`/dives/${source.id}`}
+              cancelHref={exitHref(mode)}
+              canEditEvent
               prefill={{ kind: 'duplicate', source, blankValues: newDiveValues(defaults) }}
             />
           )}
@@ -148,7 +191,8 @@ function ModeForm({ mode, log, sources }: ModeFormProps) {
               target={editTarget(dive)}
               today={today}
               editedId={dive.id}
-              cancelHref={`/dives/${dive.id}`}
+              cancelHref={exitHref(mode)}
+              canEditEvent={canEditEvent}
               prefill={{ kind: 'none' }}
             />
           )}
@@ -195,6 +239,8 @@ interface SharedFormProps {
   /** The edited dive, whose own number is not « taken ». */
   editedId: string | null;
   cancelHref: string;
+  /** `false`: the shared event fields are read only. */
+  canEditEvent: boolean;
 }
 
 /** A new dive whose suggestion (latest dive, < 48 h) is offered once its detail is loaded. */
@@ -205,7 +251,10 @@ function SuggestedDiveForm({ suggestionId, ...props }: SharedFormProps & { sugge
   return <PageDiveForm {...props} prefill={prefill} />;
 }
 
-/** The form with what every mode shares: the diver, the save port, the draft and the redirect. */
+/**
+ * The form with what every mode shares: the diver, the save port, the draft, and once saved the
+ * toast and the redirect.
+ */
 function PageDiveForm({
   today,
   editedId,
@@ -213,6 +262,7 @@ function PageDiveForm({
   ...props
 }: SharedFormProps & Pick<DiveFormProps, 'prefill'>) {
   const navigate = useNavigate();
+  const { notify } = useToast();
   const saveDive = useSaveDive(DIVER_LEVEL);
   // Read once per form: the numbers taken by the other dives of the log.
   const [context] = useState(() => ({
@@ -227,11 +277,13 @@ function PageDiveForm({
       log={log}
       context={context}
       self={SELF}
-      canEditEvent={CAN_EDIT_EVENT}
       saveDive={saveDive}
       draftStore={draftStore}
-      // The saved dive replaces the form in the history: « Retour » does not reopen it.
-      onSaved={(id) => void navigate(`/dives/${id}`, { replace: true })}
+      onSaved={(id) => {
+        notify(`Plongée #${props.number} enregistrée`);
+        // The saved dive replaces the form in the history: « Retour » does not reopen it.
+        void navigate(`/dives/${id}`, { replace: true });
+      }}
     />
   );
 }

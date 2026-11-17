@@ -1,10 +1,22 @@
 @use '@/styles/tokens' as *;
 
-// dive-form.jsx · DiveFormDesktop — breadcrumb 20px above the title block.
+// dive-form.jsx · DiveFormDesktop — breadcrumb 20px above the title block. On phones the top bar
+// (✕, title, number) stands in for it: the h1 and its overline stay for screen readers only.
 .header {
   display: flex;
   flex-direction: column;
   gap: $space-5;
+
+  @include until($bp-tablet) {
+    @include visually-hidden;
+  }
+}
+
+// The ✕ of the top bar already leaves the form.
+.breadcrumb {
+  @include until($bp-tablet) {
+    display: none;
+  }
 }
 
 .crumbs {

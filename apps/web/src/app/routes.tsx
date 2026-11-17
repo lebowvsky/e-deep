@@ -1,6 +1,7 @@
 import { Navigate, type RouteObject } from 'react-router';
 import { mockUser } from '@/features/dashboard/mocks/dashboard';
 import { AppShell } from './layout/AppShell';
+import type { AppRouteHandle } from './layout/routeHandle';
 import { DashboardPage } from './routes/DashboardPage';
 import { DiveDetailPage } from './routes/DiveDetailPage';
 import { DivesPage } from './routes/DivesPage';
@@ -23,6 +24,7 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
 const lazyDiveForm = async () => ({
   Component: (await import('./routes/DiveFormPage')).DiveFormPage,
 });
+const diveFormHandle: AppRouteHandle = { ownMobileBars: true };
 
 const placeholder = (path: string, title: string): RouteObject => ({
   path,
@@ -38,9 +40,9 @@ export const routes: RouteObject[] = [
       { path: '/dashboard', element: <DashboardPage /> },
       { path: '/dives', element: <DivesPage /> },
       // Also `/dives/new?from=:id` (duplicate); the static segment wins over `:diveId`.
-      { path: '/dives/new', lazy: lazyDiveForm },
+      { path: '/dives/new', lazy: lazyDiveForm, handle: diveFormHandle },
       { path: '/dives/:diveId', element: <DiveDetailPage /> },
-      { path: '/dives/:diveId/edit', lazy: lazyDiveForm },
+      { path: '/dives/:diveId/edit', lazy: lazyDiveForm, handle: diveFormHandle },
       placeholder('/map', 'Carte'),
       placeholder('/stats', 'Statistiques'),
       placeholder('/buddies', 'Binômes'),

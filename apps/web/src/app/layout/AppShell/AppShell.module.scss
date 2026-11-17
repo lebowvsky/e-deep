@@ -34,6 +34,22 @@
   }
 }
 
+// The page brings its own bars (route handle `ownMobileBars`): its sticky top bar (phones) and
+// bottom bar (below 1280px) sit flush with the screen edges, so the shell leaves no room there.
+.ownBars {
+  padding-top: 0;
+  padding-bottom: 0;
+
+  @include from($bp-tablet) {
+    padding-top: $space-7;
+  }
+
+  // From 1280px the save buttons are a plain row under the form: the usual bottom room is back.
+  @include from($bp-large) {
+    padding-bottom: $space-9;
+  }
+}
+
 .skipLink {
   @include visually-hidden;
   @include type($type-body-med);

@@ -32,7 +32,8 @@ export interface FormSectionProps {
 /**
  * A numbered card of the form (dive-form.jsx · Section): a `<fieldset>` whose `<legend>` holds the
  * visible title (h2), anchor of the section summary. With `collapse`, the title is a
- * `<button aria-expanded aria-controls>` that folds the fields away.
+ * `<button aria-expanded aria-controls>` that folds the fields away; folded, it shows the summary
+ * and the state of the section instead of the « facultatif » tag and the aside.
  */
 export function FormSection({
   section,
@@ -43,20 +44,21 @@ export function FormSection({
   className,
 }: FormSectionProps) {
   const contentId = useId();
-  const number = DIVE_FORM_SECTIONS.indexOf(section) + 1;
-  const title = SECTION_TITLES[section];
   const isOpen = collapse?.open ?? true;
-  const heading = (
-    <>
-      <span className={styles.number} aria-hidden="true">
-        {number}
-      </span>
-      <span className={styles.titleText}>{title}</span>
-    </>
+  const number = (
+    <span className={styles.number} aria-hidden="true">
+      {DIVE_FORM_SECTIONS.indexOf(section) + 1}
+    </span>
   );
+  const title = <span className={styles.titleText}>{SECTION_TITLES[section]}</span>;
 
   return (
-    <fieldset id={sectionId(section)} className={cx(styles.section, className)}>
+    <fieldset
+      id={sectionId(section)}
+      className={cx(styles.section, className)}
+      data-collapsible={collapse ? '' : undefined}
+      data-folded={isOpen ? undefined : ''}
+    >
       <legend className={styles.legend}>
         <h2 className={styles.title}>
           {collapse ? (
@@ -67,23 +69,36 @@ export function FormSection({
               aria-controls={contentId}
               onClick={() => collapse.onOpenChange(!isOpen)}
             >
-              {heading}
+              {number}
+              <span className={styles.heading}>
+                {title}
+                {!isOpen && (
+                  <span
+                    className={styles.summary}
+                    data-empty={collapse.status.status === 'empty' ? '' : undefined}
+                  >
+                    {collapse.summary}
+                  </span>
+                )}
+              </span>
               {!isOpen && (
-                <span className={styles.folded}>
-                  <span className={styles.summary}>{collapse.summary}</span>
+                <>
                   <span className={styles.srOnly}>, {sectionStatusText(collapse.status)}</span>
                   <SectionStatusIcon status={collapse.status.status} />
-                </span>
+                </>
               )}
               <Icon name="chevronDown" size="md" className={styles.chevron} />
             </button>
           ) : (
-            heading
+            <>
+              {number}
+              {title}
+            </>
           )}
         </h2>
-        {optional && <Badge className={styles.optional}>facultatif</Badge>}
+        {optional && isOpen && <Badge className={styles.optional}>facultatif</Badge>}
       </legend>
-      {aside !== undefined && <div className={styles.aside}>{aside}</div>}
+      {aside !== undefined && isOpen && <div className={styles.aside}>{aside}</div>}
       <div id={contentId} className={styles.content} hidden={!isOpen}>
         {children}
       </div>

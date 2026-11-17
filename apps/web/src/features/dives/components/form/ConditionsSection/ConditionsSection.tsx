@@ -21,12 +21,14 @@ import {
   WEATHER_LABELS,
 } from '../../../lib/labels';
 import { choiceOptions, fieldBinder, numberProps, textProps } from '../fieldBinding';
-import { FormSection } from '../FormSection';
+import { FormSection, type FormSectionCollapse } from '../FormSection';
 import styles from './ConditionsSection.module.scss';
 
 export interface ConditionsSectionProps {
   form: DiveForm;
   canEditEvent: boolean;
+  /** Phones: folded section (accordion). */
+  collapse?: FormSectionCollapse | undefined;
   /** Dive centres already entered, offered while typing. */
   diveCenters: readonly string[];
 }
@@ -44,13 +46,18 @@ const WEATHER_OPTIONS: SelectOption<Weather | typeof NO_WEATHER>[] = [
 ];
 
 /** Section 5: the shared event first (entry, moment, centre, weather, sea), then the water. */
-export function ConditionsSection({ form, canEditEvent, diveCenters }: ConditionsSectionProps) {
+export function ConditionsSection({
+  form,
+  canEditEvent,
+  collapse,
+  diveCenters,
+}: ConditionsSectionProps) {
   const bind = fieldBinder(form, canEditEvent);
   const { values } = form;
   const centersId = useId();
 
   return (
-    <FormSection section="conditions" optional>
+    <FormSection section="conditions" optional collapse={collapse}>
       <div className={styles.halves}>
         <FormField label="Mise à l’eau" {...bind('entryType')}>
           <SegmentedControl

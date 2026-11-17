@@ -15,7 +15,7 @@ import type { DiveFormDiverOption } from '../../../form/sources';
 import type { DiveForm } from '../../../form/useDiveForm';
 import { teamSizeLabel } from '../../../lib/labels';
 import { fieldBinder } from '../fieldBinding';
-import { FormSection } from '../FormSection';
+import { FormSection, type FormSectionCollapse } from '../FormSection';
 import styles from './PalanqueeSection.module.scss';
 
 /** The diver filling the form: listed first, never removable. */
@@ -29,6 +29,8 @@ export interface PalanqueeSelf {
 export interface PalanqueeSectionProps {
   form: DiveForm;
   canEditEvent: boolean;
+  /** Phones: folded section (accordion). */
+  collapse?: FormSectionCollapse | undefined;
   self: PalanqueeSelf;
   /** Divers already met, most frequent first. */
   divers: readonly DiveFormDiverOption[];
@@ -61,6 +63,7 @@ function memberFromOption({ member }: DiveFormDiverOption): NewMember {
 export function PalanqueeSection({
   form,
   canEditEvent,
+  collapse,
   self,
   divers,
   frequentDivers,
@@ -88,6 +91,7 @@ export function PalanqueeSection({
     <FormSection
       section="team"
       optional
+      collapse={collapse}
       aside={<span className={styles.count}>{teamSizeLabel(teamCount(form.values))}</span>}
     >
       <ul className={styles.list} aria-label="Membres de la palanquée">

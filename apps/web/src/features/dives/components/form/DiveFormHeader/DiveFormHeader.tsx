@@ -19,7 +19,7 @@ export function DiveFormHeader({ isEdit, number, titleId, diveHref }: DiveFormHe
 
   return (
     <header className={styles.header}>
-      <nav aria-label="Fil d’Ariane">
+      <nav aria-label="Fil d’Ariane" className={styles.breadcrumb}>
         <ol className={styles.crumbs}>
           <li>
             <Link to="/dives" className={styles.back}>
