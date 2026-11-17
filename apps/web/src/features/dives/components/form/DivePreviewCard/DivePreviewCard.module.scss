@@ -1,0 +1,60 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · FormAside · Aperçu — card 20px, dive 10px under the overline, tiles 14px below.
+.dive {
+  display: flex;
+  flex-direction: column;
+  margin-top: $space-3; // mockup 10px, rounded to the 4px scale
+}
+
+.head {
+  @include type($type-chip, $font: $font-mono, $tabular: true);
+
+  margin: 0;
+  color: $color-text-low;
+}
+
+.site {
+  @include type($type-h-3);
+
+  margin: $space-1 0 0;
+  overflow-wrap: anywhere;
+  color: $color-text-high;
+
+  &[data-empty] {
+    color: $color-text-muted;
+  }
+}
+
+.place {
+  @include type($type-field-hint);
+
+  margin: 0;
+  color: $color-text-low;
+}
+
+// Grid: 2 × 2 tiles of equal width.
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-2;
+  padding: 0;
+  margin: $space-4 0 0;
+  list-style: none;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: $layout-list-row-pad-y $space-3;
+  background: $color-surface-0;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line;
+}
+
+.tileLabel {
+  @include type($type-caption-sm);
+
+  color: $color-text-low;
+}

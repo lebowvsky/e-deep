@@ -171,6 +171,27 @@ export const ICON_PATHS = {
       <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
     </>
   ),
+  // dive-form.jsx · Ix.copy (prefill banner, « Dupliquer »).
+  copy: (
+    <>
+      <rect x="8" y="8" width="12" height="12" rx="2" />
+      <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
+    </>
+  ),
+  // dive-form.jsx · Ix.cloud (draft saved on the device).
+  cloud: (
+    <>
+      <path d="M7 18h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.5A3.5 3.5 0 0 0 7 18z" />
+      <path d="m9.5 13.5 2 2 3.5-4" />
+    </>
+  ),
+  // dive-detail.jsx · « Modifier ma plongée ».
+  pencil: (
+    <>
+      <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" />
+      <path d="m13.5 6.5 4 4" />
+    </>
+  ),
   waves: (
     <>
       <path d="M2 8c2 0 2-1.5 4-1.5S8 8 10 8s2-1.5 4-1.5S16 8 18 8s2-1.5 4-1.5" />

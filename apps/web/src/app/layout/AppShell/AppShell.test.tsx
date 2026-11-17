@@ -94,6 +94,17 @@ describe('AppShell — mobile', () => {
   });
 });
 
+describe('AppShell — FAB', () => {
+  it.each(['/dives/d127', '/dives/new', '/dives/new?from=d127', '/dives/d127/edit'])(
+    'hides the FAB on %s',
+    async (path) => {
+      renderAt(path);
+      await screen.findByRole('button', { name: 'Ouvrir le menu' });
+      expect(screen.queryByRole('link', { name: 'Nouvelle plongée' })).toBeNull();
+    },
+  );
+});
+
 describe('AppShell — tablet and up', () => {
   it('renders the sidebar navigation instead of the top bar', async () => {
     stubTabletUp();

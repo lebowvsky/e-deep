@@ -27,8 +27,9 @@ export function AppShell({ user }: AppShellProps) {
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   const previousPath = useRef(pathname);
-  // A dive detail (and « Nouvelle plongée », which the FAB opens) has no FAB (detail-plongee.md).
-  const onDivePage = useMatch('/dives/:diveId') !== null;
+  // No FAB on a dive detail (detail-plongee.md) nor on the dive form, which the FAB opens: every
+  // page under `/dives/…` (`:diveId`, `new`, `:diveId/edit`), but not the log itself.
+  const onDivePage = useMatch({ path: '/dives/:diveId', end: false }) !== null;
 
   // Client-side navigation: move focus to the new content so screen readers announce it.
   useEffect(() => {

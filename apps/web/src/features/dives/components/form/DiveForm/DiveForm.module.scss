@@ -1,0 +1,49 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · DiveFormDesktop — header 20px above the form.
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+}
+
+// One column up to 1279px (the right column comes after the fields).
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+
+  // Grid: the sticky 340px right column of the spec (`minmax(0, 1fr) 340px`). From 1280px only:
+  // at 1024 the sidebar leaves 688px, too little for both columns (same choice as the detail).
+  @include from($bp-large) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) $layout-form-aside-width;
+    align-items: start;
+  }
+}
+
+.main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.failure {
+  @include type($type-body);
+
+  display: flex;
+  gap: $space-2;
+  align-items: center;
+  padding: $space-3 $space-4;
+  margin: 0;
+  color: $color-text-high;
+  background: $color-danger-soft;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-danger-line;
+}
+
+.failureIcon {
+  flex-shrink: 0;
+  color: $color-danger;
+}

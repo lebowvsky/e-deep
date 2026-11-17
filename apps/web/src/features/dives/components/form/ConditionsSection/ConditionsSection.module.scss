@@ -1,0 +1,29 @@
+@use '@/styles/tokens' as *;
+
+// Grid: dive-form.jsx · Row — aligned field columns, two per row on phones.
+.halves,
+.weatherRow,
+.waterRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+  align-items: start;
+}
+
+.visibility {
+  grid-column: span 2;
+}
+
+@include from($bp-tablet) {
+  .weatherRow {
+    grid-template-columns: minmax(0, 1fr) $layout-form-field-md;
+  }
+
+  .waterRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .visibility {
+    grid-column: auto;
+  }
+}

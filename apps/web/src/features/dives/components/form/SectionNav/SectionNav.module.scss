@@ -1,0 +1,62 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · FormAside · navigation — card padding 8, rows 48px, active row surface-2.
+.card {
+  padding: $space-2;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.link {
+  @include type($type-body-sm);
+  @include focus-ring;
+
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  min-height: $space-9;
+  padding: 0 $space-3;
+  font-weight: 400;
+  color: $color-text-med;
+  text-decoration: none;
+  border-radius: $radius-md;
+  transition:
+    background-color $dur-fast $ease-out,
+    color $dur-fast $ease-out;
+
+  &:hover {
+    color: $color-text-high;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.active {
+  font-weight: 500;
+  color: $color-text-high;
+  background: $color-surface-2;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+}
+
+.missing {
+  @include type($type-chip, $font: $font-mono);
+
+  flex-shrink: 0;
+  color: $color-text-low;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

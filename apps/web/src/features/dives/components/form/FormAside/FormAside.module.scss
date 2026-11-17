@@ -1,0 +1,30 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · FormAside — 16px between blocks, sticky under the top of the page.
+.aside {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  @include from($bp-desktop) {
+    position: sticky;
+    top: $space-7;
+  }
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3; // mockup 10px, rounded to the 4px scale
+}
+
+.draft {
+  @include type($type-field-hint);
+
+  display: flex;
+  gap: $layout-field-gap;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: $color-text-low;
+}

@@ -44,6 +44,8 @@ export interface ComboboxProps<T extends ComboboxOption> {
   emptyMessage?: string;
   /** Accessible name outside a `FormField`. */
   label?: string;
+  /** The field loses the focus (validation at blur). */
+  onBlur?: () => void;
   className?: string | undefined;
 }
 
@@ -86,6 +88,7 @@ export function Combobox<T extends ComboboxOption>({
   end,
   emptyMessage,
   label,
+  onBlur,
   className,
 }: ComboboxProps<T>) {
   const field = useFormField();
@@ -177,7 +180,10 @@ export function Combobox<T extends ComboboxOption>({
           if (!isLocked) setOpen((current) => !current);
         }}
         onKeyDown={onKeyDown}
-        onBlur={() => setOpen(false)}
+        onBlur={() => {
+          setOpen(false);
+          onBlur?.();
+        }}
       />
       {/* Kept in the DOM so `aria-controls` always points to an element. */}
       <div className={styles.popup} hidden={!showList && !showEmpty}>

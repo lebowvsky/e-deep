@@ -1,0 +1,19 @@
+@use '@/styles/tokens' as *;
+
+.actions {
+  display: flex;
+  gap: $space-3; // mockup 10px, rounded to the 4px scale
+}
+
+// dive-form.jsx · FormAside — full width buttons, save first.
+.column {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+// dive-form.jsx · bottom of the form — right aligned, cancel then save.
+.row {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  padding-top: $space-2;
+}

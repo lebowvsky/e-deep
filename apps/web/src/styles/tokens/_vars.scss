@@ -24,6 +24,7 @@
   --dl-color-warning-soft: rgba(231, 178, 74, 0.12);
   --dl-color-danger: #E47C81;
   --dl-color-danger-soft: rgba(228, 124, 129, 0.12);
+  --dl-color-danger-line: rgba(228, 124, 129, 0.45);
   --dl-color-control-fill: rgba(154, 186, 224, 0.06);
   --dl-color-chip-fill: rgba(154, 186, 224, 0.08);
   --dl-color-ring-subtle: rgba(255, 255, 255, 0.08);
@@ -208,4 +209,13 @@
   --dl-layout-listbox-max-height: 320px;
   --dl-layout-textarea-min-height: 120px;
   --dl-layout-dialog-width: 400px;
+  --dl-layout-form-aside-width: 340px;
+  --dl-layout-step-badge: 26px;
+  --dl-layout-status-dot: 18px;
+  --dl-layout-status-ring: 1.5px;
+  --dl-layout-list-row-pad-y: 10px;
+  --dl-layout-form-field-sm: 120px;
+  --dl-layout-form-field-md: 140px;
+  --dl-layout-form-field-lg: 160px;
+  --dl-layout-form-field-xl: 240px;
 }

@@ -86,6 +86,15 @@ describe('DiveDetailPage', () => {
     expect(screen.getAllByRole('link', { name: /^Plongée suivante : #101, / }).length).toBe(2);
   });
 
+  it('links to the edit form and to a duplicate of the dive', async () => {
+    renderAt('/dives/d100');
+
+    const edit = await screen.findByRole('link', { name: 'Modifier ma plongée' });
+    expect(edit.getAttribute('href')).toBe('/dives/d100/edit');
+    const duplicate = screen.getByRole('link', { name: 'Dupliquer la plongée' });
+    expect(duplicate.getAttribute('href')).toBe('/dives/new?from=d100');
+  });
+
   it('disables the next dive on the latest one', async () => {
     renderAt('/dives/d127');
     await screen.findAllByRole('link', { name: /^Plongée précédente/ });

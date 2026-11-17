@@ -1,0 +1,36 @@
+@use '@/styles/tokens' as *;
+
+// Grid: dive-form.jsx · Row — aligned field columns; stacked or paired on phones.
+.gasRow,
+.halves,
+.suitRow {
+  display: grid;
+  gap: $space-3;
+  align-items: start;
+}
+
+.halves,
+.suitRow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+// Phones: the suit type takes its own row under thickness and weight.
+.suitType {
+  grid-row: 2;
+  grid-column: span 2;
+}
+
+@include from($bp-tablet) {
+  .gasRow {
+    grid-template-columns: $layout-form-field-xl minmax(0, 1fr);
+  }
+
+  .suitRow {
+    grid-template-columns: $layout-form-field-sm minmax(0, 1fr) $layout-form-field-md;
+  }
+
+  .suitType {
+    grid-row: auto;
+    grid-column: auto;
+  }
+}

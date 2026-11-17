@@ -36,6 +36,7 @@ export const color = {
   warningSoft: 'rgba(231, 178, 74, 0.12)',
   danger: '#E47C81', // a11y (phase 5): was #E06A70, 4.1:1 on its soft background
   dangerSoft: 'rgba(228, 124, 129, 0.12)',
+  dangerLine: 'rgba(228, 124, 129, 0.45)', // ring of the error summary (dive-form.jsx · mobile)
 
   // Controls — secondary button fill (atoms.jsx · Btn secondary)
   controlFill: 'rgba(154, 186, 224, 0.06)',
@@ -313,6 +314,15 @@ export const layout = {
   listboxMaxHeight: 320,
   textareaMinHeight: 120,
   dialogWidth: 400,
+  formAsideWidth: 340, // sticky side column: preview, section summary, actions
+  stepBadge: 26, // numbered circle of a form section
+  statusDot: 18, // section state (complete · partial · empty)
+  statusRing: 1.5, // outline of the partial / empty section state
+  listRowPadY: 10, // dive team rows, preview tiles
+  formFieldSm: 120, // suit thickness
+  formFieldMd: 140, // dive number, air temperature, weight
+  formFieldLg: 160, // safety stop duration / depth
+  formFieldXl: 240, // gas
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.

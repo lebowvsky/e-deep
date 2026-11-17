@@ -1,0 +1,50 @@
+@use '@/styles/tokens' as *;
+
+.star {
+  color: $color-accent;
+}
+
+.place {
+  @include type($type-field-hint);
+
+  flex-shrink: 0;
+  color: $color-text-low;
+  white-space: nowrap;
+}
+
+// Grid: dive-form.jsx · Row — aligned field columns; one or two columns on phones.
+.siteRow,
+.timeRow,
+.measureRow {
+  display: grid;
+  gap: $space-3;
+  align-items: start;
+}
+
+.timeRow,
+.measureRow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.date {
+  grid-column: span 2;
+}
+
+@include from($bp-tablet) {
+  .siteRow {
+    grid-template-columns: minmax(0, 1fr) $layout-form-field-md;
+  }
+
+  .timeRow {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .date {
+    grid-column: auto;
+  }
+
+  // Duration and depth take two thirds, as in the mockup.
+  .measureRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

@@ -75,3 +75,34 @@
     right: $space-2;
   }
 }
+
+// dive-form.jsx · Météo — 44px form field, sans 14, same frame as a text field.
+.field {
+  @include field-box;
+  @include type($type-body);
+
+  display: flex;
+  width: 100%;
+  height: $layout-input-height;
+  color: $color-text-high;
+
+  .select {
+    flex: 1;
+    width: 100%;
+    padding: 0 calc(#{$space-3} + #{$space-5}) 0 $space-3;
+
+    // The frame shows the focus (field-box halo).
+    &:focus-visible {
+      outline: none;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+
+  .chevron {
+    color: $color-text-low;
+    opacity: 1;
+  }
+}

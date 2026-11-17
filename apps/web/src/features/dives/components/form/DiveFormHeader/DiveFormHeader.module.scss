@@ -1,0 +1,96 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · DiveFormDesktop — breadcrumb 20px above the title block.
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+}
+
+.crumbs {
+  @include type($type-body-sm);
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-2;
+  padding: 0;
+  margin: 0;
+  font-weight: 400;
+  color: $color-text-low;
+  list-style: none;
+}
+
+.back,
+.link {
+  @include focus-ring;
+
+  color: $color-text-med;
+  text-decoration: none;
+  border-radius: $radius-sm;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+.back {
+  @include hit-target;
+
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+.link {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+}
+
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+
+  &::before {
+    content: '/';
+    color: $color-text-muted;
+  }
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.overline {
+  @include overline($color-accent);
+
+  margin: 0;
+}
+
+// h1 28/34 on phones, display 40/44 from the tablet (same scale as the dive detail).
+.title {
+  @include type($type-h-1);
+
+  margin: 0;
+
+  @include from($bp-tablet) {
+    @include type($type-display);
+  }
+}
+
+.subtitle {
+  @include type($type-body);
+
+  margin: 0;
+  color: $color-text-med;
+
+  @include from($bp-tablet) {
+    @include type($type-body-lg);
+  }
+}
+
+.subtitleLow {
+  color: $color-text-low;
+}

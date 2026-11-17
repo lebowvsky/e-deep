@@ -1,0 +1,79 @@
+@use '@/styles/tokens' as *;
+
+.count {
+  @include type($type-unit-sm, $font: $font-mono, $tabular: true);
+}
+
+// dive-form.jsx · PalanqueeEditor — framed list, rows 10 12, hairline between rows.
+.list {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line;
+}
+
+.member {
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  min-width: 0;
+  padding: $layout-list-row-pad-y $space-3;
+
+  & + & {
+    border-top: 1px solid $color-line;
+  }
+}
+
+.name {
+  @include type($type-body-med);
+
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: $color-text-high;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.self {
+  @include type($type-field-hint);
+
+  color: $color-text-low;
+}
+
+// 32px visual (mockup), 44px hit area from the IconButton.
+.remove,
+.spacer {
+  width: $layout-avatar-sm;
+  height: $layout-avatar-sm;
+  flex-shrink: 0;
+}
+
+.remove {
+  color: $color-text-low;
+}
+
+.frequent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  align-items: center;
+}
+
+.frequentLabel {
+  @include type($type-field-hint);
+
+  color: $color-text-low;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
