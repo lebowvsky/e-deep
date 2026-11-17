@@ -1,4 +1,4 @@
-import type { DiveBuddyRef, DiveDetail, DiveLogResponse } from '@e-deep/shared';
+import type { DiveBuddyRef, DiveDetail, DiveLogResponse, DiveWriteResponse } from '@e-deep/shared';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource, type EntityManager } from 'typeorm';
 import { queryRows } from '../../common/database/query-rows';
@@ -75,6 +75,17 @@ const DETAIL_COLUMNS = `${SUMMARY_COLUMNS},
   dp.end_pressure_bar, dp.suit_type, dp.suit_thickness_mm, dp.weight_kg,
   dp.created_at, GREATEST(de.updated_at, dp.updated_at) AS updated_at`;
 
+/** Same body for every "not a live dive of yours" case (absent, deleted, another diver's). */
+export function diveNotFound(): NotFoundException {
+  return new NotFoundException('Dive not found');
+}
+
+interface DiveNumberRow {
+  id: string;
+  number: number;
+  updated_at: Date;
+}
+
 /**
  * Read model of the diver's dive log, separate from the synchronisation (`DivesService`). Every
  * query is filtered by the owner (`diver_id`). Health data: nothing here is logged.
@@ -128,7 +139,7 @@ export class DiveLogService {
         [diverId, eventId],
       );
       if (row === undefined) {
-        throw new NotFoundException('Dive not found');
+        throw diveNotFound();
       }
       const team = await queryRows<DiveDetailTeamRow>(
         manager,
@@ -152,6 +163,29 @@ export class DiveLogService {
       );
       return toDiveDetail(row, toDiveDetailBuddies(team), observations);
     });
+  }
+
+  /**
+   * Number (D26) and latest change of a live dive of the diver, as answered to a write. Same
+   * numbering and `updatedAt` as the detail.
+   *
+   * @throws {NotFoundException} when the dive is not a live dive of the diver.
+   */
+  async numberOf(diverId: string, eventId: string): Promise<DiveWriteResponse> {
+    const [row] = await queryRows<DiveNumberRow>(
+      this.dataSource.manager,
+      `WITH ${NUMBERED_LIVE_DIVES}
+       SELECT n.id, n.number, GREATEST(de.updated_at, dp.updated_at) AS updated_at
+         FROM numbered n
+         JOIN dive_events de ON de.id = n.id
+         JOIN dive_participations dp ON dp.id = n.participation_id
+        WHERE n.id = $2`,
+      [diverId, eventId],
+    );
+    if (row === undefined) {
+      throw diveNotFound();
+    }
+    return { id: row.id, number: row.number, updatedAt: row.updated_at.toISOString() };
   }
 }
 

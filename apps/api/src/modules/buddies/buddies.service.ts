@@ -51,45 +51,51 @@ export class BuddiesService {
    * @throws {FullSyncRequiredError} | {IdentifierConflictError} | {InvalidReferenceError} (unknown
    *   linked account or level) | {BuddyLinkConflictError}
    */
-  async upsert(
+  upsert(ownerId: string, write: BuddyWrite, lastPulledAt: Date): Promise<SyncWriteResult<Buddy>> {
+    return this.dataSource.transaction((manager) =>
+      this.upsertIn(manager, ownerId, write, lastPulledAt),
+    );
+  }
+
+  /** `upsert` within the caller's transaction (e.g. a dive written with its new buddies, D-24). */
+  async upsertIn(
+    manager: EntityManager,
     ownerId: string,
     write: BuddyWrite,
     lastPulledAt: Date,
   ): Promise<SyncWriteResult<Buddy>> {
     assertWithinPurgeHorizon(lastPulledAt, new Date(), this.settings.purgeHorizonDays);
 
-    return await this.dataSource.transaction(async (manager) => {
-      const existing = await manager.findOne(Buddy, {
-        where: { id: write.id },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (existing !== null && existing.ownerId !== ownerId) {
-        throw new IdentifierConflictError();
-      }
-      if (existing !== null && isStaleRestore(existing, write)) {
-        return { status: 'rejected', current: existing };
-      }
-      await assertLinkableDiver(manager, ownerId, write.linkedDiverId);
-      await assertExistingLevel(manager, write.certificationLevelId);
-
-      try {
-        await upsertOwnedRow(manager, Buddy, 'ownerId', {
-          id: write.id,
-          ownerId,
-          firstName: write.firstName,
-          lastName: write.lastName,
-          linkedDiverId: write.linkedDiverId,
-          certificationLevelId: write.certificationLevelId,
-          deletedAt: write.deletedAt,
-        });
-      } catch (error) {
-        throw isUniqueViolation(error, LINK_UNIQUE_INDEX) ? new BuddyLinkConflictError() : error;
-      }
-      if (write.deletedAt !== null) {
-        await removeFromDiveTeams(manager, ownerId, write.id);
-      }
-      return { status: 'applied', current: await manager.findOneByOrFail(Buddy, { id: write.id }) };
+    const existing = await manager.findOne(Buddy, {
+      where: { id: write.id },
+      lock: { mode: 'pessimistic_write' },
     });
+    if (existing !== null && existing.ownerId !== ownerId) {
+      throw new IdentifierConflictError();
+    }
+    if (existing !== null && isStaleRestore(existing, write)) {
+      return { status: 'rejected', current: existing };
+    }
+    await assertLinkableDiver(manager, ownerId, write.linkedDiverId);
+    await assertExistingLevel(manager, write.certificationLevelId);
+
+    try {
+      await upsertOwnedRow(manager, Buddy, 'ownerId', {
+        id: write.id,
+        ownerId,
+        firstName: write.firstName,
+        lastName: write.lastName,
+        linkedDiverId: write.linkedDiverId,
+        certificationLevelId: write.certificationLevelId,
+        deletedAt: write.deletedAt,
+      });
+    } catch (error) {
+      throw isUniqueViolation(error, LINK_UNIQUE_INDEX) ? new BuddyLinkConflictError() : error;
+    }
+    if (write.deletedAt !== null) {
+      await removeFromDiveTeams(manager, ownerId, write.id);
+    }
+    return { status: 'applied', current: await manager.findOneByOrFail(Buddy, { id: write.id }) };
   }
 
   /** Tombstones a buddy and removes it from every dive team. Idempotent. */

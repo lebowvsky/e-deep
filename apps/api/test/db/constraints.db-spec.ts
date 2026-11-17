@@ -79,6 +79,30 @@ describe('dive log schema constraints', () => {
       );
     });
 
+    it('accepts a site without region nor position (D-23)', async () => {
+      const diver = await fixtures.diver();
+      await expect(
+        fixtures.site(diver.id, { region: null, latitude: null, longitude: null }),
+      ).resolves.toMatchObject({ region: null, latitude: null, longitude: null });
+    });
+
+    it.each([[{ latitude: null }], [{ longitude: null }]])(
+      'refuses half a position %j',
+      async (values) => {
+        const diver = await fixtures.diver();
+        await expect(fixtures.site(diver.id, values)).rejects.toEqual(
+          violating('ck_dive_sites__position'),
+        );
+      },
+    );
+
+    it.each(['  ', 'r'.repeat(121)])('still refuses a region %j', async (region) => {
+      const diver = await fixtures.diver();
+      await expect(fixtures.site(diver.id, { region })).rejects.toEqual(
+        violating('ck_dive_sites__region'),
+      );
+    });
+
     it.each([-721, 841])('refuses utc_offset_minutes = %s', async (utcOffsetMinutes) => {
       const diver = await fixtures.diver();
       const site = await fixtures.site(diver.id);

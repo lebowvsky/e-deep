@@ -26,4 +26,17 @@ export type {
   TimeOfDay,
   Weather,
 } from './dives.js';
+export type {
+  ApiDomainErrorCode,
+  ApiDomainErrorResponse,
+  ApiFieldErrors,
+  ApiValidationErrorResponse,
+  DiveWriteBuddy,
+  DiveWriteEvent,
+  DiveWriteObservation,
+  DiveWriteParticipation,
+  DiveWriteRequest,
+  DiveWriteResponse,
+  DiveWriteSite,
+} from './dive-write.js';
 export type { DependencyStatus, HealthResponse, HealthStatus } from './health.js';

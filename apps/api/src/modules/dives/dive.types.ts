@@ -95,6 +95,13 @@ export interface Dive {
   readonly observations: readonly DiveObservationValue[];
 }
 
+/** A dive looked up by event id for writing (tombstones included). */
+export type DiveLookup =
+  | { readonly status: 'absent' }
+  /** The event exists but is not a dive of the diver. */
+  | { readonly status: 'foreign' }
+  | { readonly status: 'own'; readonly dive: Dive };
+
 /** A participation as pulled, with its dive team and its observations (ordered by position). */
 export interface ParticipationWithBuddies {
   readonly participation: DiveParticipation;

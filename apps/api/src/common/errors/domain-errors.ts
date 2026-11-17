@@ -1,18 +1,11 @@
+import type { ApiDomainErrorCode } from '@e-deep/shared';
+
 /**
  * Business errors raised by the services. Their messages are generic on purpose (GDPR, no
  * enumeration): they never contain an identifier, a value or a driver message, so they are safe to
- * log and to map to an HTTP response once the endpoints exist.
+ * log. Their code is the one of the API contract (`common/errors/domain-error-http.ts`, D-26).
  */
-export type DomainErrorCode =
-  | 'identifier-conflict'
-  | 'full-sync-required'
-  | 'site-in-use'
-  | 'inactive-certification-level'
-  | 'invalid-reference'
-  | 'buddy-link-conflict'
-  | 'unsupported-contract-value'
-  | 'duplicate-observation'
-  | 'too-many-observations';
+export type DomainErrorCode = ApiDomainErrorCode;
 
 export abstract class DomainError extends Error {
   abstract readonly code: DomainErrorCode;

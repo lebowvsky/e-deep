@@ -54,7 +54,7 @@ export interface DiveSummaryRow {
   site_id: string;
   site_name: string;
   site_locality: string | null;
-  site_region: string;
+  site_region: string | null;
 }
 
 /**
@@ -65,8 +65,8 @@ export interface DiveDetailRow extends DiveSummaryRow {
   visibility_m: number | null;
   has_decompression: boolean;
   stops_ok: boolean;
-  site_latitude: string;
-  site_longitude: string;
+  site_latitude: string | null;
+  site_longitude: string | null;
   site_area: string | null;
   level_agency: string;
   level_code: string;
@@ -148,8 +148,8 @@ export function toDiveDetail(
     ...summary,
     site: {
       ...summary.site,
-      latitude: fromNumeric(row.site_latitude),
-      longitude: fromNumeric(row.site_longitude),
+      latitude: fromNullableNumeric(row.site_latitude),
+      longitude: fromNullableNumeric(row.site_longitude),
       area: row.site_area,
     },
     buddies,

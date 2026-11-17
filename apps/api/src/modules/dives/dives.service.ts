@@ -21,6 +21,7 @@ import { DiveObservation } from './dive-observation.entity';
 import { DiveParticipation } from './dive-participation.entity';
 import type {
   Dive,
+  DiveLookup,
   DiveObservationValue,
   DiveObservationWrite,
   DiveWrite,
@@ -58,98 +59,136 @@ export class DivesService {
    * @throws {FullSyncRequiredError} | {IdentifierConflictError} | {InvalidReferenceError} |
    *   {DuplicateObservationError} | {TooManyObservationsError}
    */
-  async upsertDive(
+  upsertDive(
+    diverId: string,
+    write: DiveWrite,
+    lastPulledAt: Date,
+  ): Promise<SyncWriteResult<Dive>> {
+    return this.dataSource.transaction((manager) =>
+      this.upsertDiveIn(manager, diverId, write, lastPulledAt),
+    );
+  }
+
+  /** `upsertDive` within the caller's transaction (e.g. with a new site and new buddies, D-24). */
+  async upsertDiveIn(
+    manager: EntityManager,
     diverId: string,
     write: DiveWrite,
     lastPulledAt: Date,
   ): Promise<SyncWriteResult<Dive>> {
     assertWithinPurgeHorizon(lastPulledAt, new Date(), this.settings.purgeHorizonDays);
     const observations = normalizeObservations(write.observations);
+    const { event, participation } = write;
+    const buddyIds = [...new Set(write.buddyIds)];
 
-    return await this.dataSource.transaction(async (manager) => {
-      const { event, participation } = write;
-      const buddyIds = [...new Set(write.buddyIds)];
-
-      const existingEvent = await manager.findOne(DiveEvent, {
-        where: { id: event.id },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (existingEvent !== null && existingEvent.creatorId !== diverId) {
-        throw new IdentifierConflictError();
-      }
-      const existingParticipation = await findParticipationToWrite(
-        manager,
-        diverId,
-        event.id,
-        participation.id,
-      );
-
-      const stale =
-        (existingEvent !== null && isStaleRestore(existingEvent, event)) ||
-        (existingParticipation !== null && isStaleRestore(existingParticipation, participation));
-      if (stale) {
-        return { status: 'rejected', current: await loadDiveOrFail(manager, diverId, event.id) };
-      }
-
-      const certificationLevelId = await resolveParticipationLevel(
-        manager,
-        diverId,
-        participation.certificationLevelId ?? null,
-      );
-      await assertOwnedReferences(manager, diverId, event.siteId, buddyIds);
-
-      await upsertOwnedRow(manager, DiveEvent, 'creatorId', {
-        id: event.id,
-        creatorId: diverId,
-        siteId: event.siteId,
-        startedAt: event.startedAt,
-        utcOffsetMinutes: event.utcOffsetMinutes,
-        entryType: event.entryType,
-        timeOfDay: event.timeOfDay,
-        weather: event.weather,
-        airTemperatureC: event.airTemperatureC,
-        seaState: event.seaState,
-        currentStrength: event.currentStrength,
-        diveCenter: event.diveCenter,
-        deletedAt: event.deletedAt,
-      });
-      await upsertOwnedRow(manager, DiveParticipation, 'diverId', {
-        id: existingParticipation?.id ?? participation.id,
-        diveEventId: event.id,
-        diverId,
-        certificationLevelId,
-        maxDepthM: participation.maxDepthM,
-        durationMin: participation.durationMin,
-        waterTemperatureC: participation.waterTemperatureC,
-        visibilityM: participation.visibilityM,
-        gasMix: participation.gasMix,
-        hasDecompression: participation.hasDecompression,
-        stopsOk: participation.stopsOk,
-        notes: participation.notes,
-        surfaceWaterTemperatureC: participation.surfaceWaterTemperatureC,
-        safetyStopDurationMin: participation.safetyStopDurationMin,
-        safetyStopDepthM: participation.safetyStopDepthM,
-        isRepetitive: participation.isRepetitive,
-        o2Percent: participation.o2Percent,
-        tankVolumeL: participation.tankVolumeL,
-        tankMaterial: participation.tankMaterial,
-        startPressureBar: participation.startPressureBar,
-        endPressureBar: participation.endPressureBar,
-        suitType: participation.suitType,
-        suitThicknessMm: participation.suitThicknessMm,
-        weightKg: participation.weightKg,
-        deletedAt: participation.deletedAt,
-      });
-
-      if (event.deletedAt === null && participation.deletedAt === null) {
-        await restoreParents(manager, diverId, event.siteId, buddyIds);
-      }
-      const participationId = existingParticipation?.id ?? participation.id;
-      await replaceDiveTeam(manager, diverId, participationId, buddyIds);
-      await replaceObservations(manager, participationId, observations);
-
-      return { status: 'applied', current: await loadDiveOrFail(manager, diverId, event.id) };
+    const existingEvent = await manager.findOne(DiveEvent, {
+      where: { id: event.id },
+      lock: { mode: 'pessimistic_write' },
     });
+    if (existingEvent !== null && existingEvent.creatorId !== diverId) {
+      throw new IdentifierConflictError();
+    }
+    const existingParticipation = await findParticipationToWrite(
+      manager,
+      diverId,
+      event.id,
+      participation.id,
+    );
+
+    const stale =
+      (existingEvent !== null && isStaleRestore(existingEvent, event)) ||
+      (existingParticipation !== null && isStaleRestore(existingParticipation, participation));
+    if (stale) {
+      return { status: 'rejected', current: await loadDiveOrFail(manager, diverId, event.id) };
+    }
+
+    const certificationLevelId = await resolveParticipationLevel(
+      manager,
+      diverId,
+      participation.certificationLevelId ?? null,
+    );
+    await assertOwnedReferences(manager, diverId, event.siteId, buddyIds);
+
+    await upsertOwnedRow(manager, DiveEvent, 'creatorId', {
+      id: event.id,
+      creatorId: diverId,
+      siteId: event.siteId,
+      startedAt: event.startedAt,
+      utcOffsetMinutes: event.utcOffsetMinutes,
+      entryType: event.entryType,
+      timeOfDay: event.timeOfDay,
+      weather: event.weather,
+      airTemperatureC: event.airTemperatureC,
+      seaState: event.seaState,
+      currentStrength: event.currentStrength,
+      diveCenter: event.diveCenter,
+      deletedAt: event.deletedAt,
+    });
+    await upsertOwnedRow(manager, DiveParticipation, 'diverId', {
+      id: existingParticipation?.id ?? participation.id,
+      diveEventId: event.id,
+      diverId,
+      certificationLevelId,
+      maxDepthM: participation.maxDepthM,
+      durationMin: participation.durationMin,
+      waterTemperatureC: participation.waterTemperatureC,
+      visibilityM: participation.visibilityM,
+      gasMix: participation.gasMix,
+      hasDecompression: participation.hasDecompression,
+      stopsOk: participation.stopsOk,
+      notes: participation.notes,
+      surfaceWaterTemperatureC: participation.surfaceWaterTemperatureC,
+      safetyStopDurationMin: participation.safetyStopDurationMin,
+      safetyStopDepthM: participation.safetyStopDepthM,
+      isRepetitive: participation.isRepetitive,
+      o2Percent: participation.o2Percent,
+      tankVolumeL: participation.tankVolumeL,
+      tankMaterial: participation.tankMaterial,
+      startPressureBar: participation.startPressureBar,
+      endPressureBar: participation.endPressureBar,
+      suitType: participation.suitType,
+      suitThicknessMm: participation.suitThicknessMm,
+      weightKg: participation.weightKg,
+      deletedAt: participation.deletedAt,
+    });
+
+    if (event.deletedAt === null && participation.deletedAt === null) {
+      await restoreParents(manager, diverId, event.siteId, buddyIds);
+    }
+    const participationId = existingParticipation?.id ?? participation.id;
+    await replaceDiveTeam(manager, diverId, participationId, buddyIds);
+    await replaceObservations(manager, participationId, observations);
+
+    return { status: 'applied', current: await loadDiveOrFail(manager, diverId, event.id) };
+  }
+
+  /**
+   * The dive behind an event id, locked for writing within the caller's transaction, tombstones
+   * included: `absent` (unknown id), `foreign` (the event is not the diver's) or `own`.
+   */
+  async findDiveForWriteIn(
+    manager: EntityManager,
+    diverId: string,
+    eventId: string,
+  ): Promise<DiveLookup> {
+    const event = await manager.findOne(DiveEvent, {
+      where: { id: eventId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (event === null) {
+      return { status: 'absent' };
+    }
+    const participation =
+      event.creatorId === diverId
+        ? await manager.findOne(DiveParticipation, {
+            where: { diveEventId: eventId, diverId },
+            lock: { mode: 'pessimistic_write' },
+          })
+        : null;
+    if (participation === null) {
+      return { status: 'foreign' };
+    }
+    return { status: 'own', dive: await withTeamAndObservations(manager, event, participation) };
   }
 
   /** MVP deletion of a dive: tombstones the event and the participation together. Idempotent. */
@@ -383,6 +422,14 @@ async function loadDiveOrFail(
     diveEventId: eventId,
     diverId,
   });
+  return withTeamAndObservations(manager, event, participation);
+}
+
+async function withTeamAndObservations(
+  manager: EntityManager,
+  event: DiveEvent,
+  participation: DiveParticipation,
+): Promise<Dive> {
   const teams = await loadDiveTeams(manager, [participation.id]);
   const observations = await loadObservations(manager, [participation.id]);
   return {

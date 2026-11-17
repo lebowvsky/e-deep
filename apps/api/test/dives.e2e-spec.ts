@@ -14,6 +14,7 @@ import type {
   DiveTeamRow,
 } from '../src/modules/dives/dive-contract.mapper';
 import { DIVE_LOG_MAX, DiveLogService } from '../src/modules/dives/dive-log.service';
+import { DiveWriteService } from '../src/modules/dives/dive-write.service';
 import { DivesController } from '../src/modules/dives/dives.controller';
 
 const DIVER_ID = '01900000-0000-7000-8000-000000000001';
@@ -124,6 +125,8 @@ describe('/api/dives (e2e)', () => {
       providers: [
         DiveLogService,
         CurrentDiverGuard,
+        // The writes have their own suite (`dives-write.e2e-spec.ts`).
+        { provide: DiveWriteService, useValue: {} },
         { provide: DataSource, useValue: fakeDataSource },
         { provide: ConfigService, useValue: { get: () => devAuthStub } },
       ],
