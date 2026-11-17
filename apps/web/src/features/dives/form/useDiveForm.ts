@@ -1,10 +1,11 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { useEffect, useReducer, useRef, type ActionDispatch, type RefObject } from 'react';
 import type { SaveDive } from '../api/saveDive';
 import type { DiveDetailView } from '../types';
 import { toSaveDiveInput, type DiveFormTarget } from './convert';
 import {
   diveFormReducer,
   initDiveFormState,
+  type DiveFormAction,
   type FieldMessages,
   type SubmitStatus,
 } from './diveFormReducer';
@@ -80,17 +81,44 @@ export interface DiveForm {
   reset: (values: DiveFormValues) => void;
   /** « Effacer » of the restored draft. */
   discardDraft: () => void;
+  /**
+   * Writes the draft still waiting for its delay, at once: the diver confirms leaving. Also done on
+   * `pagehide`, `beforeunload` and unmount.
+   */
+  flushDraft: () => void;
   submit: () => Promise<SubmitOutcome>;
 }
 
 const randomId = () => crypto.randomUUID();
+
+interface DraftWriter {
+  /** Values changed but not written yet, `null` when the stored draft is up to date. */
+  pending: RefObject<DiveFormValues | null>;
+  store: DraftStore;
+  key: string;
+  now: () => number;
+  dispatch: ActionDispatch<[action: DiveFormAction]>;
+}
+
+/** Writes the pending draft, if any. `localStorage` writes synchronously: safe on `pagehide`. */
+function writePendingDraft({ pending, store, key, now, dispatch }: DraftWriter): void {
+  const values = pending.current;
+  if (values === null) return;
+  pending.current = null;
+  const savedAt = now();
+  void store
+    .save(key, { values, savedAt })
+    .then(() => dispatch({ type: 'draftSaved', savedAt }))
+    // Not saved: the mention keeps the previous time, the form goes on.
+    .catch(() => undefined);
+}
 
 /**
  * State of the dive form: values, messages, submit and draft.
  *
  * Validation runs at blur, then live once a field shows a message, then in full on submit. Saving
  * goes through the injected `saveDive` port; the draft through the injected `DraftStore`, written
- * 1 s after the last change and cleared once the dive is saved.
+ * 1 s after the last change — at once when the page is left — and cleared once the dive is saved.
  */
 export function useDiveForm({
   mode,
@@ -104,6 +132,7 @@ export function useDiveForm({
 }: UseDiveFormOptions): DiveForm {
   const [state, dispatch] = useReducer(diveFormReducer, initialValues, initDiveFormState);
   const isSubmitting = useRef(false);
+  const pendingDraft = useRef<DiveFormValues | null>(null);
   const key = draftKey(mode);
   const isDirty = isDirtyValues(state.values, state.initial);
   const draftReady = state.draft.status === 'ready';
@@ -128,19 +157,31 @@ export function useDiveForm({
   useEffect(() => {
     if (!draftReady) return;
     if (!isDirty) {
+      pendingDraft.current = null;
       if (hasSavedDraft) void draftStore.clear(key);
       return;
     }
-    const timer = setTimeout(() => {
-      const savedAt = now();
-      void draftStore
-        .save(key, { values: state.values, savedAt })
-        .then(() => dispatch({ type: 'draftSaved', savedAt }))
-        // Not saved: the mention keeps the previous time, the form goes on.
-        .catch(() => undefined);
-    }, DRAFT_DEBOUNCE_MS);
+    pendingDraft.current = state.values;
+    const timer = setTimeout(
+      () => writePendingDraft({ pending: pendingDraft, store: draftStore, key, now, dispatch }),
+      DRAFT_DEBOUNCE_MS,
+    );
     return () => clearTimeout(timer);
   }, [draftReady, isDirty, hasSavedDraft, draftStore, key, now, state.values]);
+
+  // Leaving within the delay must not lose the last changes: the tab closes or goes to the
+  // back-forward cache (`pagehide`, `beforeunload`), or the form unmounts (in-app navigation).
+  useEffect(() => {
+    const flush = () =>
+      writePendingDraft({ pending: pendingDraft, store: draftStore, key, now, dispatch });
+    window.addEventListener('pagehide', flush);
+    window.addEventListener('beforeunload', flush);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      window.removeEventListener('beforeunload', flush);
+      flush();
+    };
+  }, [draftStore, key, now]);
 
   async function submit(): Promise<SubmitOutcome> {
     if (isSubmitting.current) return { status: 'busy' };
@@ -165,6 +206,8 @@ export function useDiveForm({
         const fields = DIVE_FORM_FIELDS.filter((field) => fieldErrors[field] !== undefined);
         return { status: 'invalid', fields };
       }
+      // Saved: the redirect may unmount the form before the draft effect sees it clean.
+      pendingDraft.current = null;
       await draftStore.clear(key);
       dispatch({ type: 'submitSucceeded', id: result.id });
       return { status: 'saved', id: result.id };
@@ -205,9 +248,12 @@ export function useDiveForm({
     resume: (source) => dispatch({ type: 'merge', values: carriedValues(source), context }),
     reset: (values) => dispatch({ type: 'reset', values }),
     discardDraft: () => {
+      pendingDraft.current = null;
       dispatch({ type: 'draftDiscarded' });
       void draftStore.clear(key);
     },
+    flushDraft: () =>
+      writePendingDraft({ pending: pendingDraft, store: draftStore, key, now, dispatch }),
     submit,
   };
 }

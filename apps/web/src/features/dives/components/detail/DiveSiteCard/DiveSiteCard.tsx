@@ -1,4 +1,4 @@
-import { formatDiveCount } from '@/shared/lib/format';
+import { formatDiveCount, formatMeasure } from '@/shared/lib/format';
 import type { DiveDetailView, DiveLogInsights } from '../../../types';
 import { Quantity } from '../../Quantity';
 import { DetailSection } from '../DetailSection';
@@ -42,9 +42,9 @@ export function DiveSiteCard({ site, stats, className }: DiveSiteCardProps) {
               value: (
                 <Quantity
                   size="fact"
-                  value={stats.maxDepthM}
+                  value={formatMeasure(stats.maxDepthM)}
                   unit="m"
-                  srText={`${stats.maxDepthM} mètres`}
+                  srText={`${formatMeasure(stats.maxDepthM)} mètres`}
                 />
               ),
             },

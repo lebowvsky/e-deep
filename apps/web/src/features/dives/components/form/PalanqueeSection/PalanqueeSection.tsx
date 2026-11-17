@@ -120,6 +120,7 @@ export function PalanqueeSection({
               <span className={styles.name}>{name}</span>
               <Select
                 variant="outlined"
+                className={styles.level}
                 label={`Niveau de ${name}`}
                 options={LEVEL_OPTIONS}
                 value={member.level}
@@ -131,7 +132,11 @@ export function PalanqueeSection({
                 iconSize="sm"
                 label={`Retirer ${name}`}
                 className={styles.remove}
-                onClick={() => form.removeMember(member.key)}
+                onClick={() => {
+                  form.removeMember(member.key);
+                  // The removed button took the focus with it: back to « Ajouter un plongeur ».
+                  document.getElementById(binding.id)?.focus();
+                }}
                 disabled={binding.locked}
               />
             </li>

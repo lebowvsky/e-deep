@@ -169,10 +169,11 @@
   border: 0;
   outline: none;
 
+  // textLow, not textMuted (≈ 2:1): an example still has to be readable (SC 1.4.3).
   &::placeholder {
     @include type($type-body);
 
-    color: $color-text-muted;
+    color: $color-text-low;
     opacity: 1;
   }
 

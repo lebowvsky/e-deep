@@ -1,5 +1,6 @@
 import { useId, useLayoutEffect, useRef, type ComponentProps } from 'react';
 import { cx } from '@/shared/lib/classNames';
+import { formatCharacterCount } from '@/shared/lib/format';
 import { fieldBoxState, fieldControlProps, useFormField } from '@/shared/ui/FormField';
 import styles from './Textarea.module.scss';
 
@@ -8,8 +9,6 @@ export interface TextareaProps extends Omit<ComponentProps<'textarea'>, 'value' 
   /** Length from which the character count shows. Default 2 000. */
   counterFrom?: number;
 }
-
-const formatCount = (count: number) => `${count.toLocaleString('fr-FR')} caractères`;
 
 /**
  * Multi-line field that grows with its text (min. 120px), no visible limit; a character count
@@ -56,7 +55,7 @@ export function Textarea({
       </div>
       {showCounter && (
         <p id={counterId} className={styles.counter}>
-          {formatCount(value.length)}
+          {formatCharacterCount(value.length)}
         </p>
       )}
     </div>

@@ -20,7 +20,9 @@
   gap: $space-3;
   align-items: center;
   min-width: 0;
-  padding: $layout-list-row-pad-y $space-3;
+  // 52px rows as in the mockup (32 + 2 × 10), with room for the 44px level select.
+  min-height: calc(#{$layout-hit-target} + 2 * #{$space-1});
+  padding: $space-1 $space-3;
 
   & + & {
     border-top: 1px solid $color-line;
@@ -54,6 +56,12 @@
 
 .remove {
   color: $color-text-low;
+}
+
+// 44px touch target (the 32px `outlined` select of the pagination is too small here). A native
+// select cannot carry the invisible `hit-area`: the frame itself grows.
+.member .level {
+  height: $layout-hit-target;
 }
 
 .frequent {

@@ -49,7 +49,12 @@ export function EquipmentSection({ form, canEditEvent, collapse }: EquipmentSect
         {isAir ? (
           // Air is 21 % by definition: shown, never typed.
           <FormField label="% O₂" {...bind('o2Percent')} hint="Air = 21 %" locked>
-            <NumberInput value={String(AIR_O2_PERCENT)} onValueChange={() => {}} unit="%" />
+            <NumberInput
+              value={String(AIR_O2_PERCENT)}
+              onValueChange={() => {}}
+              unit="%"
+              unitLabel="pour cent"
+            />
           </FormField>
         ) : (
           <FormField label="% O₂" {...bind('o2Percent', 'Nitrox : 22 à 40 %')}>
@@ -72,7 +77,7 @@ export function EquipmentSection({ form, canEditEvent, collapse }: EquipmentSect
       </div>
       <div className={styles.halves}>
         <FormField label="Pression début" {...bind('startPressureBar')}>
-          <NumberInput {...numberProps(form, 'startPressureBar')} unit="bar" />
+          <NumberInput {...numberProps(form, 'startPressureBar')} unit="bar" unitLabel="bars" />
         </FormField>
         <FormField
           label="Pression fin"
@@ -81,7 +86,7 @@ export function EquipmentSection({ form, canEditEvent, collapse }: EquipmentSect
             consumed === null ? CONSUMED_HINT : `→ ${formatMeasure(consumed)} bar consommés`,
           )}
         >
-          <NumberInput {...numberProps(form, 'endPressureBar')} unit="bar" />
+          <NumberInput {...numberProps(form, 'endPressureBar')} unit="bar" unitLabel="bars" />
         </FormField>
       </div>
       <div className={styles.suitRow}>

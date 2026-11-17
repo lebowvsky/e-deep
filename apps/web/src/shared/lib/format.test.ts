@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   calendarDaysSince,
+  formatCharacterCount,
   formatClockValue,
   formatInterval,
   formatNumberInputValue,
@@ -117,5 +118,8 @@ describe('dive form', () => {
     expect(formatNumberInputValue(12.5)).toBe('12,5');
     expect(formatNumberInputValue(-2)).toBe('-2');
     expect(formatNumberInputValue(1200)).toBe('1200');
+    // Intl groups with a narrow no-break space.
+    expect(formatCharacterCount(2048)).toBe('2\u202f048 caractères');
+    expect(formatCharacterCount(1)).toBe('1 caractère');
   });
 });

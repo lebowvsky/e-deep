@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { elise, lucas, makeDive, thao } from '../mocks/diveFixture';
 import { SELF } from '../mocks/roster';
-import { buildDiveFormSources, proposeSurfaceInterval, takenNumbers } from './sources';
+import {
+  buildDiveFormSources,
+  proposeSurfaceInterval,
+  proposeSurfaceIntervalFor,
+  takenNumbers,
+} from './sources';
 
 const bibliotheque = {
   id: 's02',
@@ -64,5 +69,18 @@ describe('proposeSurfaceInterval', () => {
 
   it('skips the edited dive itself', () => {
     expect(proposeSurfaceInterval(log, '2026-04-08T14:00:00+02:00', 'd2')).toBe(255);
+  });
+
+  it('reads the start of the edited dive in its own offset, and waits for valid values', () => {
+    const update = {
+      kind: 'update',
+      diveId: 'd2',
+      utcOffsetMinutes: 120,
+      observationCounts: new Map(),
+    } as const;
+    const entry = { date: '2026-04-08', entryTime: '14:00' };
+    expect(proposeSurfaceIntervalFor(log, entry, update)).toBe(255);
+    expect(proposeSurfaceIntervalFor(log, { ...entry, entryTime: '' }, update)).toBeNull();
+    expect(proposeSurfaceIntervalFor(log, { ...entry, date: '' }, { kind: 'create' })).toBeNull();
   });
 });

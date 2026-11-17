@@ -529,10 +529,11 @@ Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
   - **libellés des unions** : valeurs et libellés H-18 **validés** (2026-11-17) ;
   - un palier saisi à moitié (contraire au contrat) est traité comme non saisi, et non rejeté ;
   - non modélisés : détail des paliers de déco. (reporté, D-16), hélium, plusieurs blocs.
-- **Actions non rendues** : « Modifier ma plongée », menu « … » (Dupliquer, Exporter, Supprimer),
-  faute de formulaire d'édition et d'endpoint d'écriture ; les champs vides n'ont donc pas de lien
-  « Compléter » (« — · Non renseignée »). Lien « Toutes mes plongées ici » non rendu : la query de
-  `/dives` n'a pas de filtre par site. Raccourcis `←` / `→` / `e` non faits.
+- **Actions** : « Modifier ma plongée » (`/dives/:id/edit`) et « Dupliquer » (bouton icône à la
+  place du menu « … », dont c'est la seule action avec un écran) sont rendus depuis le formulaire
+  (2026-11-17). Restent non rendus : Exporter et Supprimer (pas d'endpoint), le lien « Compléter »
+  des champs vides (« — · Non renseignée »), « Toutes mes plongées ici » (la query de `/dives` n'a
+  pas de filtre par site) et les raccourcis `←` / `→` / `e`.
 - **Carte** : la mini-carte du site reprend le décor placeholder du dashboard (`MapBackdrop`, passé
   dans `shared/ui`) avec le marqueur centré et les vraies coordonnées ; `projectToMap` n'est pas
   utilisée (sa boîte fixe enverrait un site breton au bord). À remplacer par MapLibre avec la carte
@@ -582,3 +583,37 @@ Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
     se replie dans les cellules étroites du Déroulé.
 - **Doc design** : `apps/web/design/README.md` (lecture seule) situe encore `KpiCard` dans
   `features/dashboard`.
+
+Issus du formulaire de plongée (`/dives/new`, `?from=:id`, `/dives/:id/edit`, phases 1 à 5,
+2026-11-17) :
+
+- **Écriture provisoire** : `saveDive` passe par `inMemoryDiveRepository` (cache TanStack Query),
+  perdu au refetch ou au rechargement. Restent à faire : endpoints `POST` / `PATCH /api/dives`,
+  synchro hors ligne (D22) et un **contrat d'écriture partagé** dans `@e-deep/shared` (`SaveDiveInput`
+  recopie aujourd'hui à la main `DiveWrite` de l'API). Les ids sont en UUID v4
+  (`crypto.randomUUID()`) au lieu de v7 (D22). Un site créé par son nom s'affiche en
+  « 0,000° N · 0,000° E » sur le détail tant que sa position n'existe pas.
+- **`canEditEvent`** : toujours vrai en V1 (`DiveFormPage`). L'usage en club devra le calculer
+  (créateur de l'événement) ; le verrouillage des champs (É) est prêt et testé. La palanquée suit le
+  modèle (participation), pas la spec (événement) : point ouvert 18 du modèle de données.
+- **Champs hors modèle** (saisis, non enregistrés) : lignes de paliers de déco. (D-16), intervalle
+  de surface d'une successive, niveau par membre de la palanquée (le repository le copie sur la
+  fiche du binôme, D-21). Exclus du test d'aller-retour formulaire → détail.
+- **Suggestions vides** : structures et espèces déjà saisies ne sont pas servies par l'API (champs
+  du détail, absents de `GET /dives`) ; la liste reste vide.
+- **Niveau du plongeur** (avertissement de profondeur, palanquée) : vient de `mockUser`.
+- **RGPD** : le brouillon contient des données de santé **en clair** dans `localStorage`, sous une
+  clé sans id de plongeur (`e-deep:dive-draft:<mode>`) : un autre compte du même navigateur le
+  restaurerait. À chiffrer ou à passer en IndexedDB par plongeur, et à purger au logout. Le
+  brouillon est écrit 1 s après la dernière frappe, et tout de suite à la sortie confirmée, sur
+  `pagehide` / `beforeunload` et au démontage.
+- **Saisie** : le clavier `decimal` d'iOS n'a pas de signe moins (températures négatives) ; il
+  faudra un bouton ± ou `inputMode="text"` sur ces champs.
+- **Mise en page** : deux colonnes (colonne collante à droite) à partir de 1280 px et non 1024
+  comme la spec : entre les deux, la barre collante du bas est gardée (formulaire trop étroit).
+- **Accessibilité** (audit phase 5) : une erreur de palanquée (nom incomplet) est portée par le
+  champ « Ajouter un plongeur », pas par la ligne du membre ; un second enregistrement sans
+  modification ne réannonce pas le résumé d'erreurs (même contenu, le focus va quand même au
+  premier champ) ; un segmented verrouillé (`canEditEvent` faux) n'est plus focalisable et passe à
+  45 % d'opacité. Vérification clavier faite avec Playwright (pas d'axe-core).
+- **Import** de fichiers ou d'un ordinateur de plongée : V2.

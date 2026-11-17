@@ -58,6 +58,21 @@ describe('SegmentedControl', () => {
     expect(screen.getByRole('radiogroup').getAttribute('aria-disabled')).toBe('true');
   });
 
+  it('takes the required, invalid and message wiring of its field', () => {
+    render(
+      <FormField label="Mer" required error="Choisis l’état de la mer.">
+        <SegmentedControl variant="field" options={SEA} value={null} onChange={() => {}} />
+      </FormField>,
+    );
+    const group = screen.getByRole('radiogroup', { name: 'Mer' });
+    expect(group.getAttribute('aria-required')).toBe('true');
+    expect(group.getAttribute('aria-invalid')).toBe('true');
+    expect(group.getAttribute('aria-describedby')).not.toBeNull();
+    expect(document.getElementById(group.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'Choisis l’état de la mer.',
+    );
+  });
+
   it('is named by its label outside a field', () => {
     render(<SegmentedControl label="Période" options={SEA} value="calm" onChange={() => {}} />);
     screen.getByRole('radiogroup', { name: 'Période' });

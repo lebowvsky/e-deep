@@ -221,3 +221,10 @@ export function formatSpeciesCount(count: number): string {
 export function formatNumberInputValue(value: number): string {
   return String(value).replace('.', ',');
 }
+
+const wholeNumber = new Intl.NumberFormat('fr-FR');
+
+/** Counter of a long text: 2048 → "2 048 caractères" · 1 → "1 caractère" */
+export function formatCharacterCount(count: number): string {
+  return `${wholeNumber.format(count)} ${count > 1 ? 'caractères' : 'caractère'}`;
+}

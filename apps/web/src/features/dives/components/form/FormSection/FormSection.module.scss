@@ -135,10 +135,6 @@
   color: $color-text-low;
   text-overflow: ellipsis;
   white-space: nowrap;
-
-  &[data-empty] {
-    color: $color-text-muted;
-  }
 }
 
 .chevron {

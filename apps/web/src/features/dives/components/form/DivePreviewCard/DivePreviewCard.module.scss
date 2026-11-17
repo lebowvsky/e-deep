@@ -21,8 +21,9 @@
   overflow-wrap: anywhere;
   color: $color-text-high;
 
+  // « Site à choisir » is information: textLow (AA), not textMuted.
   &[data-empty] {
-    color: $color-text-muted;
+    color: $color-text-low;
   }
 }
 

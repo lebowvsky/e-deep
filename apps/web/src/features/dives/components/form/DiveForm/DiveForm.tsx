@@ -20,8 +20,7 @@ import {
   type DiveFormValues,
 } from '../../../form/model';
 import type { DiveFormMode } from '../../../form/prefill';
-import { proposeSurfaceInterval, type DiveFormSources } from '../../../form/sources';
-import { deviceUtcOffsetMinutes, toLocalIso } from '../../../form/timeLink';
+import { proposeSurfaceIntervalFor, type DiveFormSources } from '../../../form/sources';
 import { useDiveForm } from '../../../form/useDiveForm';
 import type { ValidationContext } from '../../../form/validation';
 import type { DiveDetailView, LoggedDive } from '../../../types';
@@ -162,16 +161,6 @@ export function DiveForm({
     if (control) scrollToAndFocus(control);
   };
 
-  const intervalSincePreviousDive = (values: DiveFormValues): number | null => {
-    const offset =
-      target.kind === 'update'
-        ? target.utcOffsetMinutes
-        : deviceUtcOffsetMinutes(values.date, values.entryTime);
-    const startedAt = offset === null ? null : toLocalIso(values.date, values.entryTime, offset);
-    if (startedAt === null) return null;
-    return proposeSurfaceInterval(log, startedAt, target.kind === 'update' ? target.diveId : null);
-  };
-
   const save = async () => {
     const outcome = await form.submit();
     switch (outcome.status) {
@@ -257,7 +246,7 @@ export function DiveForm({
             form={form}
             canEditEvent={canEditEvent}
             collapse={collapseOf('run')}
-            proposeSurfaceInterval={intervalSincePreviousDive}
+            proposeSurfaceInterval={(values) => proposeSurfaceIntervalFor(log, values, target)}
           />
           <PalanqueeSection
             form={form}
@@ -300,7 +289,11 @@ export function DiveForm({
         cancelLabel="Rester"
         confirmLabel="Quitter"
         onCancel={() => blocker.reset?.()}
-        onConfirm={() => blocker.proceed?.()}
+        onConfirm={() => {
+          // « Ton brouillon reste disponible »: true even within the draft delay.
+          form.flushDraft();
+          blocker.proceed?.();
+        }}
       />
     </div>
   );

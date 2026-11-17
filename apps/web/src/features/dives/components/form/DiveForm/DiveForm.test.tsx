@@ -22,6 +22,7 @@ interface RenderOptions {
   initialValues?: DiveFormValues;
   saveDive?: SaveDive;
   canEditEvent?: boolean;
+  draftStore?: DiveFormProps['draftStore'];
 }
 
 /** A new dive (#128) in a data router: `/dives` is where « Annuler » leads. */
@@ -29,6 +30,7 @@ function renderNew({
   initialValues = validValues(),
   saveDive = vi.fn<SaveDive>(),
   canEditEvent = true,
+  draftStore = NO_DRAFT,
 }: RenderOptions = {}) {
   const onSaved = vi.fn<(id: string) => void>();
   const form = (
@@ -44,7 +46,7 @@ function renderNew({
       prefill={{ kind: 'none' }}
       canEditEvent={canEditEvent}
       saveDive={saveDive}
-      draftStore={NO_DRAFT}
+      draftStore={draftStore}
       cancelHref="/dives"
       onSaved={onSaved}
     />
@@ -204,7 +206,9 @@ describe('DiveForm — save', () => {
     expect(busy).toHaveLength(2);
     for (const button of busy) {
       expect(button.getAttribute('aria-busy')).toBe('true');
-      expect((button as HTMLButtonElement).disabled).toBe(true);
+      // Still focusable: the focus is not dropped to the page while saving.
+      expect(button.getAttribute('aria-disabled')).toBe('true');
+      expect((button as HTMLButtonElement).disabled).toBe(false);
     }
 
     settle({ ok: true, id: 'd128' });
@@ -212,10 +216,30 @@ describe('DiveForm — save', () => {
   });
 });
 
+describe('DiveForm — removing a row', () => {
+  it('keeps the focus in the form when a member or a stop is removed', async () => {
+    const user = userEvent.setup();
+    renderNew();
+
+    await user.click(screen.getByRole('button', { name: 'Ajouter Lucas Bernard' }));
+    await user.click(screen.getByRole('button', { name: 'Retirer Lucas Bernard' }));
+    expect(screen.queryByRole('button', { name: 'Retirer Lucas Bernard' })).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole('combobox', { name: 'Ajouter un plongeur' }),
+    );
+
+    await user.click(screen.getByRole('switch', { name: 'Paliers de décompression' }));
+    await user.click(screen.getByRole('button', { name: 'Ajouter un palier' }));
+    await user.click(screen.getByRole('button', { name: 'Retirer le palier 1' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ajouter un palier' }));
+  });
+});
+
 describe('DiveForm — leaving', () => {
   it('asks before leaving with unsaved changes: Rester stays, Quitter leaves', async () => {
     const user = userEvent.setup();
-    const { router } = renderNew();
+    const save = vi.fn<DiveFormProps['draftStore']['save']>(() => Promise.resolve());
+    const { router } = renderNew({ draftStore: { ...NO_DRAFT, save } });
 
     await user.clear(input(/^Profondeur max/));
     await user.type(input(/^Profondeur max/), '22');
@@ -232,6 +256,8 @@ describe('DiveForm — leaving', () => {
     const again = screen.getByRole('alertdialog', { name: 'Quitter sans enregistrer ?' });
     await user.click(within(again).getByRole('button', { name: 'Quitter' }));
     expect(router.state.location.pathname).toBe('/dives');
+    // « Ton brouillon reste disponible »: written on leaving, even within the draft delay.
+    expect(save.mock.lastCall?.[1].values.maxDepthM).toBe('22');
   });
 
   it('leaves at once without changes', async () => {

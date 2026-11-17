@@ -16,12 +16,10 @@
     background: $color-success-soft;
   }
 
-  &[data-status='partial'] {
-    box-shadow: inset 0 0 0 $layout-status-ring $color-text-low;
-  }
-
+  // Same ring for both (3:1 at least, SC 1.4.11): the filled half tells them apart.
+  &[data-status='partial'],
   &[data-status='empty'] {
-    box-shadow: inset 0 0 0 $layout-status-ring $color-text-muted;
+    box-shadow: inset 0 0 0 $layout-status-ring $color-text-low;
   }
 }
 

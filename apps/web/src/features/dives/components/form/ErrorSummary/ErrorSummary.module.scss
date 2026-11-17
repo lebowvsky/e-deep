@@ -27,16 +27,20 @@
 .links {
   display: flex;
   flex-wrap: wrap;
-  gap: $space-1 $space-4;
+  gap: 0 $space-4;
   padding: 0 0 0 $space-6;
-  margin: $space-2 0 0;
+  margin: 0;
   list-style: none;
 }
 
 .link {
   @include type($type-body-sm);
   @include focus-ring;
+  @include hit-target;
 
+  // 44px rows instead of an overlapping hit area: the links wrap on several lines.
+  display: inline-flex;
+  align-items: center;
   color: $color-danger;
   text-decoration: underline;
   text-underline-offset: $space-1;

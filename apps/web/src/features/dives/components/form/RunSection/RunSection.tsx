@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import { formatInterval } from '@/shared/lib/format';
 import { Button } from '@/shared/ui/Button';
 import { FormField } from '@/shared/ui/FormField';
@@ -132,6 +132,7 @@ function DecoStops({ form }: DecoStopsProps) {
   const { decoStops } = form.values;
   const error = form.errors.decoStops;
   const errorId = useId();
+  const addRef = useRef<HTMLButtonElement>(null);
   // The message sits under the whole list, not under one field: each stop field points to it.
   const errorProps = error ? { 'aria-invalid': true, 'aria-describedby': errorId } : {};
 
@@ -167,7 +168,11 @@ function DecoStops({ form }: DecoStopsProps) {
               iconSize="sm"
               label={`Retirer le palier ${index + 1}`}
               className={styles.remove}
-              onClick={() => form.removeDecoStop(stop.key)}
+              onClick={() => {
+                form.removeDecoStop(stop.key);
+                // The removed button took the focus with it: keep it in the list.
+                addRef.current?.focus();
+              }}
             />
           </div>
         </fieldset>
@@ -179,6 +184,7 @@ function DecoStops({ form }: DecoStopsProps) {
         </p>
       )}
       <Button
+        ref={addRef}
         variant="ghost"
         icon="plus"
         className={styles.add}

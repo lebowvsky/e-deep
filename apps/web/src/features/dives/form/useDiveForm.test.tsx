@@ -75,6 +75,47 @@ describe('draft', () => {
     expect(store.save).not.toHaveBeenCalled();
   });
 
+  it('writes the pending draft at once on flushDraft, then not again at the delay', async () => {
+    const { hook, store, drafts } = setup();
+    await flush();
+    act(() => hook.result.current.change('notes', 'Mérou'));
+    act(() => hook.result.current.flushDraft());
+    expect(store.save).toHaveBeenCalledTimes(1);
+    expect(drafts.get(KEY)?.values.notes).toBe('Mérou');
+    await act(() => vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS));
+    expect(store.save).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['pagehide', 'beforeunload'])('writes the pending draft on %s', async (type) => {
+    const { hook, drafts } = setup();
+    await flush();
+    act(() => hook.result.current.change('notes', 'Mérou'));
+    act(() => {
+      window.dispatchEvent(new Event(type));
+    });
+    expect(drafts.get(KEY)?.values.notes).toBe('Mérou');
+  });
+
+  it('writes the pending draft when the form unmounts within the delay', async () => {
+    const { hook, drafts } = setup();
+    await flush();
+    act(() => hook.result.current.change('notes', 'Mérou'));
+    hook.unmount();
+    expect(drafts.get(KEY)?.values.notes).toBe('Mérou');
+  });
+
+  it('writes nothing on flush or unmount once the dive is saved, nor when untouched', async () => {
+    const { hook, store } = setup();
+    await flush();
+    act(() => hook.result.current.flushDraft());
+    act(() => hook.result.current.change('notes', 'Mérou'));
+    await act(async () => {
+      await hook.result.current.submit();
+    });
+    hook.unmount();
+    expect(store.save).not.toHaveBeenCalled();
+  });
+
   it('restores the draft of the mode, and discards it on demand', async () => {
     const { store } = memoryStore({
       [KEY]: { values: validValues({ notes: 'brouillon' }), savedAt: 1 },

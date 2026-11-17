@@ -73,12 +73,8 @@ export function FormSection({
               <span className={styles.heading}>
                 {title}
                 {!isOpen && (
-                  <span
-                    className={styles.summary}
-                    data-empty={collapse.status.status === 'empty' ? '' : undefined}
-                  >
-                    {collapse.summary}
-                  </span>
+                  // textLow even when empty: « Rien pour l'instant » is information (AA).
+                  <span className={styles.summary}>{collapse.summary}</span>
                 )}
               </span>
               {!isOpen && (

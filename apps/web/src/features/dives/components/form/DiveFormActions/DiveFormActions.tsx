@@ -7,7 +7,10 @@ import styles from './DiveFormActions.module.scss';
 export interface DiveFormActionsProps {
   /** « Enregistrer la plongée » or « Enregistrer les modifications ». */
   submitLabel: string;
-  /** A save is running: « Enregistrement… », disabled and `aria-busy`. */
+  /**
+   * A save is running: « Enregistrement… », `aria-disabled` and `aria-busy`. Not `disabled`, which
+   * would drop the focus to the page; a second submit is refused by the form.
+   */
   isBusy: boolean;
   /** Where « Annuler » goes. */
   cancelHref: string;
@@ -38,7 +41,7 @@ export function DiveFormActions({
       size="lg"
       icon="check"
       className={styles.save}
-      disabled={isBusy}
+      aria-disabled={isBusy || undefined}
       aria-busy={isBusy || undefined}
     >
       {isBusy ? 'Enregistrement…' : submitLabel}

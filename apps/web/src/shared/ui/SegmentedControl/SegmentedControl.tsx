@@ -73,6 +73,7 @@ export function SegmentedControl<T extends string>({
       aria-labelledby={field?.labelId}
       aria-describedby={field?.describedBy}
       aria-required={field?.required ? true : undefined}
+      aria-invalid={field?.status === 'error' ? true : undefined}
       aria-disabled={isDisabled ? true : undefined}
       className={cx(styles.group, styles[variant], isDisabled && styles.disabled, className)}
       onKeyDown={onKeyDown}

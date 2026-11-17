@@ -10,6 +10,7 @@
 
 .segment {
   @include focus-ring;
+  @include hit-area;
 
   flex: 1;
   min-width: 0;

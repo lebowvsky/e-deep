@@ -5,6 +5,9 @@
 import type { DiveMember } from '@/shared/model/dive';
 import { computeFacets } from '../lib/selectDives';
 import type { LoggedDive } from '../types';
+import type { DiveFormTarget } from './convert';
+import type { DiveFormValues } from './model';
+import { deviceUtcOffsetMinutes, toLocalIso } from './timeLink';
 
 export interface DiveFormSiteOption {
   id: string;
@@ -96,4 +99,22 @@ export function proposeSurfaceInterval(
   if (latestEnd === null) return null;
   const interval = Math.round((start - latestEnd) / MS_PER_MINUTE);
   return interval > 0 && interval < REPETITIVE_WINDOW_MIN ? interval : null;
+}
+
+/**
+ * `proposeSurfaceInterval` for the dive being entered: its start read from the form, in the offset
+ * of the edited dive or else of the device; `null` until the date and the immersion are valid.
+ */
+export function proposeSurfaceIntervalFor(
+  log: readonly LoggedDive[],
+  values: Pick<DiveFormValues, 'date' | 'entryTime'>,
+  target: DiveFormTarget,
+): number | null {
+  const offset =
+    target.kind === 'update'
+      ? target.utcOffsetMinutes
+      : deviceUtcOffsetMinutes(values.date, values.entryTime);
+  const startedAt = offset === null ? null : toLocalIso(values.date, values.entryTime, offset);
+  if (startedAt === null) return null;
+  return proposeSurfaceInterval(log, startedAt, target.kind === 'update' ? target.diveId : null);
 }

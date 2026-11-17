@@ -20,7 +20,8 @@
     color $dur-base $ease-out,
     box-shadow $dur-base $ease-out;
 
-  &:disabled {
+  &:disabled,
+  &[aria-disabled='true'] {
     cursor: not-allowed;
     opacity: $opacity-busy;
   }
