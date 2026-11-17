@@ -9,6 +9,8 @@
 > (D-13 à D-22, H-17, H-18), à partir de `evolution-champs-detail-plongee.md`. Réponses du
 > porteur : niveau des autres membres sur le contact, détail des paliers de déco reporté, tous les
 > champs obligatoires au push.
+> **Révision du 2026-11-18** : API d'écriture des plongées (D-23 à D-26) ; le porteur garde LWW
+> strict en ligne (D-25).
 > **Numérotation** : les décisions du modèle s'écrivent `D-xx` (avec tiret) ; celles
 > d'`ARCHITECTURE.md` §10 s'écrivent `Dxx` (sans tiret). D-13 à D-22 ici ne sont pas D13 à D22
 > là-bas.
@@ -685,6 +687,98 @@ Réponse à la question 8 de la note d'évolution (impact offline).
 - **Réversibilité** : moyenne. Assouplir la règle plus tard est facile ; la durcir après des
   clients déployés le serait moins.
 
+### D-23 — Site créé par son nom seul : région et position facultatives
+
+Révision du **2026-11-18** (API d'écriture des plongées, `api-ecriture-plongee-prompt.md`).
+
+- **Contexte** : le formulaire de plongée crée un site par son seul nom (« Tombant des
+  Américains ») ; région, latitude et longitude sont inconnues à la saisie. Le schéma les exigeait
+  (`NOT NULL`), d'où des valeurs inventées (`0, 0`, région vide) dans le dépôt en mémoire du front.
+- **Options étudiées** : valeurs sentinelles (`0,0` est un vrai point du golfe de Guinée, une région
+  vide viole `ck_dive_sites__region`) ; table des sites « brouillons » (deux modèles pour une même
+  chose) ; **colonnes nullables**.
+- **Décision** : migration `AllowDiveSiteWithoutPosition` : `dive_sites.region`, `latitude` et
+  `longitude` deviennent **NULL** (`NULL` = non renseigné, comme D-13 à D-22). Les `CHECK` existants
+  acceptent `NULL` ; nouveau `ck_dive_sites__position` : latitude et longitude **ensemble ou aucune**.
+  `DiveSiteWrite` porte `region: string | null`, `latitude` / `longitude: number | null`, toujours
+  **requis** au push (D-22).
+- **Conséquences** : le contrat de lecture suit (`DiveSiteRef.region`, position du site dans
+  `DiveDetail` et `DashboardSite` nullables), déployé **front d'abord** : la carte du dashboard ignore
+  un site sans position, le détail affiche « Position non renseignée », les facettes de région
+  ignorent `null`. Le `down()` échoue tant qu'un site sans région ou sans position existe.
+- **Réversibilité** : moyenne (il faudrait compléter les sites concernés avant de revenir en
+  `NOT NULL`).
+
+### D-24 — Endpoints REST d'écriture d'une plongée
+
+Révision du **2026-11-18**.
+
+- **Contexte** : le formulaire enregistrait dans un dépôt en mémoire. La synchronisation en lot
+  hors ligne (D-03, D-12) viendra plus tard, au-dessus des mêmes services.
+- **Décision** :
+  - `POST /api/dives` (création, **201**) et `PUT /api/dives/:id` (remplacement complet, **200** ;
+    D-22 impose d'envoyer tous les champs, d'où `PUT`). L'`id` de l'URL doit être égal à
+    `event.id` (sinon 400). Réponse `DiveWriteResponse` : `id`, `number` (calculé, D26
+    d'`ARCHITECTURE.md`) et `updatedAt`.
+  - **Une transaction** par requête : site créé par son nom, binômes créés par leur nom (et niveau
+    d'un binôme existant mis à jour, D-21), puis l'agrégat de `upsertDive` (événement,
+    participation, palanquée, observations). Les services exposent une variante qui reçoit
+    l'`EntityManager` ; leur méthode publique l'enveloppe dans sa propre transaction.
+  - L'id de la **participation** n'est pas envoyé : le serveur réutilise celle du plongeur pour
+    l'événement, sinon en tire une. Au `PUT`, le **snapshot de niveau** de la participation (D-09)
+    est conservé.
+  - **Propriété** : le plongeur vient de `CurrentDiverGuard`. Un `PUT` sur une plongée absente,
+    supprimée ou d'un autre plongeur → **404** générique (pas de création ni de restauration par
+    `PUT`). Un site, un binôme ou un niveau inconnu **ou** d'un autre plongeur → même **422**
+    `invalid-reference`.
+  - **Idempotence du POST** : si l'id existe déjà chez le plongeur, vivant, avec un contenu
+    identique (comparaison de l'agrégat normalisé), la réponse est **200** avec le même corps, sans
+    écriture ; un contenu différent, une plongée supprimée ou un id d'un autre plongeur → **409**
+    `identifier-conflict`, au corps identique dans les trois cas.
+  - L'API accepte tout UUID (le front tire encore des v4) ; UUIDv7 (D-02) reste à faire côté front.
+- **Réversibilité** : élevée (routes additives).
+
+### D-25 — Canal en ligne : LWW strict, sans contrôle optimiste
+
+Révision du **2026-11-18**. **Décision du porteur**.
+
+- **Contexte** : le brief de l'API proposait un 409 « la plongée a été modifiée ailleurs » sur le
+  `PUT`, ce qui contredit D-03 (LWW par enregistrement, verrou optimiste écarté).
+- **Décision** : D-03 s'applique **tel quel** au `PUT` : la dernière écriture arrivée gagne.
+  `baseUpdatedAt` (requis, `updatedAt` du détail lu) ne sert qu'à la règle de la tombstone (D-12 a) ;
+  une plongée supprimée entre-temps répond 404 (§9 d'`ARCHITECTURE.md`). Le contrôle de l'horizon
+  de purge (D-12 d) est propre à la synchronisation en lot : en ligne, le client vient de lire l'état
+  serveur (`lastPulledAt` = maintenant).
+- **Conséquences** : deux onglets qui modifient la même plongée : le dernier enregistrement écrase
+  l'autre, sans avertissement (limite assumée de D-03).
+- **Réversibilité** : élevée (un contrôle `updatedAt > baseUpdatedAt` → 409 s'ajoute sans migration).
+
+### D-26 — Erreurs de l'API : par champ et par code métier
+
+Révision du **2026-11-18**.
+
+- **Décision** :
+  - **Validation** (DTO `class-validator`) → **400**
+    `{ statusCode, code: 'validation-failed', fieldErrors }`, où `fieldErrors` associe le **chemin**
+    du champ dans le corps (`participation.maxDepthM`, `observations.3.label`, `buddies.0.lastName`)
+    à une liste de **codes** de contrainte (`required`, `type`, `min`, `max`, `in`, `length`,
+    `pair`, `o2-other-only`, `before-duration`, `above-max-depth`, `above-start-pressure`,
+    `duplicate`, `too-many`, `matches-route`…). **Jamais la valeur reçue** (données de santé). Les
+    messages sont écrits par le front.
+  - Les DTO couvrent toutes les bornes des `CHECK` (H-10, H-17, RG-23, RG-25, pressions) : une
+    violation de contrainte en base reste une 500 (bug).
+  - **Erreurs métier** : table exhaustive `DomainErrorCode → statut`, appliquée par le filtre
+    d'exceptions, corps `{ statusCode, code }` :
+
+    | Code                                                                              | Statut |
+    | --------------------------------------------------------------------------------- | ------ |
+    | `duplicate-observation`, `too-many-observations`                                  | 400    |
+    | `identifier-conflict`, `buddy-link-conflict`, `site-in-use`, `full-sync-required` | 409    |
+    | `invalid-reference`, `inactive-certification-level`                               | 422    |
+    | `unsupported-contract-value` (bug de mapping du serveur)                          | 500    |
+
+- **Réversibilité** : élevée.
+
 ## Dénormalisations et snapshots
 
 | Donnée copiée                    | Où                    | Type                             | Mécanisme                                                                                                                                                                         |
@@ -764,7 +858,8 @@ Données de plongée absentes des sources, **non ajoutées** :
     partagés entre les plongeurs » est donc inexacte pour la palanquée. Le modèle est conservé ; la
     copie de la page est à revoir avec le partage.
 19. **Suppression depuis le détail** : la spec ne retire que « ta participation », H-16 tombstone en
-    MVP l'événement et la participation. À trancher avec les endpoints d'écriture.
+    MVP l'événement et la participation. Toujours ouverte : les endpoints d'écriture (D-24) ne
+    couvrent pas la suppression.
 20. **Mise à jour d'un client périmé** (D-22) : comment la PWA signale-t-elle qu'elle doit se mettre
     à jour avant de pousser (version de protocole, code d'erreur dédié) ?
 
