@@ -1,9 +1,8 @@
 @use '@/styles/tokens' as *;
 
-// dives-list.jsx · Période — abyss track, 36px segments, mono 12.
+// Abyss track with a hairline ring, the checked option raised on surface-2.
 .group {
   display: flex;
-  padding: $layout-hairline;
   background: $color-abyss;
   border-radius: $radius-md;
   box-shadow: inset 0 0 0 1px $color-line;
@@ -11,21 +10,21 @@
 
 .segment {
   @include focus-ring;
-  @include type($type-unit-sm, $font: $font-mono, $tabular: true);
 
   flex: 1;
   min-width: 0;
-  height: $layout-segment-height;
-  padding: 0 $space-2;
   color: $color-text-low;
   white-space: nowrap;
   cursor: pointer;
   background: transparent;
-  border-radius: $radius-sm;
   transition: color $dur-fast $ease-out;
 
-  &:hover {
+  &:hover:not(:disabled) {
     color: $color-text-high;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
   }
 }
 
@@ -33,4 +32,41 @@
   color: $color-text-high;
   background: $color-surface-2;
   box-shadow: inset 0 0 0 1px $color-line-strong;
+}
+
+// dives-list.jsx · Période — 36px segments, mono 12.
+.compact {
+  padding: $layout-hairline;
+
+  .segment {
+    @include type($type-unit-sm, $font: $font-mono, $tabular: true);
+
+    height: $layout-segment-height;
+    padding: 0 $space-2;
+    border-radius: $radius-sm;
+  }
+}
+
+// dive-form.jsx · Segmented — 40px track, padding 3, gap 2, sans 13, checked 500.
+.field {
+  gap: $layout-hairline;
+  padding: $layout-control-inset;
+
+  .segment {
+    @include type($type-data);
+
+    height: calc(#{$layout-control-height} - 2 * #{$layout-control-inset});
+    padding: 0 $space-2;
+    border-radius: $radius-segment;
+  }
+
+  .checked {
+    @include type($type-body-sm);
+  }
+}
+
+// Locked: same layout, the choice reads as fixed.
+.disabled {
+  box-shadow: none;
+  opacity: $opacity-disabled;
 }

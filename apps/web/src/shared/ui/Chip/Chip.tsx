@@ -42,13 +42,24 @@ export interface RemovableChipProps {
   /** Accessible name of the remove button: « Retirer le filtre Région : Bretagne ». */
   removeLabel: string;
   onRemove: () => void;
+  /** accent: applied filter (default) · neutral: entered value, e.g. a species tag. */
+  tone?: 'accent' | 'neutral';
   className?: string | undefined;
 }
 
-/** Applied filter, 30px high, with a remove button (dives-list.jsx · Chip). */
-export function RemovableChip({ children, removeLabel, onRemove, className }: RemovableChipProps) {
+/**
+ * Removable value, 30px high, with a remove button: applied filter (dives-list.jsx · Chip) or tag
+ * of a `TagInput` (dive-form.jsx · Chip).
+ */
+export function RemovableChip({
+  children,
+  removeLabel,
+  onRemove,
+  tone = 'accent',
+  className,
+}: RemovableChipProps) {
   return (
-    <span className={cx(styles.removable, className)}>
+    <span className={cx(styles.removable, tone === 'neutral' && styles.neutral, className)}>
       {children}
       <button type="button" className={styles.remove} aria-label={removeLabel} onClick={onRemove}>
         <Icon name="close" size="xs" weight="bold" />

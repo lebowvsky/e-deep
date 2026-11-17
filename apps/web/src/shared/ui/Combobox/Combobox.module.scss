@@ -1,0 +1,142 @@
+@use '@/styles/tokens' as *;
+
+.root {
+  position: relative;
+}
+
+// Under the field, 6px away (dive-form.jsx · SiteCombobox): padding 6, radius lg, surface-2,
+// raised. Holds the listbox and, at the bottom, the keyboard hint (kept on the card so it never
+// overlaps the page below).
+.popup {
+  position: absolute;
+  top: calc(100% + #{$layout-listbox-pad});
+  right: 0;
+  left: 0;
+  z-index: 20;
+  padding: $layout-listbox-pad;
+  background: $color-surface-2;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-popover;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.listbox {
+  max-height: $layout-listbox-max-height;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.groupLabel {
+  @include overline;
+
+  padding: $space-2 $space-3 $layout-listbox-pad;
+}
+
+// Option — 52px, gap 12, radius md (padding 12 instead of 10: no token for 10 on the 4px scale).
+.option {
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  min-height: $layout-option-height;
+  padding: $space-1 $space-3;
+  cursor: pointer;
+  border-radius: $radius-md;
+}
+
+.active {
+  background: $color-chip-fill;
+}
+
+.optionIcon {
+  flex-shrink: 0;
+  color: $color-text-low;
+
+  .active & {
+    color: $color-accent;
+  }
+}
+
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.label {
+  @include type($type-body-med);
+
+  overflow: hidden;
+  color: $color-text-high;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.description {
+  @include type($type-field-hint);
+
+  color: $color-text-low;
+}
+
+.mark {
+  color: $color-accent;
+  background: transparent;
+}
+
+.meta {
+  @include type($type-chip, $font: $font-mono, $tabular: true);
+
+  flex-shrink: 0;
+  color: $color-text-low;
+  white-space: nowrap;
+}
+
+// Creation option: accent label and plus, after a hairline when options precede it.
+.create {
+  .label,
+  .optionIcon {
+    color: $color-accent;
+  }
+}
+
+.separated {
+  position: relative;
+  margin-top: $space-3;
+
+  &::before {
+    position: absolute;
+    top: calc(-1 * #{$layout-listbox-pad});
+    right: $space-1;
+    left: $space-1;
+    height: 1px;
+    content: '';
+    background: $color-line;
+  }
+}
+
+.empty {
+  @include type($type-body);
+
+  padding: $space-2 $space-3;
+  color: $color-text-low;
+}
+
+// ↑↓ · Entrée · Échap — mono 10, last line of the card; useless on touch screens.
+.keyboardHint {
+  @include type($type-meta, $font: $font-mono);
+
+  padding: $space-2 $space-3 $space-1;
+  color: $color-text-low;
+  border-top: 1px solid $color-line;
+
+  @media (pointer: coarse) {
+    display: none;
+  }
+}

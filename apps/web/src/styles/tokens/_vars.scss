@@ -60,6 +60,7 @@
   --dl-radius-xxs: 2px;
   --dl-radius-xs: 4px;
   --dl-radius-sm: 6px;
+  --dl-radius-segment: 8px;
   --dl-radius-md: 10px;
   --dl-radius-lg: 14px;
   --dl-radius-xl: 20px;
@@ -80,6 +81,7 @@
   --dl-shadow-ring-surface-2: 0 0 0 2px #1B3156;
   --dl-shadow-thumb: 0 0 0 4px rgba(79, 214, 201, 0.14);
   --dl-shadow-sheet: inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5);
+  --dl-shadow-field-focus: 0 0 0 3px rgba(79, 214, 201, 0.18);
   --dl-gradient-page-mobile: radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%);
   --dl-gradient-page-desktop: radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%);
   --dl-gradient-map-empty: radial-gradient(900px 400px at 50% 60%, rgba(27, 49, 86, 0.35), transparent 70%);
@@ -194,4 +196,16 @@
   --dl-layout-pager-tile-min-height: 64px;
   --dl-layout-site-marker-dot: 10px;
   --dl-layout-notes-max-width: 680px;
+  --dl-layout-field-gap: 6px;
+  --dl-layout-input-height: 44px;
+  --dl-layout-input-gap: 10px;
+  --dl-layout-control-inset: 3px;
+  --dl-layout-switch-width: 44px;
+  --dl-layout-switch-height: 26px;
+  --dl-layout-switch-thumb: 20px;
+  --dl-layout-option-height: 52px;
+  --dl-layout-listbox-pad: 6px;
+  --dl-layout-listbox-max-height: 320px;
+  --dl-layout-textarea-min-height: 120px;
+  --dl-layout-dialog-width: 400px;
 }

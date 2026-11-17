@@ -84,6 +84,33 @@ export const ICON_PATHS = {
   arrowRight: <path d="M5 12h14M13 5l7 7-7 7" />,
   chevronLeft: <path d="M15 6l-6 6 6 6" />,
   check: <path d="m5 12 5 5 9-10" />,
+  alert: (
+    <>
+      <path d="M12 3 2 20h20L12 3z" />
+      <path d="M12 10v4" />
+      <path d="M12 17v.5" />
+    </>
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 8v.5" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M4 10h16M9 3v4M15 3v4" />
+    </>
+  ),
+  link: (
+    <>
+      <path d="M9 7H7a5 5 0 0 0 0 10h2" />
+      <path d="M15 7h2a5 5 0 0 1 0 10h-2" />
+      <path d="M8 12h8" />
+    </>
+  ),
   download: (
     <>
       <path d="M12 4v11" />

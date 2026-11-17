@@ -1,0 +1,81 @@
+@use '@/styles/tokens' as *;
+
+// Above the page and the sheets.
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: $space-4;
+
+  @include from($bp-tablet) {
+    align-items: center;
+  }
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: $color-scrim;
+  backdrop-filter: blur($layout-blur-scrim);
+  animation: fade-in $dur-base $ease-out;
+}
+
+.panel {
+  @include card(2);
+
+  position: relative;
+  width: 100%;
+  max-width: $layout-dialog-width;
+  padding: $space-6;
+  box-shadow: $shadow-popover;
+  animation: rise $dur-base $ease-out;
+}
+
+.title {
+  @include type($type-h-2);
+
+  color: $color-text-high;
+}
+
+.description {
+  @include type($type-body);
+
+  margin-top: $space-2;
+  color: $color-text-med;
+}
+
+// Full-width buttons on phones, right-aligned from the tablet.
+.actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: $space-3;
+  margin-top: $space-6;
+
+  @include from($bp-tablet) {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY($space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim,
+  .panel {
+    animation: none;
+  }
+}

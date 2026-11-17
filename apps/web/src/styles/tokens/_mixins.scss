@@ -113,3 +113,97 @@
   white-space: nowrap;
   border: 0;
 }
+
+// Frame of a form field (dive-form.jsx · Input): surface-0 box with an inset ring that follows the
+// state. The box carries the state, the bare control inside uses `field-control`.
+//   data-status="warning" | "error" · data-locked (read-only or disabled)
+@mixin field-box {
+  background: $color-surface-0;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+  transition: box-shadow $dur-fast $ease-out;
+
+  &[data-status='warning'] {
+    box-shadow: inset 0 0 0 1px $color-warning;
+  }
+
+  &[data-status='error'] {
+    box-shadow: inset 0 0 0 1px $color-danger;
+  }
+
+  &[data-locked] {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px $color-line;
+  }
+
+  // The halo is the focus indicator of the field (the control inside has no outline).
+  &:focus-within {
+    box-shadow:
+      inset 0 0 0 1px $color-accent,
+      $shadow-field-focus;
+  }
+
+  &[data-status='warning']:focus-within {
+    box-shadow:
+      inset 0 0 0 1px $color-warning,
+      $shadow-field-focus;
+  }
+
+  &[data-status='error']:focus-within {
+    box-shadow:
+      inset 0 0 0 1px $color-danger,
+      $shadow-field-focus;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+// Bare control inside a `field-box`: no frame of its own, sans placeholder used as an example only.
+@mixin field-control {
+  min-width: 0;
+  padding: 0;
+  color: $color-text-high;
+  background: transparent;
+  border: 0;
+  outline: none;
+
+  &::placeholder {
+    @include type($type-body);
+
+    color: $color-text-muted;
+    opacity: 1;
+  }
+
+  &:disabled {
+    color: $color-text-low;
+    cursor: not-allowed;
+  }
+}
+
+// Native date / time input inside a `field-box`: tokens on its parts, no picker icon (the field
+// opens the picker on click, typing stays available).
+@mixin native-datetime {
+  &::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+
+  &::-webkit-datetime-edit-text {
+    color: $color-text-low;
+  }
+
+  &::-webkit-datetime-edit-day-field:focus,
+  &::-webkit-datetime-edit-month-field:focus,
+  &::-webkit-datetime-edit-year-field:focus,
+  &::-webkit-datetime-edit-hour-field:focus,
+  &::-webkit-datetime-edit-minute-field:focus {
+    color: $color-accent-ink;
+    background: $color-accent;
+    border-radius: $radius-xxs;
+  }
+
+  &::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+}

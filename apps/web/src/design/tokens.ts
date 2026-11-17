@@ -110,6 +110,8 @@ export const type = {
   title: { size: 24, lh: 30, w: 600, ls: -0.4 }, // empty dive log title
   measure: { size: 15, lh: 20, w: 500, ls: 0 }, // mono — mobile dive card measures
   runTime: { size: 22, lh: 26, w: 600, ls: -0.4 }, // mono — dive run immersion / exit (dive-detail.jsx)
+  fieldValue: { size: 15, lh: 20, w: 400, ls: 0 }, // mono — numbers typed in a form field (dive-form.jsx)
+  fieldHint: { size: 12, lh: 17, w: 400, ls: 0 }, // field help and messages (dive-form.jsx · Field)
 } as const;
 
 // 4px scale
@@ -128,7 +130,17 @@ export const space = {
   11: 80,
 } as const;
 
-export const radius = { xxs: 2, xs: 4, sm: 6, md: 10, lg: 14, xl: 20, pill: 999 } as const;
+// segment: option of a form segmented control (dive-form.jsx · Segmented).
+export const radius = {
+  xxs: 2,
+  xs: 4,
+  sm: 6,
+  segment: 8,
+  md: 10,
+  lg: 14,
+  xl: 20,
+  pill: 999,
+} as const;
 
 export const shadow = {
   card: 'inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 6px 24px rgba(0, 0, 0, 0.35)',
@@ -147,6 +159,7 @@ export const shadow = {
   ringSurface2: '0 0 0 2px #1B3156', // overlapping avatars on a hovered row (surface2)
   thumb: '0 0 0 4px rgba(79, 214, 201, 0.14)', // range slider handle
   sheet: 'inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5)',
+  fieldFocus: '0 0 0 3px rgba(79, 214, 201, 0.18)', // halo around a focused form field (dive-form.jsx)
 } as const;
 
 // Page backgrounds: abyss + two discreet radial glows (dashboard mockups).
@@ -287,6 +300,19 @@ export const layout = {
   pagerTileMinHeight: 64, // previous / next tiles on phones
   siteMarkerDot: 10, // dot inside the site marker of the mini map
   notesMaxWidth: 680, // reading width of the dive notes
+  // Dive form (dive-form.jsx)
+  fieldGap: 6, // label → control → message
+  inputHeight: 44,
+  inputGap: 10, // icon, value, unit inside a field
+  controlInset: 3, // inner padding of the form segmented control and of the switch thumb
+  switchWidth: 44,
+  switchHeight: 26,
+  switchThumb: 20,
+  optionHeight: 52, // combobox option (two lines)
+  listboxPad: 6,
+  listboxMaxHeight: 320,
+  textareaMinHeight: 120,
+  dialogWidth: 400,
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.

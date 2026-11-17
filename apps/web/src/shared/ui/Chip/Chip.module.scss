@@ -69,3 +69,21 @@
   background: $color-accent-soft;
   border-radius: $radius-pill;
 }
+
+// dive-form.jsx · Chip — neutral fill, 13px textMed, remove icon in textLow.
+.neutral {
+  @include type($type-data);
+
+  color: $color-text-med;
+  background: $color-chip-fill;
+  box-shadow: inset 0 0 0 1px $color-line;
+
+  .remove {
+    color: $color-text-low;
+    background: transparent;
+
+    &:hover {
+      color: $color-text-high;
+    }
+  }
+}

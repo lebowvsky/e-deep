@@ -1,0 +1,48 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · Field — column, 6px gap, label 13/500 textMed.
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: $layout-field-gap;
+  min-width: 0;
+}
+
+.label {
+  @include type($type-body-sm);
+
+  align-self: flex-start;
+  color: $color-text-med;
+}
+
+.required {
+  color: $color-accent;
+}
+
+.hint,
+.message {
+  @include type($type-field-hint);
+}
+
+.hint {
+  color: $color-text-low;
+}
+
+.message {
+  display: flex;
+  gap: $layout-field-gap;
+  align-items: flex-start;
+}
+
+// 14px icon aligned on the first line (17px).
+.icon {
+  margin-top: 1px;
+}
+
+.warning {
+  color: $color-warning;
+}
+
+.error {
+  color: $color-danger;
+}

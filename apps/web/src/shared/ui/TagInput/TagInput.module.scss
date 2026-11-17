@@ -1,0 +1,58 @@
+@use '@/styles/tokens' as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+// dive-form.jsx · Espèces — min 44px, padding 6 8, gap 8, tags wrap.
+.box {
+  @include field-box;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  align-items: center;
+  min-height: $layout-input-height;
+  padding: $layout-listbox-pad $space-2;
+  cursor: text;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  padding: 0;
+  list-style: none;
+}
+
+.input {
+  @include field-control;
+  @include type($type-body);
+
+  flex: 1;
+  min-width: $space-11;
+  height: $layout-filter-height;
+  padding: 0 $space-1;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  padding: 0;
+  list-style: none;
+}
+
+// dive-form.jsx · Fréquents — 30px outlined pill, 12px textMed.
+.suggestion {
+  @include type($type-caption);
+
+  height: $layout-filter-height;
+  background: transparent;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

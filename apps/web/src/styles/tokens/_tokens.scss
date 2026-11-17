@@ -83,6 +83,8 @@ $type-label: (13px, 18px, 600, 0);
 $type-title: (24px, 30px, 600, -0.4px);
 $type-measure: (15px, 20px, 500, 0);
 $type-run-time: (22px, 26px, 600, -0.4px);
+$type-field-value: (15px, 20px, 400, 0);
+$type-field-hint: (12px, 17px, 400, 0);
 
 // Space (4px scale)
 $space-0: 0;
@@ -102,6 +104,7 @@ $space-11: 80px;
 $radius-xxs: 2px;
 $radius-xs: 4px;
 $radius-sm: 6px;
+$radius-segment: 8px;
 $radius-md: 10px;
 $radius-lg: 14px;
 $radius-xl: 20px;
@@ -124,6 +127,7 @@ $shadow-peak: 0 0 16px rgba(79, 214, 201, 0.3);
 $shadow-ring-surface-2: 0 0 0 2px #1B3156;
 $shadow-thumb: 0 0 0 4px rgba(79, 214, 201, 0.14);
 $shadow-sheet: inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5);
+$shadow-field-focus: 0 0 0 3px rgba(79, 214, 201, 0.18);
 
 // Gradient
 $gradient-page-mobile: radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%);
@@ -253,3 +257,15 @@ $layout-run-bar-height: 10px;
 $layout-pager-tile-min-height: 64px;
 $layout-site-marker-dot: 10px;
 $layout-notes-max-width: 680px;
+$layout-field-gap: 6px;
+$layout-input-height: 44px;
+$layout-input-gap: 10px;
+$layout-control-inset: 3px;
+$layout-switch-width: 44px;
+$layout-switch-height: 26px;
+$layout-switch-thumb: 20px;
+$layout-option-height: 52px;
+$layout-listbox-pad: 6px;
+$layout-listbox-max-height: 320px;
+$layout-textarea-min-height: 120px;
+$layout-dialog-width: 400px;
