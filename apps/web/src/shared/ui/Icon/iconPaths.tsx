@@ -84,6 +84,33 @@ export const ICON_PATHS = {
   arrowRight: <path d="M5 12h14M13 5l7 7-7 7" />,
   chevronLeft: <path d="M15 6l-6 6 6 6" />,
   check: <path d="m5 12 5 5 9-10" />,
+  alert: (
+    <>
+      <path d="M12 3 2 20h20L12 3z" />
+      <path d="M12 10v4" />
+      <path d="M12 17v.5" />
+    </>
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 8v.5" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M4 10h16M9 3v4M15 3v4" />
+    </>
+  ),
+  link: (
+    <>
+      <path d="M9 7H7a5 5 0 0 0 0 10h2" />
+      <path d="M15 7h2a5 5 0 0 1 0 10h-2" />
+      <path d="M8 12h8" />
+    </>
+  ),
   download: (
     <>
       <path d="M12 4v11" />
@@ -142,6 +169,27 @@ export const ICON_PATHS = {
     <>
       <circle cx="12" cy="12" r="4" />
       <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </>
+  ),
+  // dive-form.jsx · Ix.copy (prefill banner, « Dupliquer »).
+  copy: (
+    <>
+      <rect x="8" y="8" width="12" height="12" rx="2" />
+      <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
+    </>
+  ),
+  // dive-form.jsx · Ix.cloud (draft saved on the device).
+  cloud: (
+    <>
+      <path d="M7 18h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.5A3.5 3.5 0 0 0 7 18z" />
+      <path d="m9.5 13.5 2 2 3.5-4" />
+    </>
+  ),
+  // dive-detail.jsx · « Modifier ma plongée ».
+  pencil: (
+    <>
+      <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z" />
+      <path d="m13.5 6.5 4 4" />
     </>
   ),
   waves: (

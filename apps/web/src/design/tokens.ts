@@ -15,6 +15,9 @@ export const color = {
   surface3: '#24406D', // marker rings, chips, hover on surface2
   line: 'rgba(154, 186, 224, 0.10)', // hairline divider
   lineStrong: 'rgba(154, 186, 224, 0.18)',
+  // a11y (form review): ring of a form field, ≥ 3:1 on surface0 and surface1 (SC 1.4.11). The
+  // mockup's lineStrong (≈ 1.3:1) left an empty field without a visible edge.
+  lineField: 'rgba(154, 186, 224, 0.6)',
 
   // Text emphasis scale
   textHigh: '#EAF2FB', // AAA on surface0 (~16:1) — titles + KPI
@@ -36,6 +39,7 @@ export const color = {
   warningSoft: 'rgba(231, 178, 74, 0.12)',
   danger: '#E47C81', // a11y (phase 5): was #E06A70, 4.1:1 on its soft background
   dangerSoft: 'rgba(228, 124, 129, 0.12)',
+  dangerLine: 'rgba(228, 124, 129, 0.45)', // ring of the error summary (dive-form.jsx · mobile)
 
   // Controls — secondary button fill (atoms.jsx · Btn secondary)
   controlFill: 'rgba(154, 186, 224, 0.06)',
@@ -110,6 +114,8 @@ export const type = {
   title: { size: 24, lh: 30, w: 600, ls: -0.4 }, // empty dive log title
   measure: { size: 15, lh: 20, w: 500, ls: 0 }, // mono — mobile dive card measures
   runTime: { size: 22, lh: 26, w: 600, ls: -0.4 }, // mono — dive run immersion / exit (dive-detail.jsx)
+  fieldValue: { size: 15, lh: 20, w: 400, ls: 0 }, // mono — numbers typed in a form field (dive-form.jsx)
+  fieldHint: { size: 12, lh: 17, w: 400, ls: 0 }, // field help and messages (dive-form.jsx · Field)
 } as const;
 
 // 4px scale
@@ -128,7 +134,17 @@ export const space = {
   11: 80,
 } as const;
 
-export const radius = { xxs: 2, xs: 4, sm: 6, md: 10, lg: 14, xl: 20, pill: 999 } as const;
+// segment: option of a form segmented control (dive-form.jsx · Segmented).
+export const radius = {
+  xxs: 2,
+  xs: 4,
+  sm: 6,
+  segment: 8,
+  md: 10,
+  lg: 14,
+  xl: 20,
+  pill: 999,
+} as const;
 
 export const shadow = {
   card: 'inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 6px 24px rgba(0, 0, 0, 0.35)',
@@ -287,6 +303,32 @@ export const layout = {
   pagerTileMinHeight: 64, // previous / next tiles on phones
   siteMarkerDot: 10, // dot inside the site marker of the mini map
   notesMaxWidth: 680, // reading width of the dive notes
+  // Dive form (dive-form.jsx)
+  fieldGap: 6, // label → control → message
+  inputHeight: 44,
+  inputGap: 10, // icon, value, unit inside a field
+  controlInset: 3, // inner padding of the form segmented control and of the switch thumb
+  switchWidth: 44,
+  switchHeight: 26,
+  switchThumb: 20,
+  optionHeight: 52, // combobox option (two lines)
+  listboxPad: 6,
+  listboxMaxHeight: 320,
+  textareaMinHeight: 120,
+  dialogWidth: 400,
+  formAsideWidth: 340, // sticky side column: preview, section summary, actions
+  // Room kept clear of the sticky bars of the form when a field scrolls into view (SC 2.4.11): the
+  // phone top bar (44 + 2 × 14 + 1) and the bottom save bar (12 + 48 + 8 + 15 + 24), rounded up.
+  formTopBarClearance: 80,
+  formBottomBarClearance: 120,
+  stepBadge: 26, // numbered circle of a form section
+  statusDot: 18, // section state (complete · partial · empty)
+  statusRing: 1.5, // outline of the partial / empty section state
+  listRowPadY: 10, // dive team rows, preview tiles
+  formFieldSm: 120, // suit thickness
+  formFieldMd: 140, // dive number, air temperature, weight
+  formFieldLg: 160, // safety stop duration / depth
+  formFieldXl: 240, // gas
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.

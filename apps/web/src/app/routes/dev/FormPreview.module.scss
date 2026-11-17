@@ -1,0 +1,91 @@
+@use '@/styles/tokens' as *;
+
+.section {
+  margin-top: $space-8;
+}
+
+.title {
+  @include type($type-h-2);
+
+  margin-bottom: $space-4;
+}
+
+// Grid: independent catalogue cards, two columns on wide screens.
+.grid {
+  display: grid;
+  gap: $space-4;
+  align-items: start;
+
+  @include from($bp-desktop) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+// Grid: field rows of dive-form.jsx · Row, one column on phones.
+.siteRow,
+.timeRow,
+.thirds,
+.halves,
+.gasRow {
+  display: grid;
+  gap: $space-3;
+  align-items: start;
+}
+
+.halves {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.timeRow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  > :first-child {
+    grid-column: span 2;
+  }
+}
+
+.thirds {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@include from($bp-tablet) {
+  .siteRow {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+  }
+
+  .timeRow {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+
+    > :first-child {
+      grid-column: auto;
+    }
+  }
+
+  .thirds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .gasRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+}
+
+.region {
+  @include type($type-field-hint);
+
+  flex-shrink: 0;
+  color: $color-text-low;
+  white-space: nowrap;
+}
+
+.switches {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}

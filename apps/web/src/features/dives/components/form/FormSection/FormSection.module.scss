@@ -1,0 +1,151 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · Section — card, padding 16 (phones) / 24, header 20px above the fields.
+.section {
+  @include card(1);
+
+  min-width: 0;
+  padding: $space-4;
+  margin: 0;
+  border: 0;
+  scroll-margin-top: $space-7;
+
+  @include from($bp-tablet) {
+    padding: $space-6;
+  }
+
+  // dive-form.jsx · Collapsed — a single 60px row: number, title over summary, state, chevron.
+  &[data-folded] {
+    padding-block: $space-3;
+  }
+}
+
+// The legend floats so that it lays out like a block next to the aside, not in the border.
+.legend {
+  display: flex;
+  float: left;
+  gap: $space-3;
+  align-items: center;
+  max-width: 100%;
+  min-height: $layout-step-badge;
+  padding: 0;
+  margin-bottom: $space-5;
+
+  // The accordion button spans the whole card.
+  [data-collapsible] > & {
+    width: 100%;
+  }
+
+  [data-folded] > & {
+    margin-bottom: 0;
+  }
+}
+
+.title {
+  @include type($type-h-3);
+
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  margin: 0;
+  color: $color-text-high;
+
+  [data-collapsible] & {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.number {
+  @include type($type-unit-sm, $font: $font-mono, $tabular: true);
+
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $layout-step-badge;
+  height: $layout-step-badge;
+  color: $color-text-med;
+  background: $color-surface-0;
+  border-radius: $radius-pill;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+}
+
+.titleText {
+  min-width: 0;
+}
+
+// Title over the summary of a folded section.
+.heading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.optional {
+  flex-shrink: 0;
+}
+
+.aside {
+  @include type($type-field-hint);
+
+  display: flex;
+  float: right;
+  align-items: center;
+  min-height: $layout-step-badge;
+  color: $color-text-low;
+}
+
+.content {
+  display: flex;
+  clear: both;
+  flex-direction: column;
+  gap: $space-4;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// Accordion header (phones): the whole row is the button.
+.toggle {
+  @include focus-ring;
+  @include hit-target;
+
+  display: flex;
+  flex: 1;
+  gap: $space-3;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: $radius-sm;
+}
+
+.summary {
+  @include type($type-field-hint);
+
+  overflow: hidden;
+  color: $color-text-low;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: $color-text-low;
+
+  [aria-expanded='true'] > & {
+    transform: rotate(180deg);
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}

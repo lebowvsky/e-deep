@@ -1,8 +1,8 @@
 // Client-side selection of the dive log: filter → sort → summary → page.
 // Pure functions: the API serves the whole log (one request), the selection stays client side.
 import type { GasMix } from '@e-deep/shared';
+import { foldText } from '@/shared/lib/textMatch';
 import { activeFilterKeys, withoutFilter } from './query';
-import { normalizeText } from './text';
 import type {
   DiveLogOverview,
   DivesFacets,
@@ -34,7 +34,7 @@ export function yearMonthOf(iso: string): string {
 }
 
 function searchableText(dive: LoggedDive): string {
-  return normalizeText(
+  return foldText(
     [
       dive.site.name,
       dive.site.place,
@@ -54,7 +54,7 @@ function twelveMonthsBefore(now: Date): string {
 
 /** Predicate of the query filters (search, period, regions, depth, gas, dive team). */
 export function matchesQuery(query: DivesQuery, now: Date): (dive: LoggedDive) => boolean {
-  const terms = normalizeText(query.q).split(/\s+/).filter(Boolean);
+  const terms = foldText(query.q).split(/\s+/).filter(Boolean);
   const since = twelveMonthsBefore(now);
   return (dive) => {
     const day = dive.date.slice(0, 10);

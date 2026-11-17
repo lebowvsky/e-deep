@@ -1,0 +1,50 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · DiveFormMobile header — sticky glass bar, 44px targets at both ends. It bleeds
+// into the 20px page gutters of the app shell, whose top padding is dropped on this route.
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2;
+  padding: $layout-top-bar-pad-y $space-3;
+  margin: 0 (-$space-5) $space-4; // mockup: content 16px under the bar
+  background: $color-abyss-glass;
+  backdrop-filter: blur($layout-blur-glass);
+  border-bottom: 1px solid $color-line;
+
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+.close {
+  flex-shrink: 0;
+  color: $color-text-high;
+}
+
+.title {
+  @include type($type-button-lg);
+
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-weight: 600;
+  color: $color-text-high;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Same width as ✕, so that the title stays centred.
+.number {
+  @include type($type-unit-sm, $font: $font-mono, $tabular: true);
+
+  flex-shrink: 0;
+  width: $layout-hit-target;
+  margin: 0;
+  color: $color-text-low;
+  text-align: center;
+}

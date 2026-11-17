@@ -7,8 +7,8 @@ export interface MeasureProps {
   unit?: ResponsiveLabel | undefined;
   /** Spoken form, value and unit together: « 42 mètres » (design/README.md § 6). */
   srText: string;
-  /** kpi: KPI cards · metric: last-dive metrics */
-  size: 'kpi' | 'metric';
+  /** kpi: KPI cards · metric: last-dive metrics · mini: live preview tiles of the dive form */
+  size: 'kpi' | 'metric' | 'mini';
   /** muted: placeholder value (« — ») of the empty state · accent: the highlight of a page */
   tone?: 'default' | 'muted' | 'accent';
   className?: string | undefined;

@@ -1,0 +1,77 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · SwitchRow — label 14/500 textHigh, hint 12 textLow, 16px between text and switch.
+.row {
+  display: flex;
+  gap: $space-4;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.label {
+  @include type($type-body-med);
+
+  color: $color-text-high;
+  cursor: pointer;
+}
+
+.hint {
+  @include type($type-field-hint);
+
+  color: $color-text-low;
+}
+
+// dive-form.jsx · Switch — 44 × 26 pill, 20px thumb inset by 3px; on = accent (active state).
+.track {
+  @include focus-ring;
+  @include hit-area;
+
+  flex-shrink: 0;
+  width: $layout-switch-width;
+  height: $layout-switch-height;
+  background: $color-line-strong;
+  border-radius: $radius-pill;
+  transition: background-color $dur-base $ease-out;
+
+  &[aria-checked='true'] {
+    background: $color-accent;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: $opacity-disabled;
+  }
+}
+
+.thumb {
+  position: absolute;
+  top: $layout-control-inset;
+  left: $layout-control-inset;
+  width: $layout-switch-thumb;
+  height: $layout-switch-thumb;
+  background: $color-text-med;
+  border-radius: $radius-pill;
+  transition:
+    transform $dur-base $ease-out,
+    background-color $dur-base $ease-out;
+
+  [aria-checked='true'] > & {
+    background: $color-accent-ink;
+    transform: translateX(
+      calc(#{$layout-switch-width} - #{$layout-switch-thumb} - 2 * #{$layout-control-inset})
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .thumb {
+    transition: none;
+  }
+}

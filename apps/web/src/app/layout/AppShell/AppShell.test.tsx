@@ -94,6 +94,26 @@ describe('AppShell — mobile', () => {
   });
 });
 
+describe('AppShell — FAB', () => {
+  it('hides the FAB on a dive detail', async () => {
+    renderAt('/dives/d127');
+    await screen.findByRole('button', { name: 'Ouvrir le menu' });
+    expect(screen.queryByRole('link', { name: 'Nouvelle plongée' })).toBeNull();
+  });
+
+  it.each(['/dives/new', '/dives/new?from=d127', '/dives/d127/edit'])(
+    'leaves the phone bars to the dive form on %s: no app top bar, no FAB',
+    async (path) => {
+      renderAt(path);
+      // The form's own top bar, shown while the log loads.
+      const close = await screen.findByRole('link', { name: 'Annuler' });
+      expect(close.getAttribute('href')).toMatch(/^\/dives/);
+      expect(screen.queryByRole('button', { name: 'Ouvrir le menu' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Nouvelle plongée' })).toBeNull();
+    },
+  );
+});
+
 describe('AppShell — tablet and up', () => {
   it('renders the sidebar navigation instead of the top bar', async () => {
     stubTabletUp();

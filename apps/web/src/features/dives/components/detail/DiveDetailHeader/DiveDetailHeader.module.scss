@@ -1,11 +1,32 @@
 @use '@/styles/tokens' as *;
 
-// dive-detail.jsx · header (desktop) / mobile title block.
+// dive-detail.jsx · header (desktop) / mobile title block; the actions on the right from the
+// tablet, aligned with the bottom of the title block.
 .header {
   display: flex;
   min-width: 0;
   flex-direction: column;
+  gap: $space-4;
+
+  @include from($bp-tablet) {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
   gap: $space-2;
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: $space-3;
+  align-items: center;
 }
 
 .overline {

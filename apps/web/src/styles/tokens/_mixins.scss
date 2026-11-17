@@ -113,3 +113,91 @@
   white-space: nowrap;
   border: 0;
 }
+
+// Frame of a form field (dive-form.jsx · Input): surface-0 box with an inset ring that follows the
+// state (≥ 3:1, SC 1.4.11). The box carries the state, the bare control inside uses `field-control`.
+//   data-status="warning" | "error" · data-locked (read-only or disabled)
+@mixin field-box {
+  background: $color-surface-0;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line-field;
+  transition: box-shadow $dur-fast $ease-out;
+
+  &[data-status='warning'] {
+    box-shadow: inset 0 0 0 1px $color-warning;
+  }
+
+  &[data-status='error'] {
+    box-shadow: inset 0 0 0 1px $color-danger;
+  }
+
+  &[data-locked] {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px $color-line;
+  }
+
+  // The focus indicator of the field, whatever its state (the control inside has no outline): the
+  // `focus-ring` outline, on the box. The ring keeps telling the state (danger, warning), so that a
+  // field reached from the error summary still shows where the focus is (SC 2.4.7).
+  &:focus-within {
+    outline: 2px solid $color-accent;
+    outline-offset: 2px;
+  }
+
+  &:not([data-status]):focus-within {
+    box-shadow: inset 0 0 0 1px $color-accent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+// Bare control inside a `field-box`: no frame of its own, sans placeholder used as an example only.
+@mixin field-control {
+  min-width: 0;
+  padding: 0;
+  color: $color-text-high;
+  background: transparent;
+  border: 0;
+  outline: none;
+
+  // textLow, not textMuted (≈ 2:1): an example still has to be readable (SC 1.4.3).
+  &::placeholder {
+    @include type($type-body);
+
+    color: $color-text-low;
+    opacity: 1;
+  }
+
+  &:disabled {
+    color: $color-text-low;
+    cursor: not-allowed;
+  }
+}
+
+// Native date / time input inside a `field-box`: tokens on its parts, no picker icon (the field
+// opens the picker on click, typing stays available).
+@mixin native-datetime {
+  &::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+
+  &::-webkit-datetime-edit-text {
+    color: $color-text-low;
+  }
+
+  &::-webkit-datetime-edit-day-field:focus,
+  &::-webkit-datetime-edit-month-field:focus,
+  &::-webkit-datetime-edit-year-field:focus,
+  &::-webkit-datetime-edit-hour-field:focus,
+  &::-webkit-datetime-edit-minute-field:focus {
+    color: $color-accent-ink;
+    background: $color-accent;
+    border-radius: $radius-xxs;
+  }
+
+  &::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+}

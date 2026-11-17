@@ -2,10 +2,10 @@ import type { DiveDetail, DiveSummary } from '@e-deep/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { avatarPalette } from '@/design/tokens';
 import { ApiError, createApiClient } from '@/shared/lib/apiClient';
+import { avatarColorOf } from '../lib/avatarColor';
 import { MOCKUP_DETAIL_FIELDS } from '../mocks/diveDetailResponse';
 import { mockDiveLogResponse, mockOwner } from '../mocks/diveLogResponse';
 import {
-  avatarColorOf,
   fetchDive,
   fetchDiveLog,
   isDiveDetail,

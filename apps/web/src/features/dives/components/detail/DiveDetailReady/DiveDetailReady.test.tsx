@@ -1,4 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { toDiveDetailView, toSelfMember } from '../../../api/divesApi';
 import { mockDiveDetail, mockFilledDiveDetail } from '../../../mocks/diveDetailResponse';
@@ -7,6 +9,9 @@ import type { DiveDetailView } from '../../../types';
 import { DiveDetailReady } from './DiveDetailReady';
 
 const self = toSelfMember(mockOwner);
+
+/** The header links to the edit form and to a duplicate: a router is needed. */
+const renderReady = (ui: ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
 /** The latest mocked dive: filled with the mockup values, or with nothing entered at all. */
 const filled = (): DiveDetailView =>
@@ -29,7 +34,7 @@ function valueOf(region: HTMLElement, term: string): HTMLElement {
 
 describe('DiveDetailReady, filled dive', () => {
   it('adds the area to the place and the entry type to the tags', () => {
-    render(<DiveDetailReady dive={filled()} insights={null} />);
+    renderReady(<DiveDetailReady dive={filled()} insights={null} />);
 
     expect(screen.getByText(/· Méditerranée$/)).toBeTruthy();
     const tags = screen.getByRole('list', { name: 'Étiquettes' });
@@ -41,13 +46,13 @@ describe('DiveDetailReady, filled dive', () => {
   });
 
   it('captions the bottom temperature with the surface one', () => {
-    render(<DiveDetailReady dive={filled()} insights={null} />);
+    renderReady(<DiveDetailReady dive={filled()} insights={null} />);
     const measures = screen.getByRole('list', { name: 'Mesures' });
     expect(within(measures).getByText('Surface 16 °C')).toBeTruthy();
   });
 
   it('shows the run: safety stop, decompression, repetitive, no more gas', () => {
-    render(<DiveDetailReady dive={filled()} insights={null} />);
+    renderReady(<DiveDetailReady dive={filled()} insights={null} />);
     const run = card(/Déroulé de la plongée/);
 
     expect(within(run).getByText('3 minutes à 5 mètres')).toBeTruthy();
@@ -60,7 +65,7 @@ describe('DiveDetailReady, filled dive', () => {
   });
 
   it('shows the equipment, units read with their value', () => {
-    render(<DiveDetailReady dive={filled()} insights={null} />);
+    renderReady(<DiveDetailReady dive={filled()} insights={null} />);
     const equipment = card(/Équipement & gaz/);
 
     expect(equipment.tagName).toBe('SECTION');
@@ -79,7 +84,7 @@ describe('DiveDetailReady, filled dive', () => {
   });
 
   it('shows the conditions', () => {
-    render(<DiveDetailReady dive={filled()} insights={null} />);
+    renderReady(<DiveDetailReady dive={filled()} insights={null} />);
     const conditions = card(/Conditions/);
 
     expect(valueOf(conditions, 'Type').textContent).toBe('Bateau · jour');
@@ -94,7 +99,7 @@ describe('DiveDetailReady, filled dive', () => {
   });
 
   it('lists the species in the order entered, with their spoken count', () => {
-    render(<DiveDetailReady dive={filled()} insights={null} />);
+    renderReady(<DiveDetailReady dive={filled()} insights={null} />);
     const species = within(card(/Notes & observations/)).getByRole('list', {
       name: 'Espèces observées',
     });
@@ -108,7 +113,7 @@ describe('DiveDetailReady, filled dive', () => {
 
   it('gives each member a level tag, the user their level at the time of the dive', () => {
     const dive = filled();
-    render(<DiveDetailReady dive={dive} insights={null} />);
+    renderReady(<DiveDetailReady dive={dive} insights={null} />);
     const team = card(/Palanquée/);
 
     expect(within(team).getByText('N2 · FFESSM')).toBeTruthy();
@@ -117,7 +122,7 @@ describe('DiveDetailReady, filled dive', () => {
   });
 
   it('dates the creation and the change, in the device time zone', () => {
-    render(<DiveDetailReady dive={filled()} insights={null} />);
+    renderReady(<DiveDetailReady dive={filled()} insights={null} />);
     const times = screen
       .getAllByText((_content, element) => element?.tagName === 'TIME')
       .filter((time) => time.closest('p')?.textContent?.startsWith('Créée le'));
@@ -130,7 +135,7 @@ describe('DiveDetailReady, filled dive', () => {
 
 describe('DiveDetailReady, nothing entered', () => {
   it('keeps every card, values missing as « — · Non renseigné(e) »', () => {
-    render(<DiveDetailReady dive={empty()} insights={null} />);
+    renderReady(<DiveDetailReady dive={empty()} insights={null} />);
 
     for (const name of [/Déroulé/, /Équipement/, /Conditions/, /Notes/, /Site/, /Palanquée/]) {
       expect(card(name)).toBeTruthy();
@@ -148,7 +153,7 @@ describe('DiveDetailReady, nothing entered', () => {
   });
 
   it('says « Rien de renseigné » in an empty card, without a list', () => {
-    render(<DiveDetailReady dive={empty()} insights={null} />);
+    renderReady(<DiveDetailReady dive={empty()} insights={null} />);
 
     for (const name of [/Conditions/, /Notes & observations/]) {
       const region = card(name);
@@ -159,7 +164,7 @@ describe('DiveDetailReady, nothing entered', () => {
 
   it('keeps the Conditions card empty with the bottom temperature alone (a KPI already)', () => {
     const dive = { ...empty(), temperatureC: 17 };
-    render(<DiveDetailReady dive={dive} insights={null} />);
+    renderReady(<DiveDetailReady dive={dive} insights={null} />);
     expect(within(card(/Conditions/)).getByText('Rien de renseigné')).toBeTruthy();
   });
 
@@ -170,14 +175,14 @@ describe('DiveDetailReady, nothing entered', () => {
       temperatureC: 17,
       conditions: { ...base.conditions, seaState: 'CALM' as const },
     };
-    render(<DiveDetailReady dive={dive} insights={null} />);
+    renderReady(<DiveDetailReady dive={dive} insights={null} />);
     const water = valueOf(card(/Conditions/), 'Eau');
     expect(within(water).getByText('17 degrés au fond')).toBeTruthy();
   });
 
   it('shows neither area nor entry type, nor a surface caption, nor a buddy level', () => {
     const dive = empty();
-    render(<DiveDetailReady dive={dive} insights={null} />);
+    renderReady(<DiveDetailReady dive={dive} insights={null} />);
 
     const header = document.querySelector('header');
     expect(within(header ?? document.body).getByText(dive.site.place)).toBeTruthy();

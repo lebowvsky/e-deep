@@ -1,3 +1,5 @@
+import { ButtonLink } from '@/shared/ui/Button';
+import { IconLink } from '@/shared/ui/IconButton';
 import type { DiveDetailView, DiveLogInsights } from '../../../types';
 import { DiveConditionsCard } from '../DiveConditionsCard';
 import { DiveDetailHeader } from '../DiveDetailHeader';
@@ -29,6 +31,22 @@ export function DiveDetailReady({ dive, insights }: DiveDetailReadyProps) {
         stopsOk={dive.stopsOk}
         area={dive.site.area}
         entryType={dive.conditions.entryType}
+        actions={
+          <>
+            <ButtonLink to={`/dives/${dive.id}/edit`} icon="pencil">
+              Modifier ma plongée
+            </ButtonLink>
+            {/* In place of the « … » menu of the mockup: its only action with a screen today. */}
+            <IconLink
+              to={`/dives/new?from=${dive.id}`}
+              icon="copy"
+              iconSize="md"
+              variant="secondary"
+              label="Dupliquer la plongée"
+              title="Dupliquer la plongée"
+            />
+          </>
+        }
       />
       <DiveKpis dive={dive} isPersonalBest={insights?.isPersonalBest ?? null} />
       <div className={styles.layout}>

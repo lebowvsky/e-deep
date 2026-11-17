@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Outlet, useLocation, useMatch } from 'react-router';
+import { Outlet, useLocation, useMatch, useMatches } from 'react-router';
 import { breakpoint } from '@/design/tokens';
 import type { User } from '@/features/dashboard/types';
+import { cx } from '@/shared/lib/classNames';
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import { Drawer } from '../Drawer';
 import { Fab } from '../Fab';
+import { hasOwnMobileBars } from '../routeHandle';
 import { Sidebar } from '../Sidebar';
 import { TopBar } from '../TopBar';
 import styles from './AppShell.module.scss';
@@ -27,8 +29,11 @@ export function AppShell({ user }: AppShellProps) {
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   const previousPath = useRef(pathname);
-  // A dive detail (and « Nouvelle plongée », which the FAB opens) has no FAB (detail-plongee.md).
-  const onDivePage = useMatch('/dives/:diveId') !== null;
+  // No FAB on a dive detail (detail-plongee.md) nor on the dive form, which the FAB opens: every
+  // page under `/dives/…` (`:diveId`, `new`, `:diveId/edit`), but not the log itself.
+  const onDivePage = useMatch({ path: '/dives/:diveId', end: false }) !== null;
+  // The dive form has its own ✕ top bar and sticky save bar on phones.
+  const ownMobileBars = hasOwnMobileBars(useMatches());
 
   // Client-side navigation: move focus to the new content so screen readers announce it.
   useEffect(() => {
@@ -48,20 +53,22 @@ export function AppShell({ user }: AppShellProps) {
       {isTabletUp ? (
         <Sidebar user={user} />
       ) : (
-        <>
-          <TopBar
-            inert={behindDrawer}
-            drawerId={drawerId}
-            drawerOpen={drawerOpen}
-            onOpenMenu={() => setDrawerOpen(true)}
-          />
-          <Drawer id={drawerId} open={drawerOpen} onClose={closeDrawer} user={user} />
-        </>
+        !ownMobileBars && (
+          <>
+            <TopBar
+              inert={behindDrawer}
+              drawerId={drawerId}
+              drawerOpen={drawerOpen}
+              onOpenMenu={() => setDrawerOpen(true)}
+            />
+            <Drawer id={drawerId} open={drawerOpen} onClose={closeDrawer} user={user} />
+          </>
+        )
       )}
       <main
         ref={mainRef}
         id="main-content"
-        className={styles.main}
+        className={cx(styles.main, ownMobileBars && styles.ownBars)}
         tabIndex={-1}
         inert={behindDrawer}
       >

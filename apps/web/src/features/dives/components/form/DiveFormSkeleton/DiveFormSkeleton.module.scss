@@ -1,0 +1,44 @@
+@use '@/styles/tokens' as *;
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+}
+
+.header,
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.section {
+  @include card(1);
+
+  padding: $space-6;
+}
+
+.overline {
+  width: 30%;
+  height: $layout-skel-text;
+}
+
+.title {
+  width: 50%;
+  height: $layout-skel-kpi;
+}
+
+.subtitle {
+  width: 40%;
+  height: $layout-skel-text;
+}
+
+.field {
+  width: 100%;
+  height: $layout-input-height;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

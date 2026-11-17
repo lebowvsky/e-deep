@@ -1,0 +1,87 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · SwitchRow — hairline above each row, fields 12px under the switch.
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-4 0; // mockup 14px, rounded to the 4px scale
+  border-top: 1px solid $color-line;
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+}
+
+// Grid: two short fields side by side (160px each from the tablet).
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+  align-items: start;
+
+  @include from($bp-tablet) {
+    grid-template-columns: repeat(2, $layout-form-field-lg);
+  }
+}
+
+.stops {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.stop {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.stopLegend {
+  @include type($type-field-hint);
+
+  padding: 0;
+  margin-bottom: $space-2;
+  color: $color-text-low;
+}
+
+// Grid: depth · duration · remove button, aligned on the controls.
+.stopFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: $space-3;
+  align-items: end;
+
+  @include from($bp-tablet) {
+    grid-template-columns: repeat(2, $layout-form-field-lg) auto;
+  }
+}
+
+.remove {
+  color: $color-text-low;
+}
+
+.error {
+  @include type($type-field-hint);
+
+  display: flex;
+  gap: $layout-field-gap;
+  align-items: flex-start;
+  margin: 0;
+  color: $color-danger;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.add {
+  align-self: flex-start;
+}

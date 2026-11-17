@@ -1,0 +1,48 @@
+@use '@/styles/tokens' as *;
+
+// dive-form.jsx · Input — 44px, padding 0 12, gap 10, radius md, surface-0.
+.box {
+  @include field-box;
+
+  display: flex;
+  gap: $layout-input-gap;
+  align-items: center;
+  height: $layout-input-height;
+  padding: 0 $space-3;
+}
+
+.input {
+  @include field-control;
+
+  flex: 1;
+  align-self: stretch;
+  width: 100%;
+  text-overflow: ellipsis;
+}
+
+.sans .input {
+  @include type($type-body);
+}
+
+.mono .input {
+  @include type($type-field-value, $font: $font-mono, $tabular: true);
+}
+
+.icon {
+  color: $color-text-low;
+}
+
+.unit {
+  @include type($type-unit-sm, $font: $font-mono);
+
+  flex-shrink: 0;
+  color: $color-text-low;
+}
+
+.errorIcon {
+  color: $color-danger;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

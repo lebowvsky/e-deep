@@ -1,0 +1,32 @@
+@use '@/styles/tokens' as *;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: $layout-field-gap;
+}
+
+.box {
+  @include field-box;
+
+  display: flex;
+}
+
+// dive-form.jsx · Notes — min 120px, padding 12, 14px with a loose line height.
+.textarea {
+  @include field-control;
+  @include type($type-body-loose);
+
+  flex: 1;
+  min-height: $layout-textarea-min-height;
+  padding: $space-3;
+  overflow: hidden;
+  resize: none;
+}
+
+.counter {
+  @include type($type-unit-sm, $font: $font-mono, $tabular: true);
+
+  align-self: flex-end;
+  color: $color-text-low;
+}

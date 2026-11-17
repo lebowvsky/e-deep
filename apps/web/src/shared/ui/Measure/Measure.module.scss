@@ -56,6 +56,17 @@
   }
 }
 
+// dive-form.jsx · FormAside preview — mono 20/600, unit mono 11.
+.mini {
+  .value {
+    @include type($type-figure, $font: $font-mono, $tabular: true);
+  }
+
+  .unit {
+    @include type($type-caption-sm, $font: $font-mono);
+  }
+}
+
 .muted .value {
   color: $color-text-muted;
 }

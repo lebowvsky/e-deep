@@ -11,6 +11,7 @@ import { RangeSlider } from '@/shared/ui/RangeSlider';
 import { SegmentedControl } from '@/shared/ui/SegmentedControl';
 import { Select } from '@/shared/ui/Select';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { FormPreview } from './FormPreview';
 import styles from './UiPreviewPage.module.scss';
 
 const ICONS: IconName[] = [
@@ -39,6 +40,10 @@ const ICONS: IconName[] = [
   'sliders',
   'sort',
   'book',
+  'alert',
+  'info',
+  'calendar',
+  'link',
 ];
 
 const PERIODS = [
@@ -165,6 +170,7 @@ export function UiPreviewPage() {
           <Overline tone="med">Card elevation 2 · padding lg</Overline>
         </Card>
       </div>
+      <FormPreview />
     </main>
   );
 }
