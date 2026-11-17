@@ -1,6 +1,6 @@
-import { useEffect, useId, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { cx } from '@/shared/lib/classNames';
-import { findTextMatch, isSameText } from '@/shared/lib/textMatch';
+import { findTextMatch, foldText, isSameText, matchesText } from '@/shared/lib/textMatch';
 import { useFormField } from '@/shared/ui/FormField';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import { TextInput } from '@/shared/ui/TextInput';
@@ -20,6 +20,8 @@ export interface ComboboxCreate {
   label: (query: string) => string;
   /** Second line of the creation option. */
   description?: string;
+  /** Whether `query` may become an entry (« Lucas » alone is not a diver). Default: any text. */
+  accepts?: (query: string) => boolean;
   onCreate: (query: string) => void;
 }
 
@@ -97,9 +99,19 @@ export function Combobox<T extends ComboboxOption>({
   const [activeIndex, setActiveIndex] = useState(0);
 
   const query = inputValue.trim();
-  const matches = query ? options.filter((option) => findTextMatch(option.label, query)) : options;
-  const exists = options.some((option) => isSameText(option.label, query));
-  const creation = query !== '' && !exists ? create : undefined;
+  // Each label folded once: the field re-renders with every key typed in the form around it.
+  const foldedLabels = useMemo(() => options.map((option) => foldText(option.label)), [options]);
+  const matches = useMemo(
+    () =>
+      query ? options.filter((_, index) => matchesText(foldedLabels[index] ?? '', query)) : options,
+    [options, foldedLabels, query],
+  );
+  const exists = useMemo(
+    () => options.some((option) => isSameText(option.label, query)),
+    [options, query],
+  );
+  const accepts = create?.accepts ?? (() => true);
+  const creation = query !== '' && !exists && accepts(query) ? create : undefined;
   const items: Item<T>[] = matches.map((option) => ({ kind: 'option', option }));
   if (creation) items.push({ kind: 'create', query });
 

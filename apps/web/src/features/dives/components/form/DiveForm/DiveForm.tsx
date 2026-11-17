@@ -1,9 +1,16 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react';
 import { flushSync } from 'react-dom';
 import { breakpoint } from '@/design/tokens';
 import { useLeaveConfirmation } from '@/shared/hooks/useLeaveConfirmation';
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
-import { useScrollSpy } from '@/shared/hooks/useScrollSpy';
 import { useSubmitShortcut } from '@/shared/hooks/useSubmitShortcut';
 import { scrollToAndFocus } from '@/shared/lib/focus';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -20,18 +27,23 @@ import {
   type DiveFormValues,
 } from '../../../form/model';
 import type { DiveFormMode } from '../../../form/prefill';
-import { proposeSurfaceIntervalFor, type DiveFormSources } from '../../../form/sources';
+import {
+  diveNumberFor,
+  proposeSurfaceIntervalFor,
+  type DiveFormSources,
+} from '../../../form/sources';
 import { useDiveForm } from '../../../form/useDiveForm';
 import type { ValidationContext } from '../../../form/validation';
 import type { DiveDetailView, LoggedDive } from '../../../types';
 import { ConditionsSection } from '../ConditionsSection';
 import { DiveFormActions } from '../DiveFormActions';
 import { DiveFormHeader } from '../DiveFormHeader';
+import { DiveFormTopBar } from '../DiveFormTopBar';
 import { DraftBanner } from '../DraftBanner';
 import { EquipmentSection } from '../EquipmentSection';
 import { ErrorSummary } from '../ErrorSummary';
 import { EssentialSection } from '../EssentialSection';
-import { fieldId, sectionId } from '../fieldBinding';
+import { fieldId } from '../fieldBinding';
 import { FormAside } from '../FormAside';
 import type { FormSectionCollapse } from '../FormSection';
 import { NotesSection } from '../NotesSection';
@@ -50,13 +62,11 @@ export type DiveFormPrefill =
 
 export interface DiveFormProps {
   mode: DiveFormMode;
-  /** Logbook number in the header: the next one, or the edited dive's. */
-  number: number;
   initialValues: DiveFormValues;
   target: DiveFormTarget;
   context: ValidationContext;
   sources: DiveFormSources;
-  /** The whole log: surface interval since the previous dive. */
+  /** The whole log: logbook number (D26) and surface interval since the previous dive. */
   log: readonly LoggedDive[];
   self: PalanqueeSelf;
   prefill: DiveFormPrefill;
@@ -64,13 +74,11 @@ export interface DiveFormProps {
   canEditEvent: boolean;
   saveDive: SaveDive;
   draftStore: DraftStore;
-  /** Where « Annuler » goes. */
+  /** Where « Annuler » and ✕ go. */
   cancelHref: string;
-  /** The dive was saved under `id`. */
-  onSaved: (id: string) => void;
+  /** The dive was saved under `id`, with the logbook number it got. */
+  onSaved: (id: string, number: number) => void;
 }
-
-const SECTION_IDS = DIVE_FORM_SECTIONS.map(sectionId);
 
 /** Same bound as `until($bp-tablet)` in SCSS. */
 const PHONE = `(max-width: ${breakpoint.tablet - 1}px)`;
@@ -84,6 +92,16 @@ function withSections(
 }
 
 /**
+ * Entrée in a field would submit the whole dive (implicit submission of a form with a submit
+ * button), e.g. typed after the depth to move on: only « Enregistrer » and Ctrl/⌘ + Entrée save.
+ * The controls that use Entrée themselves (combobox list, tags) have already handled it.
+ */
+function preventImplicitSubmit(event: KeyboardEvent<HTMLFormElement>) {
+  if (event.key !== 'Enter' || event.ctrlKey || event.metaKey) return;
+  if (event.target instanceof HTMLInputElement) event.preventDefault();
+}
+
+/**
  * The dive form (« Nouvelle plongée », duplicate, « Modifier »): header, banners, the six sections,
  * and the sticky right column from 1280px or the sticky bottom bar below; on phones, sections 2 to 6
  * fold. Asks before leaving with unsaved changes. Mount it once its initial values are known, with
@@ -91,7 +109,6 @@ function withSections(
  */
 export function DiveForm({
   mode,
-  number,
   initialValues,
   target,
   context,
@@ -109,38 +126,77 @@ export function DiveForm({
   const formRef = useRef<HTMLFormElement>(null);
   const titleId = useId();
   const [isPrefillDismissed, setPrefillDismissed] = useState(false);
-  const activeId = useScrollSpy(SECTION_IDS);
-  useSubmitShortcut(() => formRef.current?.requestSubmit());
   // The accordion changes the DOM (header button, hidden fields), not only the layout: SCSS alone
   // cannot do it. Sections 2 to 6 fold on phones only; the open ones stay open across resizes.
   const isPhone = useMediaQuery(PHONE);
   const [openSections, setOpenSections] = useState<ReadonlySet<DiveFormSection>>(() => new Set());
-  const { submitStatus } = form;
+  const { submitStatus, values } = form;
+  const { eventId } = form.ids;
   const leave = useLeaveConfirmation(form.isDirty && submitStatus.status !== 'saved');
+  const { blocker } = leave;
+
+  // The focused field may hold text not taken yet (a species typed without Entrée): leaving it
+  // takes it, as a click on « Enregistrer » does, before the submit reads the values.
+  const submitFromShortcut = () => {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && formRef.current?.contains(active)) {
+      flushSync(() => active.blur());
+      active.focus();
+    }
+    formRef.current?.requestSubmit();
+  };
+  // Not behind the « Quitter sans enregistrer ? » dialog: the form is inert there.
+  useSubmitShortcut(submitFromShortcut, blocker.state !== 'blocked');
 
   const isEdit = mode.kind === 'edit';
-  const preview = divePreview(form.values, sources.sites);
-  const sections = DIVE_FORM_SECTIONS.map((section) => ({
-    section,
-    status: sectionStatus(section, form.values),
-  }));
-  const activeSection = DIVE_FORM_SECTIONS.find((section) => sectionId(section) === activeId);
+  // Memoised: without React Compiler, these would run again on every render (draft time, scroll,
+  // folded sections), not only when the values change.
+  const number = useMemo(
+    () => diveNumberFor(log, { date: values.date, entryTime: values.entryTime }, target, eventId),
+    [log, values.date, values.entryTime, target, eventId],
+  );
+  const editedNumber =
+    target.kind === 'update'
+      ? (log.find(({ id }) => id === target.diveId)?.number ?? number)
+      : null;
+  const preview = useMemo(
+    () => divePreview(values, sources.sites, number),
+    [values, sources.sites, number],
+  );
+  const sections = useMemo(
+    () =>
+      DIVE_FORM_SECTIONS.map((section) => ({
+        section,
+        status: sectionStatus(section, values),
+        summary: sectionSummary(section, values),
+      })),
+    [values],
+  );
+  const proposeSurfaceInterval = useCallback(
+    (current: DiveFormValues) => proposeSurfaceIntervalFor(log, current, target),
+    [log, target],
+  );
+  const setSectionOpen = useCallback(
+    (section: DiveFormSection, open: boolean) =>
+      setOpenSections((current) => {
+        const next = new Set(current);
+        if (open) next.add(section);
+        else next.delete(section);
+        return next;
+      }),
+    [],
+  );
 
-  const collapseOf = (section: DiveFormSection): FormSectionCollapse | undefined =>
-    isPhone
-      ? {
-          open: openSections.has(section),
-          onOpenChange: (open) =>
-            setOpenSections((current) => {
-              const next = new Set(current);
-              if (open) next.add(section);
-              else next.delete(section);
-              return next;
-            }),
-          summary: sectionSummary(section, form.values),
-          status: sectionStatus(section, form.values),
-        }
-      : undefined;
+  const collapseOf = (section: DiveFormSection): FormSectionCollapse | undefined => {
+    const view = sections.find((item) => item.section === section);
+    if (!isPhone || view === undefined) return undefined;
+    return {
+      open: openSections.has(section),
+      onOpenChange: setSectionOpen,
+      summary: view.summary,
+      status: view.status,
+    };
+  };
 
   /**
    * Opens the sections of `fields` — committed at once, so that their controls are no longer
@@ -167,7 +223,7 @@ export function DiveForm({
       case 'saved':
         // The redirect runs before the next render: the blocker must not stop it.
         leave.release();
-        onSaved(outcome.id);
+        onSaved(outcome.id, outcome.number);
         break;
       case 'invalid':
         revealFields(outcome.fields);
@@ -187,8 +243,8 @@ export function DiveForm({
   };
 
   const handlePrefillAction = () => {
-    if (prefill.kind === 'suggestion') form.resume(prefill.source);
-    if (prefill.kind === 'duplicate') form.reset(prefill.blankValues);
+    if (prefill.kind === 'suggestion') form.actions.resume(prefill.source);
+    if (prefill.kind === 'duplicate') form.actions.reset(prefill.blankValues);
     setPrefillDismissed(true);
   };
 
@@ -202,86 +258,92 @@ export function DiveForm({
     />
   );
 
-  const { blocker } = leave;
-
   return (
-    <div className={styles.page}>
-      <DiveFormHeader
-        isEdit={isEdit}
+    <>
+      <DiveFormTopBar
+        title={isEdit ? 'Modifier la plongée' : 'Nouvelle plongée'}
         number={number}
-        titleId={titleId}
-        diveHref={mode.kind === 'edit' ? `/dives/${mode.diveId}` : null}
+        cancelHref={cancelHref}
       />
-      <form
-        ref={formRef}
-        className={styles.layout}
-        aria-labelledby={titleId}
-        noValidate
-        onSubmit={handleSubmit}
-      >
-        <div className={styles.main}>
-          {submitStatus.status === 'invalid' && (
-            <ErrorSummary
-              fields={submitStatus.fields}
-              onSelect={(field) => revealFields([field])}
-            />
-          )}
-          {submitStatus.status === 'failed' && (
-            <p role="alert" className={styles.failure}>
-              <Icon name="alert" size="md" className={styles.failureIcon} />
-              L’enregistrement n’a pas abouti. Ta saisie est conservée : réessaie dans un instant.
-            </p>
-          )}
-          {prefill.kind !== 'none' && !isPrefillDismissed && (
-            <PrefillBanner
-              variant={prefill.kind}
-              number={prefill.source.number}
-              siteName={prefill.source.site.name}
-              onAction={handlePrefillAction}
-            />
-          )}
-          {form.draft.isRestored && <DraftBanner onDiscard={form.discardDraft} />}
-          <EssentialSection form={form} canEditEvent={canEditEvent} sites={sources.sites} />
-          <RunSection
-            form={form}
-            canEditEvent={canEditEvent}
-            collapse={collapseOf('run')}
-            proposeSurfaceInterval={(values) => proposeSurfaceIntervalFor(log, values, target)}
-          />
-          <PalanqueeSection
-            form={form}
-            canEditEvent={canEditEvent}
-            collapse={collapseOf('team')}
-            self={self}
-            divers={sources.divers}
-            frequentDivers={sources.frequentDivers}
-          />
-          <EquipmentSection
-            form={form}
-            canEditEvent={canEditEvent}
-            collapse={collapseOf('equipment')}
-          />
-          <ConditionsSection
-            form={form}
-            canEditEvent={canEditEvent}
-            collapse={collapseOf('conditions')}
-            diveCenters={sources.diveCenters}
-          />
-          <NotesSection
-            form={form}
-            canEditEvent={canEditEvent}
-            collapse={collapseOf('notes')}
-            species={sources.species}
-          />
-          {actions('bar')}
-        </div>
-        <FormAside
-          preview={preview}
-          sections={sections}
-          activeSection={activeSection}
-          actions={actions('column')}
+      <div className={styles.page}>
+        <DiveFormHeader
+          editedNumber={editedNumber}
+          number={number}
+          titleId={titleId}
+          diveHref={mode.kind === 'edit' ? `/dives/${mode.diveId}` : null}
         />
-      </form>
+        <form
+          ref={formRef}
+          className={styles.layout}
+          aria-labelledby={titleId}
+          noValidate
+          onSubmit={handleSubmit}
+          onKeyDown={preventImplicitSubmit}
+        >
+          <div className={styles.main}>
+            {submitStatus.status === 'invalid' && (
+              <ErrorSummary
+                fields={submitStatus.fields}
+                onSelect={(field) => revealFields([field])}
+              />
+            )}
+            {submitStatus.status === 'failed' && (
+              <p role="alert" className={styles.failure}>
+                <Icon name="alert" size="md" className={styles.failureIcon} />
+                L’enregistrement n’a pas abouti. Ta saisie est conservée : réessaie dans un instant.
+              </p>
+            )}
+            {prefill.kind !== 'none' && !isPrefillDismissed && (
+              <PrefillBanner
+                variant={prefill.kind}
+                number={prefill.source.number}
+                siteName={prefill.source.site.name}
+                onAction={handlePrefillAction}
+              />
+            )}
+            {form.draft.isRestored && <DraftBanner onDiscard={form.discardDraft} />}
+            <EssentialSection
+              form={form}
+              canEditEvent={canEditEvent}
+              sites={sources.sites}
+              number={number}
+            />
+            <RunSection
+              form={form}
+              canEditEvent={canEditEvent}
+              collapse={collapseOf('run')}
+              proposeSurfaceInterval={proposeSurfaceInterval}
+            />
+            <PalanqueeSection
+              form={form}
+              canEditEvent={canEditEvent}
+              collapse={collapseOf('team')}
+              self={self}
+              divers={sources.divers}
+              frequentDivers={sources.frequentDivers}
+            />
+            <EquipmentSection
+              form={form}
+              canEditEvent={canEditEvent}
+              collapse={collapseOf('equipment')}
+            />
+            <ConditionsSection
+              form={form}
+              canEditEvent={canEditEvent}
+              collapse={collapseOf('conditions')}
+              diveCenters={sources.diveCenters}
+            />
+            <NotesSection
+              form={form}
+              canEditEvent={canEditEvent}
+              collapse={collapseOf('notes')}
+              species={sources.species}
+            />
+            {actions('bar')}
+          </div>
+          <FormAside preview={preview} sections={sections} actions={actions('column')} />
+        </form>
+      </div>
       <ConfirmDialog
         open={blocker.state === 'blocked'}
         title="Quitter sans enregistrer ?"
@@ -295,6 +357,6 @@ export function DiveForm({
           blocker.proceed?.();
         }}
       />
-    </div>
+    </>
   );
 }

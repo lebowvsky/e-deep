@@ -228,8 +228,8 @@ export function sectionSummary(section: DiveFormSection, values: DiveFormValues)
 // ── Live preview (right column) ───────────────────────────────────────────────────────────────
 
 export interface DiveFormPreview {
-  /** `null` while not a whole number. */
-  number: number | null;
+  /** The logbook number the dive will have (`diveNumberFor`). */
+  number: number;
   /** « jeu. 09 avr. 2026 », `null` while not a valid day. */
   dateLabel: string | null;
   /** « 10:05 » as typed, `null` while empty. */
@@ -247,11 +247,11 @@ export interface DiveFormPreview {
 export function divePreview(
   values: DiveFormValues,
   sites: readonly DiveFormSiteOption[],
+  number: number,
 ): DiveFormPreview {
-  const numberValue = num(values.number);
   const site = values.site.id === null ? undefined : sites.find(({ id }) => id === values.site.id);
   return {
-    number: numberValue !== null && Number.isInteger(numberValue) ? numberValue : null,
+    number,
     // The day alone, read in UTC: the label never shifts with the device time zone.
     dateLabel:
       parseDay(values.date) === null ? null : formatDiveLongDate(`${values.date}T12:00:00Z`, 0),

@@ -115,9 +115,11 @@ describe('sectionSummary', () => {
 
 describe('divePreview', () => {
   it('shows the number, day, time, site, place and the four mini-KPI', () => {
-    const preview = divePreview(validValues({ bottomTemperatureC: '14' }), [
-      { id: 's01', name: 'Pointe de la Revellata', place: 'Calvi · Corse', diveCount: 12 },
-    ]);
+    const preview = divePreview(
+      validValues({ bottomTemperatureC: '14' }),
+      [{ id: 's01', name: 'Pointe de la Revellata', place: 'Calvi · Corse', diveCount: 12 }],
+      128,
+    );
     expect(preview).toEqual({
       number: 128,
       dateLabel: 'jeu. 09 avr. 2026',
@@ -132,7 +134,7 @@ describe('divePreview', () => {
   });
 
   it('leaves out what is not entered yet', () => {
-    const preview = divePreview(emptyDiveFormValues(), []);
+    const preview = divePreview(emptyDiveFormValues(), [], 1);
     expect(preview.dateLabel).toBeNull();
     expect(preview.siteName).toBeNull();
     expect(preview.place).toBeNull();

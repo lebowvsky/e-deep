@@ -4,8 +4,8 @@ import { SELF } from '../mocks/roster';
 import {
   buildDiveFormSources,
   proposeSurfaceInterval,
+  diveNumberFor,
   proposeSurfaceIntervalFor,
-  takenNumbers,
 } from './sources';
 
 const bibliotheque = {
@@ -52,10 +52,39 @@ describe('buildDiveFormSources', () => {
     expect(sources.diveCenters).toEqual([]);
     expect(sources.species).toEqual([]);
   });
+});
 
-  it('gives the numbers taken by the other dives', () => {
-    expect(takenNumbers(log, 'd2')).toEqual(new Set([1, 3]));
-    expect(takenNumbers(log, null)).toEqual(new Set([1, 2, 3]));
+describe('diveNumberFor', () => {
+  /** A dive written at +02:00: an edit (`diveId` left out of the count), or a new dive's id. */
+  const at = (diveId: string) =>
+    ({
+      kind: 'update',
+      diveId,
+      utcOffsetMinutes: 120,
+      observationCounts: new Map(),
+      isRepetitive: null,
+    }) as const;
+
+  it('gives the rank the dive will have in the log, by its start (D26)', () => {
+    expect(diveNumberFor(log, { date: '2026-04-10', entryTime: '09:00' }, at('n'), 'n')).toBe(4);
+    expect(diveNumberFor(log, { date: '2026-04-08', entryTime: '12:00' }, at('n'), 'n')).toBe(2);
+    expect(diveNumberFor(log, { date: '2026-04-01', entryTime: '09:00' }, at('n'), 'n')).toBe(1);
+  });
+
+  it('places a dive without immersion at the end of its day, and last without a date', () => {
+    expect(diveNumberFor(log, { date: '2026-04-08', entryTime: '' }, at('n'), 'n')).toBe(3);
+    expect(diveNumberFor(log, { date: '', entryTime: '' }, { kind: 'create' }, 'n')).toBe(4);
+  });
+
+  it('breaks a tie on the start by id, like the API', () => {
+    const start = { date: '2026-04-08', entryTime: '14:00' };
+    expect(diveNumberFor(log, start, at('a'), 'a')).toBe(2);
+    expect(diveNumberFor(log, start, at('z'), 'z')).toBe(3);
+  });
+
+  it('moves the edited dive with its new date, itself left out of the count', () => {
+    expect(diveNumberFor(log, { date: '2026-04-08', entryTime: '14:00' }, at('d2'), 'n')).toBe(2);
+    expect(diveNumberFor(log, { date: '2026-04-10', entryTime: '09:00' }, at('d2'), 'n')).toBe(3);
   });
 });
 
@@ -77,6 +106,7 @@ describe('proposeSurfaceInterval', () => {
       diveId: 'd2',
       utcOffsetMinutes: 120,
       observationCounts: new Map(),
+      isRepetitive: null,
     } as const;
     const entry = { date: '2026-04-08', entryTime: '14:00' };
     expect(proposeSurfaceIntervalFor(log, entry, update)).toBe(255);

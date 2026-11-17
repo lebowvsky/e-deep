@@ -10,6 +10,7 @@
   --dl-color-surface-3: #24406D;
   --dl-color-line: rgba(154, 186, 224, 0.10);
   --dl-color-line-strong: rgba(154, 186, 224, 0.18);
+  --dl-color-line-field: rgba(154, 186, 224, 0.6);
   --dl-color-text-high: #EAF2FB;
   --dl-color-text-med: #AFC1D6;
   --dl-color-text-low: #889BB2;
@@ -82,7 +83,6 @@
   --dl-shadow-ring-surface-2: 0 0 0 2px #1B3156;
   --dl-shadow-thumb: 0 0 0 4px rgba(79, 214, 201, 0.14);
   --dl-shadow-sheet: inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5);
-  --dl-shadow-field-focus: 0 0 0 3px rgba(79, 214, 201, 0.18);
   --dl-gradient-page-mobile: radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%);
   --dl-gradient-page-desktop: radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%);
   --dl-gradient-map-empty: radial-gradient(900px 400px at 50% 60%, rgba(27, 49, 86, 0.35), transparent 70%);
@@ -210,6 +210,8 @@
   --dl-layout-textarea-min-height: 120px;
   --dl-layout-dialog-width: 400px;
   --dl-layout-form-aside-width: 340px;
+  --dl-layout-form-top-bar-clearance: 80px;
+  --dl-layout-form-bottom-bar-clearance: 120px;
   --dl-layout-step-badge: 26px;
   --dl-layout-status-dot: 18px;
   --dl-layout-status-ring: 1.5px;

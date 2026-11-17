@@ -45,8 +45,6 @@ export interface DecoStopValue {
 export interface DiveFormValues {
   // 1. L'essentiel
   site: SiteValue;
-  /** Logbook number: computed by the API (D26), the form only checks it against the log. */
-  number: string;
   /** `YYYY-MM-DD` (native date input). */
   date: string;
   /** `HH:MM` (native time inputs). */
@@ -99,7 +97,6 @@ export type DiveFormField = keyof DiveFormValues;
 /** Every field, in the order of the form: error summary, focus of the first error. */
 export const DIVE_FORM_FIELDS = [
   'site',
-  'number',
   'date',
   'entryTime',
   'exitTime',
@@ -163,7 +160,6 @@ export const SECTION_TITLES: Record<DiveFormSection, string> = {
 
 export const FIELD_SECTIONS: Record<DiveFormField, DiveFormSection> = {
   site: 'essential',
-  number: 'essential',
   date: 'essential',
   entryTime: 'essential',
   exitTime: 'essential',
@@ -204,7 +200,6 @@ export const FIELD_SECTIONS: Record<DiveFormField, DiveFormSection> = {
 /** Visible labels: error summary links, « − Pression fin » of the section summary. */
 export const FIELD_LABELS: Record<DiveFormField, string> = {
   site: 'Site',
-  number: 'N° de plongée',
   date: 'Date',
   entryTime: 'Immersion',
   exitTime: 'Sortie',
@@ -274,7 +269,7 @@ export function isFieldEditable(field: DiveFormField, canEditEvent: boolean): bo
   return canEditEvent || fieldScope(field) === 'participation';
 }
 
-/** Required fields (« * »): the whole of « L'essentiel » but the logbook number. */
+/** Required fields (« * »): the whole of « L'essentiel ». */
 export const REQUIRED_FIELDS: readonly DiveFormField[] = [
   'site',
   'date',
@@ -283,20 +278,6 @@ export const REQUIRED_FIELDS: readonly DiveFormField[] = [
   'durationMin',
   'maxDepthM',
 ];
-
-/** Levels offered for a member of the dive team (FFESSM). */
-export const TEAM_LEVELS = [
-  { code: 'N1', label: 'Niveau 1' },
-  { code: 'N2', label: 'Niveau 2' },
-  { code: 'N3', label: 'Niveau 3' },
-  { code: 'N4', label: 'Niveau 4' },
-  { code: 'PA20', label: 'Plongeur autonome 20 m' },
-  { code: 'PA40', label: 'Plongeur autonome 40 m' },
-  { code: 'PA60', label: 'Plongeur autonome 60 m' },
-  { code: 'PE20', label: 'Plongeur encadré 20 m' },
-  { code: 'PE40', label: 'Plongeur encadré 40 m' },
-  { code: 'PE60', label: 'Plongeur encadré 60 m' },
-] as const;
 
 /** Safety stop proposed when the switch is turned on (spec). */
 export const SAFETY_STOP_DEFAULTS = { durationMin: '3', depthM: '5' } as const;
@@ -308,7 +289,6 @@ export const AIR_O2_PERCENT = 21;
 export function emptyDiveFormValues(): DiveFormValues {
   return {
     site: { id: null, name: '' },
-    number: '',
     date: '',
     entryTime: '',
     exitTime: '',

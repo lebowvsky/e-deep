@@ -48,11 +48,9 @@ function Tile({ label, value, unit, spokenUnit, isAccent = false }: TileProps) {
  */
 export function DivePreviewCard({ preview }: DivePreviewCardProps) {
   const titleId = useId();
-  const head = [
-    preview.number === null ? null : `#${preview.number}`,
-    preview.dateLabel,
-    preview.entryTime,
-  ].filter((part): part is string => part !== null);
+  const head = [`#${preview.number}`, preview.dateLabel, preview.entryTime].filter(
+    (part): part is string => part !== null,
+  );
 
   return (
     <Card as="section" aria-labelledby={titleId}>

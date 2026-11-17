@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useEffectEvent, useId, useRef, type ReactNode } from 'react';
 import { useBodyScrollLock } from '@/shared/hooks/useBodyScrollLock';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { Button } from '@/shared/ui/Button';
@@ -35,14 +35,18 @@ export function ConfirmDialog({
   useFocusTrap(panelRef, open);
   useBodyScrollLock(open);
 
+  // `onCancel` is often an inline arrow: read it at the key press, not as a dependency, so that the
+  // listener is not removed and added again on every render.
+  const cancel = useEffectEvent(onCancel);
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel();
+      if (event.key === 'Escape') cancel();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, onCancel]);
+  }, [open]);
 
   if (!open) return null;
 

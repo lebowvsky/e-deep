@@ -1,6 +1,5 @@
 import type {
   CertificationLevelRef,
-  CurrentStrength,
   DiveBuddyRef,
   DiveDetail,
   DiveDetailBuddy,
@@ -8,15 +7,7 @@ import type {
   DiveObservation,
   DiveSiteRef as DiveSiteContract,
   DiveSummary,
-  EntryType,
-  GasMix,
-  SeaState,
-  SuitType,
-  TankMaterial,
-  TimeOfDay,
-  Weather,
 } from '@e-deep/shared';
-import { avatarPalette } from '@/design/tokens';
 import { ApiError, type ApiClient, type RequestOptions } from '@/shared/lib/apiClient';
 import { formatInitials } from '@/shared/lib/format';
 import {
@@ -29,10 +20,20 @@ import {
   isRecord,
   isString,
 } from '@/shared/lib/guards';
-import { hashOf } from '@/shared/lib/hash';
 import type { DiveMember } from '@/shared/model/dive';
+import { avatarColorOf } from '../lib/avatarColor';
 import { oxygenPercent } from '../lib/labels';
 import { toRegionKey } from '../lib/region';
+import {
+  CURRENT_STRENGTHS,
+  ENTRY_TYPES,
+  GAS_MIXES,
+  SEA_STATES,
+  SUIT_TYPES,
+  TANK_MATERIALS,
+  TIMES_OF_DAY,
+  WEATHERS,
+} from '../lib/unions';
 import type {
   DiveDetailMember,
   DiveDetailView,
@@ -40,37 +41,6 @@ import type {
   LoggedDive,
   SafetyStop,
 } from '../types';
-
-// Every value of each union: a value the front does not know breaks the contract (D-14, deployed
-// front first).
-export const GAS_MIXES = [
-  'AIR',
-  'NITROX32',
-  'NITROX36',
-  'OTHER',
-] as const satisfies readonly GasMix[];
-export const ENTRY_TYPES = ['BOAT', 'SHORE'] as const satisfies readonly EntryType[];
-export const TIMES_OF_DAY = ['DAY', 'NIGHT'] as const satisfies readonly TimeOfDay[];
-export const WEATHERS = [
-  'SUNNY',
-  'CLOUDY',
-  'OVERCAST',
-  'RAIN',
-] as const satisfies readonly Weather[];
-export const SEA_STATES = [
-  'CALM',
-  'SLIGHT',
-  'MODERATE',
-  'ROUGH',
-] as const satisfies readonly SeaState[];
-export const CURRENT_STRENGTHS = [
-  'NONE',
-  'WEAK',
-  'MODERATE',
-  'STRONG',
-] as const satisfies readonly CurrentStrength[];
-export const TANK_MATERIALS = ['STEEL', 'ALUMINIUM'] as const satisfies readonly TankMaterial[];
-export const SUIT_TYPES = ['WET', 'SEMI_DRY', 'DRY'] as const satisfies readonly SuitType[];
 
 // ── Guards (the contract is checked at the boundary, `invalid-response` otherwise) ─────────────
 
@@ -209,14 +179,6 @@ export function isDiveNotFound(error: unknown): boolean {
 
 /** Who the user is: the contract leaves them out of the dive teams. */
 export type DiveLogOwner = Pick<DiveMember, 'id' | 'firstName' | 'lastName'>;
-
-/**
- * Buddy colours are not stored: one is derived from the id, among the avatar palette (a stable
- * hash, so that a buddy keeps the same colour on every screen).
- */
-export function avatarColorOf(id: string): string {
-  return avatarPalette[hashOf(id) % avatarPalette.length] ?? avatarPalette[0];
-}
 
 /** The user: neutral avatar, no colour (`Palanquee`). */
 export function toSelfMember(owner: DiveLogOwner): DiveMember {

@@ -10,6 +10,7 @@ $color-surface-2: #1B3156;
 $color-surface-3: #24406D;
 $color-line: rgba(154, 186, 224, 0.10);
 $color-line-strong: rgba(154, 186, 224, 0.18);
+$color-line-field: rgba(154, 186, 224, 0.6);
 $color-text-high: #EAF2FB;
 $color-text-med: #AFC1D6;
 $color-text-low: #889BB2;
@@ -128,7 +129,6 @@ $shadow-peak: 0 0 16px rgba(79, 214, 201, 0.3);
 $shadow-ring-surface-2: 0 0 0 2px #1B3156;
 $shadow-thumb: 0 0 0 4px rgba(79, 214, 201, 0.14);
 $shadow-sheet: inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5);
-$shadow-field-focus: 0 0 0 3px rgba(79, 214, 201, 0.18);
 
 // Gradient
 $gradient-page-mobile: radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%);
@@ -271,6 +271,8 @@ $layout-listbox-max-height: 320px;
 $layout-textarea-min-height: 120px;
 $layout-dialog-width: 400px;
 $layout-form-aside-width: 340px;
+$layout-form-top-bar-clearance: 80px;
+$layout-form-bottom-bar-clearance: 120px;
 $layout-step-badge: 26px;
 $layout-status-dot: 18px;
 $layout-status-ring: 1.5px;

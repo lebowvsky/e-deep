@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { validValues } from '../mocks/diveFormFixture';
-import { createLocalDraftStore, draftKey, isDiveFormValues } from './draftStore';
+import { createLocalDraftStore, draftKey, DRAFT_MAX_AGE_MS, isDiveFormValues } from './draftStore';
 
 describe('draftKey', () => {
   it('has one key per mode and per dive', () => {
@@ -21,12 +21,48 @@ describe('createLocalDraftStore', () => {
   });
 
   it('saves, restores and clears a draft', async () => {
-    const store = createLocalDraftStore(localStorage);
+    const store = createLocalDraftStore(localStorage, () => draft.savedAt);
     await store.save(key, draft);
     expect(await store.load(key)).toEqual(draft);
     expect(await store.load(draftKey({ kind: 'edit', diveId: 'd1' }))).toBeNull();
     await store.clear(key);
     expect(await store.load(key)).toBeNull();
+  });
+
+  it('purges the drafts older than 30 days, and those without a date, when one is loaded', async () => {
+    const now = draft.savedAt + DRAFT_MAX_AGE_MS + 1;
+    const store = createLocalDraftStore(localStorage, () => now);
+    const fresh = draftKey({ kind: 'edit', diveId: 'fresh' });
+    const old = draftKey({ kind: 'edit', diveId: 'old' });
+    const undated = draftKey({ kind: 'edit', diveId: 'undated' });
+    localStorage.setItem(key, JSON.stringify({ version: 2, ...draft }));
+    localStorage.setItem(old, JSON.stringify({ version: 1, savedAt: 1, values: {} }));
+    localStorage.setItem(undated, '{not json');
+    localStorage.setItem(fresh, JSON.stringify({ version: 2, ...draft, savedAt: now - 1000 }));
+    localStorage.setItem('other-app', 'kept');
+
+    expect(await store.load(key)).toBeNull();
+    expect(localStorage.getItem(key)).toBeNull();
+    expect(localStorage.getItem(old)).toBeNull();
+    expect(localStorage.getItem(undated)).toBeNull();
+    expect(localStorage.getItem(fresh)).not.toBeNull();
+    expect(localStorage.getItem('other-app')).toBe('kept');
+    expect(await store.load(fresh)).not.toBeNull();
+  });
+
+  it('says when a draft could not be written', async () => {
+    const full: Storage = {
+      ...localStorage,
+      length: 0,
+      clear: () => undefined,
+      key: () => null,
+      getItem: () => null,
+      removeItem: () => undefined,
+      setItem: () => {
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      },
+    };
+    await expect(createLocalDraftStore(full).save(key, draft)).rejects.toThrow();
   });
 
   it('ignores a corrupted, outdated or foreign draft', async () => {
@@ -37,7 +73,7 @@ describe('createLocalDraftStore', () => {
     expect(await store.load(key)).toBeNull();
     localStorage.setItem(
       key,
-      JSON.stringify({ version: 1, savedAt: 1, values: { ...draft.values, gas: 'TRIMIX' } }),
+      JSON.stringify({ version: 2, savedAt: 1, values: { ...draft.values, gas: 'TRIMIX' } }),
     );
     expect(await store.load(key)).toBeNull();
   });
@@ -55,7 +91,6 @@ describe('createLocalDraftStore', () => {
       removeItem: blocked,
     };
     const store = createLocalDraftStore(failing);
-    await expect(store.save(key, draft)).resolves.toBeUndefined();
     await expect(store.load(key)).resolves.toBeNull();
     await expect(store.clear(key)).resolves.toBeUndefined();
     expect(createLocalDraftStore(null)).toBeDefined();

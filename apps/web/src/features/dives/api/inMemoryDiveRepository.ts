@@ -13,7 +13,7 @@ import type {
   DiveSummary,
 } from '@e-deep/shared';
 import type { QueryClient } from '@tanstack/react-query';
-import { TEAM_LEVELS } from '../form/model';
+import { toCertificationLevelRef } from '../lib/levels';
 import { isDiveDetail, isDiveLogResponse } from './divesApi';
 import { divesKeys } from './queryKeys';
 import type { SaveDive, SaveDiveInput, SaveDiveResult } from './saveDive';
@@ -53,10 +53,19 @@ function findSite(
   return fromLog ? { ...fromLog, latitude: 0, longitude: 0, area: null } : null;
 }
 
-function toLevelRef(code: string | null): CertificationLevelRef | null {
-  if (code === null) return null;
-  const label = TEAM_LEVELS.find((level) => level.code === code)?.label ?? code;
-  return { agency: 'FFESSM', code, label };
+/** Agency of the levels offered in the dive team (`TEAM_LEVELS`). */
+const TEAM_LEVEL_AGENCY = 'FFESSM';
+
+/**
+ * Level of a buddy as the contact sheet knows it (D-21): the latest one among the cached details.
+ * The log summary has no level, so a buddy met only in uncached dives stays without one.
+ */
+function knownLevel(buddyId: string, details: readonly DiveDetail[]): CertificationLevelRef | null {
+  for (const detail of details) {
+    const level = detail.buddies.find((buddy) => buddy.id === buddyId)?.level;
+    if (level) return level;
+  }
+  return null;
 }
 
 /** The `DiveDetail` the API would serve for `input` (its `number` set by `renumber`). */
@@ -67,14 +76,27 @@ export function buildDiveDetail(
     diverLevel,
     createdAt,
     updatedAt,
-  }: { site: DetailSite; diverLevel: CertificationLevelRef; createdAt: string; updatedAt: string },
+    levelOf = () => null,
+  }: {
+    site: DetailSite;
+    diverLevel: CertificationLevelRef;
+    createdAt: string;
+    updatedAt: string;
+    /** Level already on the sheet of an existing buddy, kept when the form sends none. */
+    levelOf?: (buddyId: string) => CertificationLevelRef | null;
+  },
 ): DiveDetail {
   const { event, participation } = input;
   const buddies: DiveDetailBuddy[] = input.contacts.buddies.map((buddy) => ({
     id: buddy.id,
     firstName: buddy.firstName,
     lastName: buddy.lastName,
-    level: toLevelRef(buddy.levelCode),
+    level:
+      buddy.levelCode === null
+        ? buddy.isNew
+          ? null
+          : levelOf(buddy.id)
+        : toCertificationLevelRef(buddy.levelCode, TEAM_LEVEL_AGENCY),
   }));
   return {
     id: event.id,
@@ -177,6 +199,7 @@ export function createInMemoryDiveRepository({
       diverLevel: previous?.diverLevel ?? diverLevel,
       createdAt: previous?.createdAt ?? timestamp,
       updatedAt: timestamp,
+      levelOf: (buddyId) => knownLevel(buddyId, details),
     });
 
     const dives = renumber([...log.dives.filter((dive) => dive.id !== built.id), toSummary(built)]);
@@ -192,6 +215,6 @@ export function createInMemoryDiveRepository({
         queryClient.setQueryData(divesKeys.detail(other.id), { ...other, number });
       }
     }
-    return { ok: true, id: detail.id };
+    return { ok: true, id: detail.id, number: detail.number };
   };
 }

@@ -76,7 +76,10 @@ export interface BuddyContactInput {
   id: string;
   firstName: string;
   lastName: string;
-  /** Level code (`N3`), `null` when unknown. */
+  /**
+   * Level code (`N3`) chosen in the form. `null`: none chosen — for an existing buddy, the level of
+   * their contact sheet is kept, not erased (D-21).
+   */
   levelCode: string | null;
   isNew: boolean;
 }
@@ -94,7 +97,9 @@ export interface SaveDiveInput {
 
 /** Field errors are expected rejections (validation); anything unexpected is a rejected promise. */
 export type SaveDiveResult =
-  { ok: true; id: string } | { ok: false; fieldErrors: Partial<Record<DiveFormField, string>> };
+  /** `number`: the logbook number the dive got once saved (D26, computed by the store). */
+  | { ok: true; id: string; number: number }
+  | { ok: false; fieldErrors: Partial<Record<DiveFormField, string>> };
 
 /** Port of the dive writes: in memory in V1, `POST` / `PATCH /api/dives` later. */
 export type SaveDive = (input: SaveDiveInput) => Promise<SaveDiveResult>;

@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react';
+import { memo, useId, useRef } from 'react';
 import { formatInterval } from '@/shared/lib/format';
 import { Button } from '@/shared/ui/Button';
 import { FormField } from '@/shared/ui/FormField';
@@ -8,13 +8,20 @@ import { NumberInput } from '@/shared/ui/NumberInput';
 import { Switch } from '@/shared/ui/Switch';
 import { TextInput } from '@/shared/ui/TextInput';
 import type { DiveFormValues } from '../../../form/model';
-import type { DiveForm } from '../../../form/useDiveForm';
-import { fieldBinder, fieldId, numberProps, textProps } from '../fieldBinding';
+import {
+  fieldBinder,
+  fieldId,
+  numberProps,
+  sameSectionProps,
+  sectionReads,
+  textProps,
+  type SectionForm,
+} from '../fieldBinding';
 import { FormSection, type FormSectionCollapse } from '../FormSection';
 import styles from './RunSection.module.scss';
 
 export interface RunSectionProps {
-  form: DiveForm;
+  form: SectionForm;
   canEditEvent: boolean;
   /** Phones: folded section (accordion). */
   collapse?: FormSectionCollapse | undefined;
@@ -22,8 +29,11 @@ export interface RunSectionProps {
   proposeSurfaceInterval: (values: DiveFormValues) => number | null;
 }
 
+/** The surface interval proposed by « Plongée successive » reads the start of the dive. */
+const READS = sectionReads('run', ['date', 'entryTime']);
+
 /** Section 2: safety stop, decompression stops, stops done as planned, repetitive dive. */
-export function RunSection({
+export const RunSection = memo(function RunSection({
   form,
   canEditEvent,
   collapse,
@@ -31,12 +41,13 @@ export function RunSection({
 }: RunSectionProps) {
   const bind = fieldBinder(form, canEditEvent);
   const { values } = form;
+  const { change } = form.actions;
 
   const toggleRepetitive = (isRepetitive: boolean) => {
-    form.change('repetitive', isRepetitive);
+    change('repetitive', isRepetitive);
     if (!isRepetitive || values.surfaceInterval.trim() !== '') return;
     const proposed = proposeSurfaceInterval(values);
-    if (proposed !== null) form.change('surfaceInterval', formatInterval(proposed));
+    if (proposed !== null) change('surfaceInterval', formatInterval(proposed));
   };
 
   return (
@@ -46,20 +57,20 @@ export function RunSection({
           <Switch
             id={fieldId('safetyStop')}
             checked={values.safetyStop}
-            onCheckedChange={(checked) => form.change('safetyStop', checked)}
+            onCheckedChange={(checked) => change('safetyStop', checked)}
             label="Palier de sécurité"
             hint="Fait pendant la remontée"
           />
           {values.safetyStop && (
             <div className={styles.pair}>
-              <FormField label="Durée" {...bind('safetyStopDurationMin')}>
+              <FormField {...bind('safetyStopDurationMin')} label="Durée">
                 <NumberInput
                   {...numberProps(form, 'safetyStopDurationMin')}
                   unit="min"
                   unitLabel="minutes"
                 />
               </FormField>
-              <FormField label="Profondeur" {...bind('safetyStopDepthM')}>
+              <FormField {...bind('safetyStopDepthM')} label="Profondeur">
                 <NumberInput
                   {...numberProps(form, 'safetyStopDepthM')}
                   decimal
@@ -75,7 +86,7 @@ export function RunSection({
           <Switch
             id={fieldId('decompression')}
             checked={values.decompression}
-            onCheckedChange={(checked) => form.change('decompression', checked)}
+            onCheckedChange={(checked) => change('decompression', checked)}
             label="Paliers de décompression"
             hint="Imposés par ton ordinateur ou tes tables"
           />
@@ -86,7 +97,7 @@ export function RunSection({
           <Switch
             id={fieldId('stopsOk')}
             checked={values.stopsOk}
-            onCheckedChange={(checked) => form.change('stopsOk', checked)}
+            onCheckedChange={(checked) => change('stopsOk', checked)}
             label="Paliers respectés"
             hint="Faits comme prévu, sans écart"
           />
@@ -102,10 +113,7 @@ export function RunSection({
           />
           {values.repetitive && (
             <div className={styles.pair}>
-              <FormField
-                label="Intervalle de surface"
-                {...bind('surfaceInterval', 'Au format h:mm.')}
-              >
+              <FormField {...bind('surfaceInterval', 'Au format h:mm.')}>
                 <TextInput
                   {...textProps(form, 'surfaceInterval')}
                   font="mono"
@@ -121,15 +129,16 @@ export function RunSection({
       </div>
     </FormSection>
   );
-}
+}, sameSectionProps<RunSectionProps>(READS));
 
 interface DecoStopsProps {
-  form: DiveForm;
+  form: SectionForm;
 }
 
 /** One « profondeur · durée » line per decompression stop, and « Ajouter un palier ». */
 function DecoStops({ form }: DecoStopsProps) {
   const { decoStops } = form.values;
+  const { blur, changeDecoStop, removeDecoStop, addDecoStop } = form.actions;
   const error = form.errors.decoStops;
   const errorId = useId();
   const addRef = useRef<HTMLButtonElement>(null);
@@ -145,8 +154,8 @@ function DecoStops({ form }: DecoStopsProps) {
             <FormField label="Profondeur" {...(index === 0 ? { id: fieldId('decoStops') } : {})}>
               <NumberInput
                 value={stop.depthM}
-                onValueChange={(value) => form.changeDecoStop(stop.key, 'depthM', value)}
-                onBlur={() => form.blur('decoStops')}
+                onValueChange={(value) => changeDecoStop(stop.key, 'depthM', value)}
+                onBlur={() => blur('decoStops')}
                 decimal
                 unit="m"
                 unitLabel="mètres"
@@ -156,8 +165,8 @@ function DecoStops({ form }: DecoStopsProps) {
             <FormField label="Durée">
               <NumberInput
                 value={stop.durationMin}
-                onValueChange={(value) => form.changeDecoStop(stop.key, 'durationMin', value)}
-                onBlur={() => form.blur('decoStops')}
+                onValueChange={(value) => changeDecoStop(stop.key, 'durationMin', value)}
+                onBlur={() => blur('decoStops')}
                 unit="min"
                 unitLabel="minutes"
                 {...errorProps}
@@ -169,7 +178,7 @@ function DecoStops({ form }: DecoStopsProps) {
               label={`Retirer le palier ${index + 1}`}
               className={styles.remove}
               onClick={() => {
-                form.removeDecoStop(stop.key);
+                removeDecoStop(stop.key);
                 // The removed button took the focus with it: keep it in the list.
                 addRef.current?.focus();
               }}
@@ -188,7 +197,7 @@ function DecoStops({ form }: DecoStopsProps) {
         variant="ghost"
         icon="plus"
         className={styles.add}
-        onClick={form.addDecoStop}
+        onClick={addDecoStop}
         aria-describedby={error ? errorId : undefined}
         {...(decoStops.length === 0 ? { id: fieldId('decoStops') } : {})}
       >

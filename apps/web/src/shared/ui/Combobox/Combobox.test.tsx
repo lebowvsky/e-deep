@@ -149,4 +149,39 @@ describe('Combobox', () => {
     await user.keyboard('{ArrowDown}');
     expect(input.getAttribute('aria-expanded')).toBe('true');
   });
+
+  it('offers to create only the entries that `accepts` lets through, else says why', async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn();
+    function DiverHarness() {
+      const [text, setText] = useState('');
+      return (
+        <FormField label="Ajouter un plongeur">
+          <Combobox
+            options={[]}
+            inputValue={text}
+            onInputChange={setText}
+            onSelect={vi.fn()}
+            create={{
+              label: (query) => `Ajouter « ${query} »`,
+              accepts: (query) => query.includes(' '),
+              onCreate,
+            }}
+            emptyMessage="Indique le prénom et le nom."
+          />
+        </FormField>
+      );
+    }
+    render(<DiverHarness />);
+    const field = screen.getByRole('combobox', { name: 'Ajouter un plongeur' });
+
+    await user.type(field, 'Zoé');
+    expect(screen.queryByRole('option')).toBeNull();
+    expect(screen.getByText('Indique le prénom et le nom.')).toBeTruthy();
+    await user.keyboard('{Enter}');
+    expect(onCreate).not.toHaveBeenCalled();
+
+    await user.type(field, ' Martin{Enter}');
+    expect(onCreate).toHaveBeenCalledWith('Zoé Martin');
+  });
 });

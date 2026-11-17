@@ -1,9 +1,13 @@
-/** Case- and accent-insensitive form of a character (« É » → « e »). */
-const fold = (char: string): string =>
-  char
+/**
+ * Lower case, without accents (« Épave » → « epave »): the one definition of « same text » for the
+ * searches, the combobox and the tags.
+ */
+export function foldText(text: string): string {
+  return text
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
+}
 
 export interface TextMatch {
   /** Code-unit range of `text` that matched: `text.slice(start, end)`. */
@@ -16,14 +20,14 @@ export interface TextMatch {
  * « Révellata »). `null` when absent or when the query is blank.
  */
 export function findTextMatch(text: string, query: string): TextMatch | null {
-  const needle = fold(query.trim());
+  const needle = foldText(query.trim());
   if (needle === '') return null;
 
   // One folded entry per character of `text`, with its offset, so a match maps back to `text`.
   const chars: { offset: number; folded: string }[] = [];
   let offset = 0;
   for (const char of text) {
-    chars.push({ offset, folded: fold(char) });
+    chars.push({ offset, folded: foldText(char) });
     offset += char.length;
   }
 
@@ -41,7 +45,16 @@ export function findTextMatch(text: string, query: string): TextMatch | null {
   return null;
 }
 
-/** Same text, ignoring case and accents. */
+/**
+ * `query` appears in a text already folded by `foldText` (blank query: no). For filtering a list,
+ * each text folded once; `findTextMatch` is for the range to highlight.
+ */
+export function matchesText(foldedText: string, query: string): boolean {
+  const needle = foldText(query.trim());
+  return needle !== '' && foldedText.includes(needle);
+}
+
+/** Same text, ignoring case, accents and surrounding spaces. */
 export function isSameText(a: string, b: string): boolean {
-  return Array.from(a.trim(), fold).join('') === Array.from(b.trim(), fold).join('');
+  return foldText(a.trim()) === foldText(b.trim());
 }

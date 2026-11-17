@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { formatCharacterCount } from '@/shared/lib/format';
 import { CONTEXT, validValues } from '../mocks/diveFormFixture';
 import type { DiveFormField, DiveFormValues } from './model';
-import { validateDiveForm, validateField, type ValidationContext } from './validation';
+import { BOUNDS, validateDiveForm, validateField, type ValidationContext } from './validation';
 
 function issue(
   field: DiveFormField,
@@ -97,16 +98,6 @@ describe('L’essentiel', () => {
     );
     expect(warningOf('maxDepthM', { maxDepthM: '60' }, at('N4'))).toBeNull();
     expect(warningOf('maxDepthM', { maxDepthM: '80' }, at(null))).toBeNull();
-  });
-
-  it('warns when the number is already in the log, and refuses a non-number', () => {
-    expect(warningOf('number', { number: '127' })).toBe(
-      'Le n° 127 existe déjà dans ton carnet. Vérifie le numéro.',
-    );
-    expect(issue('number', { number: '128' })).toBeNull();
-    expect(issue('number', { number: '' })).toBeNull();
-    expect(errorOf('number', { number: '0' })).not.toBeNull();
-    expect(errorOf('number', { number: '12,5' })).not.toBeNull();
   });
 });
 
@@ -221,16 +212,25 @@ describe('Notes & observations', () => {
     );
     expect(errorOf('species', { species: ['x'.repeat(81)] })).not.toBeNull();
   });
+
+  it('says the notes limit as the bounds set it', () => {
+    expect(errorOf('notes', { notes: 'x'.repeat(BOUNDS.notesLength + 1) })).toBe(
+      `Raccourcis tes notes (${formatCharacterCount(BOUNDS.notesLength)} au plus).`,
+    );
+  });
+
+  it('takes a species written with or without its accents as the same one (like the tags)', () => {
+    expect(errorOf('species', { species: ['Mérou', 'Merou'] })).toBe(
+      'Retire les espèces en double.',
+    );
+  });
 });
 
 describe('validateDiveForm', () => {
   it('passes valid values, whatever the warnings', () => {
-    const { errors, warnings } = validateDiveForm(
-      validValues({ maxDepthM: '45', number: '127' }),
-      CONTEXT,
-    );
+    const { errors, warnings } = validateDiveForm(validValues({ maxDepthM: '45' }), CONTEXT);
     expect(errors).toEqual([]);
-    expect(warnings.map(({ field }) => field)).toEqual(['number', 'maxDepthM']);
+    expect(warnings.map(({ field }) => field)).toEqual(['maxDepthM']);
   });
 
   it('gives the errors apart from the warnings, in the order of the form', () => {
@@ -239,12 +239,12 @@ describe('validateDiveForm', () => {
         weightKg: '40',
         site: { id: null, name: '' },
         exitTime: '09:00',
-        number: '127',
+        maxDepthM: '45',
       }),
       CONTEXT,
     );
     expect(errors.map(({ field }) => field)).toEqual(['site', 'exitTime', 'weightKg']);
     expect(errors.every(({ level }) => level === 'error')).toBe(true);
-    expect(warnings.map(({ field }) => field)).toEqual(['number']);
+    expect(warnings.map(({ field }) => field)).toEqual(['maxDepthM']);
   });
 });

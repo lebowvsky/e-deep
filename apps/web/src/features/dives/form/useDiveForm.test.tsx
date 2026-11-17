@@ -26,7 +26,7 @@ function memoryStore(initial: Record<string, DiveDraft> = {}) {
 
 function setup(overrides: Partial<UseDiveFormOptions> = {}) {
   const { store, drafts } = memoryStore();
-  const saveDive = vi.fn<SaveDive>(() => Promise.resolve({ ok: true, id: 'd128' }));
+  const saveDive = vi.fn<SaveDive>(() => Promise.resolve({ ok: true, id: 'd128', number: 128 }));
   let id = 0;
   const options: UseDiveFormOptions = {
     mode: { kind: 'new' },
@@ -57,9 +57,9 @@ describe('draft', () => {
   it('saves the draft 1 s after the last change, not before', async () => {
     const { hook, store, drafts } = setup();
     await flush();
-    act(() => hook.result.current.change('notes', 'Mérou'));
+    act(() => hook.result.current.actions.change('notes', 'Mérou'));
     await act(() => vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS - 1));
-    act(() => hook.result.current.change('notes', 'Mérou brun'));
+    act(() => hook.result.current.actions.change('notes', 'Mérou brun'));
     await act(() => vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS - 1));
     expect(store.save).not.toHaveBeenCalled();
     await act(() => vi.advanceTimersByTimeAsync(1));
@@ -78,7 +78,7 @@ describe('draft', () => {
   it('writes the pending draft at once on flushDraft, then not again at the delay', async () => {
     const { hook, store, drafts } = setup();
     await flush();
-    act(() => hook.result.current.change('notes', 'Mérou'));
+    act(() => hook.result.current.actions.change('notes', 'Mérou'));
     act(() => hook.result.current.flushDraft());
     expect(store.save).toHaveBeenCalledTimes(1);
     expect(drafts.get(KEY)?.values.notes).toBe('Mérou');
@@ -86,20 +86,45 @@ describe('draft', () => {
     expect(store.save).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['pagehide', 'beforeunload'])('writes the pending draft on %s', async (type) => {
+  it('writes the pending draft on pagehide (tab closed or put in the back-forward cache)', async () => {
     const { hook, drafts } = setup();
     await flush();
-    act(() => hook.result.current.change('notes', 'Mérou'));
+    act(() => hook.result.current.actions.change('notes', 'Mérou'));
     act(() => {
-      window.dispatchEvent(new Event(type));
+      window.dispatchEvent(new Event('pagehide'));
     });
     expect(drafts.get(KEY)?.values.notes).toBe('Mérou');
+  });
+
+  it('drops the draft mention once the values are back to their start', async () => {
+    const { hook, store, drafts } = setup();
+    await flush();
+    act(() => hook.result.current.actions.change('notes', 'Mérou'));
+    await act(() => vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS));
+    expect(hook.result.current.draft.savedAt).not.toBeNull();
+
+    act(() => hook.result.current.actions.change('notes', ''));
+    await flush();
+    expect(drafts.has(KEY)).toBe(false);
+    expect(hook.result.current.draft.savedAt).toBeNull();
+    expect(store.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it('claims no draft when the device could not write it', async () => {
+    const { store } = memoryStore();
+    store.save.mockRejectedValue(new Error('quota'));
+    const { hook } = setup({ draftStore: store });
+    await flush();
+    act(() => hook.result.current.actions.change('notes', 'Mérou'));
+    await act(() => vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS));
+    expect(store.save).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.draft.savedAt).toBeNull();
   });
 
   it('writes the pending draft when the form unmounts within the delay', async () => {
     const { hook, drafts } = setup();
     await flush();
-    act(() => hook.result.current.change('notes', 'Mérou'));
+    act(() => hook.result.current.actions.change('notes', 'Mérou'));
     hook.unmount();
     expect(drafts.get(KEY)?.values.notes).toBe('Mérou');
   });
@@ -108,7 +133,7 @@ describe('draft', () => {
     const { hook, store } = setup();
     await flush();
     act(() => hook.result.current.flushDraft());
-    act(() => hook.result.current.change('notes', 'Mérou'));
+    act(() => hook.result.current.actions.change('notes', 'Mérou'));
     await act(async () => {
       await hook.result.current.submit();
     });
@@ -168,10 +193,11 @@ describe('submit', () => {
     expect(saveDive).toHaveBeenCalledTimes(1);
     expect(saveDive.mock.calls[0]?.[0].event.id).toBe('id-1');
     await act(async () => {
-      resolve({ ok: true, id: 'id-1' });
+      resolve({ ok: true, id: 'id-1', number: 120 });
       await first;
     });
-    expect(await first).toEqual({ status: 'saved', id: 'id-1' });
+    // The number the dive got (D26), not the one guessed when the form opened.
+    expect(await first).toEqual({ status: 'saved', id: 'id-1', number: 120 });
     expect(store.clear).toHaveBeenCalledWith(KEY);
     expect(hook.result.current.isDirty).toBe(false);
   });
@@ -188,6 +214,40 @@ describe('submit', () => {
     });
     expect(outcome).toEqual({ status: 'invalid', fields: ['site'] });
     expect(hook.result.current.errors.site).toBe('Site inconnu.');
+  });
+
+  it('sends the same ids again after a failure: a retry is not a second dive', async () => {
+    const saveDive = vi
+      .fn<SaveDive>()
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockResolvedValueOnce({ ok: true, id: 'id-1', number: 128 });
+    const { hook } = setup({
+      saveDive,
+      initialValues: validValues({ site: { id: null, name: 'Le Sec' } }),
+    });
+    await flush();
+    await act(async () => {
+      await hook.result.current.submit();
+    });
+    await act(async () => {
+      await hook.result.current.submit();
+    });
+    const [first, second] = saveDive.mock.calls.map(([input]) => input);
+    expect(second?.event.id).toBe(first?.event.id);
+    expect(second?.contacts.site.id).toBe(first?.contacts.site.id);
+  });
+
+  it('reports a saved dive even when its draft cannot be cleared', async () => {
+    const { store } = memoryStore();
+    store.clear.mockRejectedValue(new Error('blocked'));
+    const { hook } = setup({ draftStore: store });
+    await flush();
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.submit();
+    });
+    expect(outcome).toEqual({ status: 'saved', id: 'd128', number: 128 });
+    expect(hook.result.current.submitStatus).toEqual({ status: 'saved', id: 'd128' });
   });
 
   it('hands over an unexpected failure and keeps the values', async () => {
@@ -209,10 +269,25 @@ describe('editing helpers', () => {
     const { hook } = setup();
     await flush();
     act(() => {
-      hook.result.current.addDecoStop();
-      hook.result.current.addMember({ id: null, firstName: 'Léa', lastName: 'Morel', level: '' });
+      hook.result.current.actions.addDecoStop();
+      hook.result.current.actions.addMember({
+        id: null,
+        firstName: 'Léa',
+        lastName: 'Morel',
+        level: '',
+      });
     });
-    expect(hook.result.current.values.decoStops[0]?.key).toBe('id-1');
-    expect(hook.result.current.values.team[0]?.key).toBe('id-2');
+    // id-1 and id-2 are the dive's and a new site's, drawn when the form opens.
+    expect(hook.result.current.values.decoStops[0]?.key).toBe('id-3');
+    expect(hook.result.current.values.team[0]?.key).toBe('id-4');
+  });
+
+  it('keeps the same actions from one render to the next (memoised sections)', async () => {
+    const { hook } = setup();
+    await flush();
+    const { actions } = hook.result.current;
+    act(() => actions.change('notes', 'Mérou'));
+    expect(hook.result.current.values.notes).toBe('Mérou');
+    expect(hook.result.current.actions).toBe(actions);
   });
 });

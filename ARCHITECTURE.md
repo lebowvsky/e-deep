@@ -588,17 +588,39 @@ Issus du formulaire de plongée (`/dives/new`, `?from=:id`, `/dives/:id/edit`, p
 2026-11-17) :
 
 - **Écriture provisoire** : `saveDive` passe par `inMemoryDiveRepository` (cache TanStack Query),
-  perdu au refetch ou au rechargement. Restent à faire : endpoints `POST` / `PATCH /api/dives`,
+  perdu au refetch ou au rechargement. Conséquence voulue de ce dépôt en mémoire : le brouillon est
+  effacé dès l'enregistrement, donc une plongée enregistrée puis perdue au rechargement (ou au
+  refetch, après `staleTime`) ne laisse aucune copie de la saisie. Restent à faire : endpoints `POST` / `PATCH /api/dives`,
   synchro hors ligne (D22) et un **contrat d'écriture partagé** dans `@e-deep/shared` (`SaveDiveInput`
   recopie aujourd'hui à la main `DiveWrite` de l'API). Les ids sont en UUID v4
-  (`crypto.randomUUID()`) au lieu de v7 (D22). Un site créé par son nom s'affiche en
-  « 0,000° N · 0,000° E » sur le détail tant que sa position n'existe pas.
+  (`crypto.randomUUID()`) au lieu de v7 (D22) ; ceux de la plongée et d'un site créé par son nom
+  sont tirés une fois par formulaire (un plongeur créé par son nom garde la clé de sa ligne) : un
+  nouvel essai après un échec renvoie les mêmes. Un site créé par son nom s'affiche en
+  « 0,000° N · 0,000° E » sur le détail tant que sa position n'existe pas ; un site existant aussi,
+  quand aucun détail de plongée en cache ne porte sa position (le résumé du carnet n'en a pas, et le
+  refetch du détail d'une plongée créée en mémoire répond 404). Les erreurs de champ du port
+  `SaveDive` sont typées par les champs du formulaire : l'adaptateur HTTP devra traduire celles de
+  l'API (format à définir avec le mapping des erreurs métier, plus haut).
+- **N° de plongée** (écart avec la spec, D26 prime) : la spec en fait un champ libre prérempli à
+  max + 1, avec un avertissement « n° déjà pris ». Le n° étant calculé et jamais stocké, le champ est
+  en lecture seule (« Calculé selon la date ») et montre le rang qu'aura la plongée (`diveNumberFor`,
+  même règle que l'API : instant d'immersion puis id ; sans heure, fin de la journée). L'aperçu,
+  l'overline et la barre du haut le suivent ; le toast annonce le n° renvoyé par `saveDive`.
+  L'avertissement de doublon est supprimé. Un décalage « carnet papier » reste à prévoir (D26).
 - **`canEditEvent`** : toujours vrai en V1 (`DiveFormPage`). L'usage en club devra le calculer
   (créateur de l'événement) ; le verrouillage des champs (É) est prêt et testé. La palanquée suit le
   modèle (participation), pas la spec (événement) : point ouvert 18 du modèle de données.
 - **Champs hors modèle** (saisis, non enregistrés) : lignes de paliers de déco. (D-16), intervalle
   de surface d'une successive, niveau par membre de la palanquée (le repository le copie sur la
-  fiche du binôme, D-21). Exclus du test d'aller-retour formulaire → détail.
+  fiche du binôme, D-21). Exclus du test d'aller-retour formulaire → détail. Un binôme choisi parmi
+  les « Déjà rencontrés » arrive sans niveau (le résumé du carnet n'en porte pas) : `levelCode: null`
+  veut dire « inchangé », le repository garde le niveau connu d'un détail en cache. Servir le niveau
+  dans le carnet permettrait de le préremplir.
+- **« Successive » inconnue** : une plongée dont `isRepetitive` vaut `null` le garde tant que
+  l'interrupteur reste éteint (le formulaire n'a pas de troisième état).
+- **Choix facultatifs** (mise à l'eau, moment, mer, courant, matériau, type de combinaison) : une
+  fois choisis, ils ne reviennent plus à « non renseigné » (`radiogroup`, qu'un clic ne décoche pas).
+  Une option « — » ou un bouton « Effacer » est à décider au design.
 - **Suggestions vides** : structures et espèces déjà saisies ne sont pas servies par l'API (champs
   du détail, absents de `GET /dives`) ; la liste reste vide.
 - **Niveau du plongeur** (avertissement de profondeur, palanquée) : vient de `mockUser`.
@@ -606,7 +628,10 @@ Issus du formulaire de plongée (`/dives/new`, `?from=:id`, `/dives/:id/edit`, p
   clé sans id de plongeur (`e-deep:dive-draft:<mode>`) : un autre compte du même navigateur le
   restaurerait. À chiffrer ou à passer en IndexedDB par plongeur, et à purger au logout. Le
   brouillon est écrit 1 s après la dernière frappe, et tout de suite à la sortie confirmée, sur
-  `pagehide` / `beforeunload` et au démontage.
+  `pagehide` et au démontage (pas sur `beforeunload`, qui peut priver la page du back-forward
+  cache). Les brouillons de plus de 30 jours, ou sans date lisible, sont supprimés à chaque
+  ouverture du formulaire (tous modes et toutes plongées) ; un échec d'écriture n'affiche plus la
+  mention « Brouillon enregistré ».
 - **Saisie** : le clavier `decimal` d'iOS n'a pas de signe moins (températures négatives) ; il
   faudra un bouton ± ou `inputMode="text"` sur ces champs.
 - **Mise en page** : deux colonnes (colonne collante à droite) à partir de 1280 px et non 1024
@@ -615,5 +640,11 @@ Issus du formulaire de plongée (`/dives/new`, `?from=:id`, `/dives/:id/edit`, p
   champ « Ajouter un plongeur », pas par la ligne du membre ; un second enregistrement sans
   modification ne réannonce pas le résumé d'erreurs (même contenu, le focus va quand même au
   premier champ) ; un segmented verrouillé (`canEditEvent` faux) n'est plus focalisable et passe à
-  45 % d'opacité. Vérification clavier faite avec Playwright (pas d'axe-core).
+  45 % d'opacité. Vérification clavier faite avec Playwright (pas d'axe-core). Revue de la PR :
+  liseré des champs en `lineField` (≥ 3:1, au lieu du `lineStrong` de la maquette, ≈ 1,3:1) ;
+  focus d'un champ = outline 2px `accent` quel que soit son état (le halo de la maquette est
+  retiré) ; les contrôles gardent une marge de défilement sous les barres collantes (SC 2.4.11) ;
+  le résumé d'erreurs reste tant qu'un de ses champs est en erreur ; Entrée seule n'enregistre
+  plus (seuls le bouton et `Ctrl/⌘ + Entrée`), et le raccourci est inactif sous la boîte « Quitter
+  sans enregistrer ? ».
 - **Import** de fichiers ou d'un ordinateur de plongée : V2.

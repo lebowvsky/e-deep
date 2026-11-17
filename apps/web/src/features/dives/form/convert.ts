@@ -57,7 +57,37 @@ export type DiveFormTarget =
       utcOffsetMinutes: number;
       /** Counted species of the dive: the form edits labels only, the counts are kept. */
       observationCounts: ReadonlyMap<string, number>;
+      /** « Successive » as stored: `null` (unknown) stays so while the switch is left off. */
+      isRepetitive: boolean | null;
     };
+
+/**
+ * Ids a new dive takes, drawn once per form (D22): a retry after a save that timed out sends the
+ * same ones, so the API can recognise the write instead of storing it twice.
+ */
+export interface DiveFormIds {
+  /** The new dive (unused when editing: the dive keeps its own). */
+  eventId: string;
+  /** A site created by its name. */
+  newSiteId: string;
+}
+
+/**
+ * Start of the dive with its offset: the edited dive keeps the offset of its place (D-10), a new
+ * one takes the device's. `null` until the date and the immersion are valid.
+ */
+export function startedAtOf(
+  values: Pick<DiveFormValues, 'date' | 'entryTime'>,
+  target: DiveFormTarget,
+): { startedAt: string; utcOffsetMinutes: number } | null {
+  const utcOffsetMinutes =
+    target.kind === 'update'
+      ? target.utcOffsetMinutes
+      : deviceUtcOffsetMinutes(values.date, values.entryTime);
+  if (utcOffsetMinutes === null) return null;
+  const startedAt = toLocalIso(values.date, values.entryTime, utcOffsetMinutes);
+  return startedAt === null ? null : { startedAt, utcOffsetMinutes };
+}
 
 const text = (value: string): string | null => {
   const trimmed = value.trim();
@@ -67,39 +97,30 @@ const text = (value: string): string | null => {
 const num = (value: string): number | null => parseNumberInput(value);
 
 /**
- * Validated values → input of `saveDive`. `newId` creates the ids of a new dive and of the site or
- * buddies typed by name (D22). `null` when a required value cannot be read: validate first.
+ * Validated values → input of `saveDive`. `ids` are those of the new dive and of a site typed by
+ * name; a buddy typed by name takes the key of their row (D22). `null` when a required value
+ * cannot be read: validate first.
  */
 export function toSaveDiveInput(
   values: DiveFormValues,
   target: DiveFormTarget,
-  newId: () => string,
+  ids: DiveFormIds,
 ): SaveDiveInput | null {
   const maxDepthM = num(values.maxDepthM);
   const durationMin = num(values.durationMin);
   const siteName = text(values.site.name);
-  const utcOffsetMinutes =
-    target.kind === 'update'
-      ? target.utcOffsetMinutes
-      : deviceUtcOffsetMinutes(values.date, values.entryTime);
-  if (
-    maxDepthM === null ||
-    durationMin === null ||
-    siteName === null ||
-    utcOffsetMinutes === null
-  ) {
+  const start = startedAtOf(values, target);
+  if (maxDepthM === null || durationMin === null || siteName === null || start === null) {
     return null;
   }
-  const startedAt = toLocalIso(values.date, values.entryTime, utcOffsetMinutes);
-  if (startedAt === null) return null;
 
   const site = {
-    id: values.site.id ?? newId(),
+    id: values.site.id ?? ids.newSiteId,
     name: siteName,
     isNew: values.site.id === null,
   };
   const buddies: BuddyContactInput[] = values.team.map((member) => ({
-    id: member.id ?? newId(),
+    id: member.id ?? member.key,
     firstName: member.firstName.trim(),
     lastName: member.lastName.trim(),
     levelCode: text(member.level),
@@ -111,10 +132,9 @@ export function toSaveDiveInput(
   return {
     kind: target.kind,
     event: {
-      id: target.kind === 'update' ? target.diveId : newId(),
+      id: target.kind === 'update' ? target.diveId : ids.eventId,
       siteId: site.id,
-      startedAt,
-      utcOffsetMinutes,
+      ...start,
       entryType: values.entryType,
       timeOfDay: values.timeOfDay,
       weather: values.weather,
@@ -137,7 +157,11 @@ export function toSaveDiveInput(
       // Both or none (RG-25): the switch decides.
       safetyStopDurationMin: values.safetyStop ? num(values.safetyStopDurationMin) : null,
       safetyStopDepthM: values.safetyStop ? num(values.safetyStopDepthM) : null,
-      isRepetitive: values.repetitive,
+      // Left off on a dive whose answer was unknown: still unknown, not « non ».
+      isRepetitive:
+        target.kind === 'update' && target.isRepetitive === null && !values.repetitive
+          ? null
+          : values.repetitive,
       tankVolumeL: num(values.tankVolumeL),
       tankMaterial: values.tankMaterial,
       startPressureBar: num(values.startPressureBar),

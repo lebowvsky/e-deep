@@ -5,9 +5,9 @@
 import type { DiveMember } from '@/shared/model/dive';
 import { computeFacets } from '../lib/selectDives';
 import type { LoggedDive } from '../types';
-import type { DiveFormTarget } from './convert';
+import { startedAtOf, type DiveFormTarget } from './convert';
 import type { DiveFormValues } from './model';
-import { deviceUtcOffsetMinutes, toLocalIso } from './timeLink';
+import { parseClock } from './timeLink';
 
 export interface DiveFormSiteOption {
   id: string;
@@ -70,9 +70,31 @@ export function buildDiveFormSources(log: readonly LoggedDive[]): DiveFormSource
   };
 }
 
-/** Logbook numbers of the log, but the edited dive's own. */
-export function takenNumbers(log: readonly LoggedDive[], editedId: string | null): Set<number> {
-  return new Set(log.filter(({ id }) => id !== editedId).map(({ number }) => number));
+/** Immersion assumed while none is typed: the dive counts as the last one of its day. */
+const END_OF_DAY = '23:59';
+
+/**
+ * Logbook number the dive will have once saved (D26: computed, never stored): its rank by start,
+ * ties broken by id, as the API numbers the log. The edited dive is left out of the others; a new
+ * dive is ranked under `eventId`, the id it will be saved with. Without a valid date: last.
+ */
+export function diveNumberFor(
+  log: readonly LoggedDive[],
+  values: Pick<DiveFormValues, 'date' | 'entryTime'>,
+  target: DiveFormTarget,
+  eventId: string,
+): number {
+  const id = target.kind === 'update' ? target.diveId : eventId;
+  const others = log.filter((dive) => dive.id !== id);
+  const entryTime = parseClock(values.entryTime) === null ? END_OF_DAY : values.entryTime;
+  const start = startedAtOf({ date: values.date, entryTime }, target);
+  if (start === null) return others.length + 1;
+  const instant = Date.parse(start.startedAt);
+  const before = others.filter((dive) => {
+    const other = Date.parse(dive.date);
+    return other < instant || (other === instant && dive.id.localeCompare(id) < 0);
+  });
+  return before.length + 1;
 }
 
 const MS_PER_MINUTE = 60_000;
@@ -110,11 +132,11 @@ export function proposeSurfaceIntervalFor(
   values: Pick<DiveFormValues, 'date' | 'entryTime'>,
   target: DiveFormTarget,
 ): number | null {
-  const offset =
-    target.kind === 'update'
-      ? target.utcOffsetMinutes
-      : deviceUtcOffsetMinutes(values.date, values.entryTime);
-  const startedAt = offset === null ? null : toLocalIso(values.date, values.entryTime, offset);
-  if (startedAt === null) return null;
-  return proposeSurfaceInterval(log, startedAt, target.kind === 'update' ? target.diveId : null);
+  const start = startedAtOf(values, target);
+  if (start === null) return null;
+  return proposeSurfaceInterval(
+    log,
+    start.startedAt,
+    target.kind === 'update' ? target.diveId : null,
+  );
 }

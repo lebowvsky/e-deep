@@ -69,4 +69,30 @@ describe('TagInput', () => {
     expect(removeButtons()).toHaveLength(2);
     expect(input()).toHaveProperty('value', '');
   });
+
+  it('adds the text left in the field when it loses the focus', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <SpeciesHarness />
+        <button type="button">Enregistrer</button>
+      </>,
+    );
+    await user.type(input(), 'Mérou brun');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(screen.getByRole('button', { name: 'Retirer Mérou brun' })).toBeDefined();
+    expect(input()).toHaveProperty('value', '');
+  });
+
+  it('does not add a partial text when a suggestion is picked instead', async () => {
+    const user = userEvent.setup();
+    render(<SpeciesHarness />);
+    await user.type(input(), 'Mur');
+    await user.click(screen.getByRole('button', { name: 'Ajouter Murène' }));
+    expect(removeButtons().map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Retirer Murène',
+    ]);
+    await user.tab();
+    expect(removeButtons()).toHaveLength(1);
+  });
 });

@@ -44,6 +44,17 @@ describe('time link', () => {
     expect(state.values.durationMin).toBe('44');
   });
 
+  it('keeps a typed duration when the moved exit would pass midnight by day', () => {
+    const state = run(start({ entryTime: '22:30', exitTime: '23:30', durationMin: '60' }), {
+      type: 'change',
+      field: 'entryTime',
+      value: '23:10',
+      context,
+    });
+    // The diver's measure stays; the validation reports the exit instead.
+    expect(state.values).toMatchObject({ durationMin: '60', exitTime: '23:30' });
+  });
+
   it('goes past midnight at night only', () => {
     const late = start({ entryTime: '23:30', exitTime: '23:59', durationMin: '29' });
     const byDay = run(late, { type: 'change', field: 'exitTime', value: '00:15', context });
@@ -115,11 +126,21 @@ describe('dive team and decompression rows', () => {
       start(),
       { type: 'addMember', member: lucas, context },
       { type: 'addMember', member: { ...lucas, key: 'other' }, context },
-      { type: 'setMemberLevel', key: 'b1', level: 'N3' },
+      { type: 'setMemberLevel', key: 'b1', level: 'N3', context },
     );
     expect(state.values.team).toEqual([{ ...lucas, level: 'N3' }]);
     state = run(state, { type: 'removeMember', key: 'b1', context });
     expect(state.values.team).toEqual([]);
+  });
+
+  it('lets a level change clear a failed save, like any other edit', () => {
+    const state = run(
+      start(),
+      { type: 'addMember', member: lucas, context },
+      { type: 'submitFailed' },
+      { type: 'setMemberLevel', key: 'b1', level: 'N3', context },
+    );
+    expect(state.submit).toEqual({ status: 'idle' });
   });
 
   it('adds, edits and removes decompression rows', () => {
@@ -139,10 +160,10 @@ describe('modes and draft', () => {
     const state = run(
       start({ weightKg: '45' }),
       { type: 'blur', field: 'weightKg', context },
-      { type: 'reset', values: validValues({ number: '200' }) },
+      { type: 'reset', values: validValues({ notes: 'repartir' }) },
     );
     expect(state.errors).toEqual({});
-    expect(state.values.number).toBe('200');
+    expect(state.values.notes).toBe('repartir');
     expect(state.initial).toBe(state.values);
   });
 
@@ -155,6 +176,17 @@ describe('modes and draft', () => {
     const discarded = run(state, { type: 'draftDiscarded' });
     expect(discarded.values.notes).toBe('');
     expect(discarded.draft).toEqual({ status: 'ready', savedAt: null, restored: false });
+  });
+
+  it('keeps what was typed while the draft was being looked for', () => {
+    const draft = { values: validValues({ notes: 'brouillon' }), savedAt: 42 };
+    const state = run(
+      initDiveFormState(validValues()),
+      { type: 'change', field: 'notes', value: 'saisi', context },
+      { type: 'draftChecked', draft },
+    );
+    expect(state.values.notes).toBe('saisi');
+    expect(state.draft).toEqual({ status: 'ready', savedAt: null, restored: false });
   });
 
   it('merges the values of « Reprendre » and stays dirty', () => {
@@ -175,7 +207,7 @@ describe('modes and draft', () => {
 
 describe('submit', () => {
   it('shows every message and lists the fields to fix, in order', () => {
-    const values = validValues({ weightKg: '45', site: { id: null, name: '' }, number: '127' });
+    const values = validValues({ weightKg: '45', site: { id: null, name: '' }, maxDepthM: '45' });
     const state = run(
       start(),
       { type: 'reset', values },
@@ -186,7 +218,7 @@ describe('submit', () => {
     );
     expect(state.submit).toEqual({ status: 'invalid', fields: ['site', 'weightKg'] });
     expect(Object.keys(state.errors)).toEqual(['site', 'weightKg']);
-    expect(Object.keys(state.warnings)).toEqual(['number']);
+    expect(Object.keys(state.warnings)).toEqual(['maxDepthM']);
   });
 
   it('goes to submitting without errors, and ignores a second submit meanwhile', () => {
@@ -204,6 +236,27 @@ describe('submit', () => {
     );
     expect(state.errors.site).toBe('Site inconnu.');
     expect(state.submit).toEqual({ status: 'invalid', fields: ['site'] });
+  });
+
+  it('keeps the error summary while listed fields are still wrong', () => {
+    const values = validValues({ weightKg: '45', tankVolumeL: '99' });
+    const invalid = run(
+      start(),
+      { type: 'reset', values },
+      {
+        type: 'submitValidated',
+        issues: validateDiveForm(values, context),
+      },
+    );
+    expect(invalid.submit).toEqual({ status: 'invalid', fields: ['tankVolumeL', 'weightKg'] });
+
+    const oneFixed = run(invalid, { type: 'change', field: 'weightKg', value: '6', context });
+    expect(oneFixed.submit).toEqual({ status: 'invalid', fields: ['tankVolumeL'] });
+    const unrelated = run(oneFixed, { type: 'change', field: 'notes', value: 'ok', context });
+    expect(unrelated.submit).toEqual({ status: 'invalid', fields: ['tankVolumeL'] });
+
+    const allFixed = run(unrelated, { type: 'change', field: 'tankVolumeL', value: '12', context });
+    expect(allFixed.submit).toEqual({ status: 'idle' });
   });
 
   it('keeps the values on failure, and takes them as saved on success', () => {

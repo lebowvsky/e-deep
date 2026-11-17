@@ -1,12 +1,12 @@
+import { memo } from 'react';
 import { FormField } from '@/shared/ui/FormField';
 import { TagInput } from '@/shared/ui/TagInput';
 import { Textarea } from '@/shared/ui/Textarea';
-import type { DiveForm } from '../../../form/useDiveForm';
-import { fieldBinder } from '../fieldBinding';
+import { fieldBinder, sameSectionProps, sectionReads, type SectionForm } from '../fieldBinding';
 import { FormSection, type FormSectionCollapse } from '../FormSection';
 
 export interface NotesSectionProps {
-  form: DiveForm;
+  form: SectionForm;
   canEditEvent: boolean;
   /** Phones: folded section (accordion). */
   collapse?: FormSectionCollapse | undefined;
@@ -15,29 +15,33 @@ export interface NotesSectionProps {
 }
 
 /** Section 6: free notes and the species seen, as tags. */
-export function NotesSection({ form, canEditEvent, collapse, species }: NotesSectionProps) {
-  const bind = fieldBinder(form, canEditEvent);
+export const NotesSection = memo(
+  function NotesSection({ form, canEditEvent, collapse, species }: NotesSectionProps) {
+    const bind = fieldBinder(form, canEditEvent);
+    const { change, blur } = form.actions;
 
-  return (
-    <FormSection section="notes" optional collapse={collapse}>
-      <FormField label="Notes" {...bind('notes')}>
-        <Textarea
-          value={form.values.notes}
-          onChange={(event) => form.change('notes', event.target.value)}
-          onBlur={() => form.blur('notes')}
-          placeholder="Ce que tu as vu, ressenti, ce que tu veux retenir…"
-        />
-      </FormField>
-      <FormField
-        label="Espèces observées"
-        {...bind('species', 'Entrée pour ajouter · suggestions depuis tes plongées précédentes')}
-      >
-        <TagInput
-          values={form.values.species}
-          onValuesChange={(values) => form.change('species', values)}
-          suggestions={species}
-        />
-      </FormField>
-    </FormSection>
-  );
-}
+    return (
+      <FormSection section="notes" optional collapse={collapse}>
+        <FormField {...bind('notes')}>
+          <Textarea
+            value={form.values.notes}
+            onChange={(event) => change('notes', event.target.value)}
+            onBlur={() => blur('notes')}
+            placeholder="Ce que tu as vu, ressenti, ce que tu veux retenir…"
+          />
+        </FormField>
+        <FormField
+          {...bind('species', 'Entrée pour ajouter · suggestions depuis tes plongées précédentes')}
+          label="Espèces observées"
+        >
+          <TagInput
+            values={form.values.species}
+            onValuesChange={(values) => change('species', values)}
+            suggestions={species}
+          />
+        </FormField>
+      </FormSection>
+    );
+  },
+  sameSectionProps<NotesSectionProps>(sectionReads('notes')),
+);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findTextMatch, isSameText } from './textMatch';
+import { findTextMatch, foldText, isSameText, matchesText } from './textMatch';
 
 describe('findTextMatch', () => {
   it('finds the query ignoring case and accents, with the range in the original text', () => {
@@ -12,6 +12,21 @@ describe('findTextMatch', () => {
   it('returns null for a blank or absent query', () => {
     expect(findTextMatch('Calvi', '  ')).toBeNull();
     expect(findTextMatch('Calvi', 'ajaccio')).toBeNull();
+  });
+});
+
+describe('foldText', () => {
+  it('drops case and accents', () => {
+    expect(foldText('Épave du Grec')).toBe('epave du grec');
+  });
+});
+
+describe('matchesText', () => {
+  it('agrees with findTextMatch, from a text folded once', () => {
+    const folded = foldText('Pointe de la Révellata');
+    expect(matchesText(folded, ' REVEL ')).toBe(true);
+    expect(matchesText(folded, 'ajaccio')).toBe(false);
+    expect(matchesText(folded, '  ')).toBe(false);
   });
 });
 

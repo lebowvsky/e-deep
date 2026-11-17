@@ -2,8 +2,9 @@
 //
 // Bounds: the spec where it sets one, the data model (H-10, H-17, RG-23 to RG-27) elsewhere. Every
 // message says what to do, in the spec's « tu ».
-import { formatMeasure } from '@/shared/lib/format';
+import { formatCharacterCount, formatMeasure } from '@/shared/lib/format';
 import { parseNumberInput } from '@/shared/lib/numberInput';
+import { isSameText } from '@/shared/lib/textMatch';
 import { DIVE_FORM_FIELDS, type DiveFormField, type DiveFormValues } from './model';
 import { durationFromTimes, parseClock, parseDay, parseInterval } from './timeLink';
 
@@ -12,8 +13,6 @@ export interface ValidationContext {
   today: string;
   /** The diver's level code (`N2`), for the depth warning; `null` when unknown. */
   diverLevel: string | null;
-  /** Logbook numbers of the other dives (the edited one excluded). */
-  takenNumbers: ReadonlySet<number>;
 }
 
 export type IssueLevel = 'error' | 'warning';
@@ -42,7 +41,6 @@ const warning = (message: string) => ({ level: 'warning', message }) as const;
 // ── Bounds ────────────────────────────────────────────────────────────────────────────────────
 
 export const BOUNDS = {
-  number: { min: 1, max: 99_999 },
   durationMin: { min: 1, max: 300 },
   maxDepthM: { min: 1, max: 100 },
   safetyStopDurationMin: { min: 1, max: 15 },
@@ -106,17 +104,6 @@ const RULES: Partial<Record<DiveFormField, Rule>> = {
       return error(`Raccourcis le nom du site (${BOUNDS.siteNameLength} caractères au plus).`);
     }
     return null;
-  },
-
-  number: ({ number }, { takenNumbers }) => {
-    if (number.trim() === '') return null;
-    const value = parseNumberInput(number);
-    if (value === null || !Number.isInteger(value) || !within(value, BOUNDS.number)) {
-      return error('Indique un numéro entier à partir de 1, ou laisse le champ vide.');
-    }
-    return takenNumbers.has(value)
-      ? warning(`Le n° ${value} existe déjà dans ton carnet. Vérifie le numéro.`)
-      : null;
   },
 
   date: ({ date }, { today }) => {
@@ -362,7 +349,7 @@ const RULES: Partial<Record<DiveFormField, Rule>> = {
 
   notes: ({ notes }) =>
     notes.trim().length > BOUNDS.notesLength
-      ? error('Raccourcis tes notes (5 000 caractères au plus).')
+      ? error(`Raccourcis tes notes (${formatCharacterCount(BOUNDS.notesLength)} au plus).`)
       : null,
 
   species: ({ species }) => {
@@ -375,11 +362,18 @@ const RULES: Partial<Record<DiveFormField, Rule>> = {
         `Raccourcis « ${tooLong.trim()} » (${BOUNDS.speciesLength} caractères au plus).`,
       );
     }
-    // RG-27: a species once per dive.
-    const labels = species.map((label) => label.trim().toLocaleLowerCase('fr'));
-    return new Set(labels).size === labels.length ? null : error('Retire les espèces en double.');
+    // RG-27: a species once per dive. « Same » as the tags field: case and accents aside.
+    const hasDuplicate = species.some((label, index) =>
+      species.slice(0, index).some((other) => isSameText(other, label)),
+    );
+    return hasDuplicate ? error('Retire les espèces en double.') : null;
   },
 };
+
+/** The fields of `issues`, in their order: error summary and first focus. */
+export function issueFields(issues: readonly FieldIssue[]): DiveFormField[] {
+  return issues.map(({ field }) => field);
+}
 
 /** The issue of one field (blur, live validation), `null` when it is fine. */
 export function validateField(

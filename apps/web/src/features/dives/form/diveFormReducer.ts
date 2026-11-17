@@ -3,6 +3,7 @@
 import { parseNumberInput } from '@/shared/lib/numberInput';
 import {
   DIVE_FORM_FIELDS,
+  isDirtyValues,
   SAFETY_STOP_DEFAULTS,
   type DecoStopValue,
   type DiveFormField,
@@ -12,6 +13,7 @@ import {
 import { durationFromTimes, exitFromDuration } from './timeLink';
 import {
   DEPENDENT_FIELDS,
+  issueFields,
   validateField,
   type DiveFormIssues,
   type FieldIssue,
@@ -45,12 +47,26 @@ export interface DiveFormState {
   draft: DraftStatus;
 }
 
-/** `value` matches `field` when the action is built through `useDiveForm().change`. */
-export interface ChangeAction<K extends DiveFormField = DiveFormField> {
-  type: 'change';
-  field: K;
-  value: DiveFormValues[K];
-  context: ValidationContext;
+/** One member per field: `value` always has the type of its `field`. */
+export type ChangeAction = {
+  [K in DiveFormField]: {
+    type: 'change';
+    field: K;
+    value: DiveFormValues[K];
+    context: ValidationContext;
+  };
+}[DiveFormField];
+
+/**
+ * Builds a `change` action. The distributive `ChangeAction` cannot be written from a generic `K`
+ * directly; this is the one place that bridges the two, for `useDiveForm().actions.change`.
+ */
+export function changeAction<K extends DiveFormField>(
+  field: K,
+  value: DiveFormValues[K],
+  context: ValidationContext,
+): ChangeAction {
+  return { type: 'change', field, value, context } as ChangeAction;
 }
 
 export type DiveFormAction =
@@ -58,7 +74,7 @@ export type DiveFormAction =
   | { type: 'blur'; field: DiveFormField; context: ValidationContext }
   | { type: 'addMember'; member: TeamMemberValue; context: ValidationContext }
   | { type: 'removeMember'; key: string; context: ValidationContext }
-  | { type: 'setMemberLevel'; key: string; level: string }
+  | { type: 'setMemberLevel'; key: string; level: string; context: ValidationContext }
   | { type: 'addDecoStop'; key: string; context: ValidationContext }
   | { type: 'removeDecoStop'; key: string; context: ValidationContext }
   | {
@@ -74,6 +90,8 @@ export type DiveFormAction =
   | { type: 'reset'; values: DiveFormValues }
   | { type: 'draftChecked'; draft: { values: DiveFormValues; savedAt: number } | null }
   | { type: 'draftSaved'; savedAt: number }
+  /** The stored draft was deleted (values back to their start): no mention any more. */
+  | { type: 'draftCleared' }
   /** « Effacer » of the restored draft: back to the starting values. */
   | { type: 'draftDiscarded' }
   /** Submit: the full validation, run by the hook (blocked when it has errors). */
@@ -109,9 +127,12 @@ function linkTimes(values: DiveFormValues, field: DiveFormField): DiveFormValues
       return exitTime === null ? values : { ...values, exitTime };
     }
     case 'entryTime': {
-      // The duration is the diver's measure: keep it, move the exit. Without one, compute it.
-      const exitTime = fromDuration();
-      if (exitTime !== null) return { ...values, exitTime };
+      // The duration is the diver's measure: keep it, move the exit (or leave the exit to the
+      // validation when it cannot move, past midnight by day). Without one, compute it.
+      if (values.durationMin.trim() !== '') {
+        const exitTime = fromDuration();
+        return exitTime === null ? values : { ...values, exitTime };
+      }
       const duration = fromTimes();
       return duration === null ? values : { ...values, durationMin: String(duration) };
     }
@@ -196,18 +217,38 @@ function changedFields(before: DiveFormValues, after: DiveFormValues): DiveFormF
   return DIVE_FORM_FIELDS.filter((field) => before[field] !== after[field]);
 }
 
+/** The fields of `errors`, in the order of the form: error summary and first focus. */
+export function invalidFields(errors: FieldMessages): DiveFormField[] {
+  return DIVE_FORM_FIELDS.filter((field) => errors[field] !== undefined);
+}
+
+/**
+ * Submit state after a new edit. The error summary stays while some of its fields are still wrong
+ * (the diver fixes them one by one through its links); any other outcome goes back to idle.
+ */
+function submitAfterEdit(submit: SubmitStatus, errors: FieldMessages): SubmitStatus {
+  switch (submit.status) {
+    case 'submitting':
+      return submit;
+    case 'invalid': {
+      const fields = submit.fields.filter((field) => errors[field] !== undefined);
+      if (fields.length === submit.fields.length) return submit;
+      return fields.length > 0 ? { status: 'invalid', fields } : { status: 'idle' };
+    }
+    default:
+      return { status: 'idle' };
+  }
+}
+
 function updateValues(
   state: DiveFormState,
   values: DiveFormValues,
   context: ValidationContext,
 ): DiveFormState {
   const changed = changedFields(state.values, values);
-  // A new edit after a submit outcome: the button goes back to its idle state.
-  const submit: SubmitStatus =
-    state.submit.status === 'submitting' ? state.submit : { status: 'idle' };
-  let next: DiveFormState = { ...state, values, submit };
+  let next: DiveFormState = { ...state, values };
   for (const field of changed) next = revalidateShown(next, field, context);
-  return next;
+  return { ...next, submit: submitAfterEdit(state.submit, next.errors) };
 }
 
 const mapTeam = (
@@ -256,16 +297,17 @@ export function diveFormReducer(state: DiveFormState, action: DiveFormAction): D
         action.context,
       );
     case 'setMemberLevel':
-      return {
-        ...state,
-        values: {
+      return updateValues(
+        state,
+        {
           ...state.values,
           team: mapTeam(state.values.team, action.key, (member) => ({
             ...member,
             level: action.level,
           })),
         },
-      };
+        action.context,
+      );
     case 'addDecoStop':
       return updateValues(
         state,
@@ -304,7 +346,9 @@ export function diveFormReducer(state: DiveFormState, action: DiveFormAction): D
         draft: state.draft.status === 'ready' ? { ...state.draft, restored: false } : state.draft,
       };
     case 'draftChecked':
-      return action.draft === null
+      // Nothing stored, or the diver already typed while it was looked for (asynchronous store):
+      // what is on screen wins, and the next draft write replaces the stored one.
+      return action.draft === null || isDirtyValues(state.values, state.initial)
         ? { ...state, draft: { status: 'ready', savedAt: null, restored: false } }
         : {
             ...state,
@@ -314,6 +358,10 @@ export function diveFormReducer(state: DiveFormState, action: DiveFormAction): D
     case 'draftSaved':
       return state.draft.status === 'ready'
         ? { ...state, draft: { ...state.draft, savedAt: action.savedAt } }
+        : state;
+    case 'draftCleared':
+      return state.draft.status === 'ready' && state.draft.savedAt !== null
+        ? { ...state, draft: { ...state.draft, savedAt: null } }
         : state;
     case 'draftDiscarded':
       return {
@@ -329,17 +377,15 @@ export function diveFormReducer(state: DiveFormState, action: DiveFormAction): D
         warnings: toMessages(warnings),
       };
       return errors.length > 0
-        ? { ...shown, submit: { status: 'invalid', fields: errors.map(({ field }) => field) } }
+        ? { ...shown, submit: { status: 'invalid', fields: issueFields(errors) } }
         : { ...shown, submit: { status: 'submitting' } };
     }
-    case 'submitRejected': {
-      const fields = DIVE_FORM_FIELDS.filter((field) => action.fieldErrors[field] !== undefined);
+    case 'submitRejected':
       return {
         ...state,
         errors: { ...state.errors, ...action.fieldErrors },
-        submit: { status: 'invalid', fields },
+        submit: { status: 'invalid', fields: invalidFields(action.fieldErrors) },
       };
-    }
     case 'submitFailed':
       return { ...state, submit: { status: 'failed' } };
     case 'submitSucceeded':

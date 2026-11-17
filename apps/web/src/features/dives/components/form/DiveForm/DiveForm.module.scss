@@ -22,6 +22,22 @@
   }
 }
 
+// A focused control must not end under the sticky bars (SC 2.4.11 Focus not obscured): when the
+// browser scrolls it into view (tabbing, `scrollIntoView`), it keeps this room above and below.
+// Top bar on phones only, bottom save bar below 1280px.
+.layout :where(input, select, textarea, button, a) {
+  scroll-margin-top: $layout-form-top-bar-clearance;
+  scroll-margin-bottom: calc(#{$layout-form-bottom-bar-clearance} + env(safe-area-inset-bottom));
+
+  @include from($bp-tablet) {
+    scroll-margin-top: 0;
+  }
+
+  @include from($bp-large) {
+    scroll-margin-bottom: 0;
+  }
+}
+
 .main {
   display: flex;
   min-width: 0;

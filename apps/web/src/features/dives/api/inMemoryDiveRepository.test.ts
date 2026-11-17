@@ -33,13 +33,10 @@ function setup() {
   return { queryClient, saveDive, log, detail };
 }
 
-function ids() {
-  let next = 0;
-  return () => `new-${++next}`;
-}
+const IDS = { eventId: 'new-event', newSiteId: 'new-site' };
 
 function input(values = validValues({ date: '2026-04-09' })): SaveDiveInput {
-  const result = toSaveDiveInput(values, { kind: 'create' }, ids());
+  const result = toSaveDiveInput(values, { kind: 'create' }, IDS);
   if (result === null) throw new Error('Invalid values');
   return result;
 }
@@ -48,8 +45,8 @@ describe('createInMemoryDiveRepository', () => {
   it('writes a new dive into the detail and log caches, numbered after the last one', async () => {
     const { saveDive, log, detail } = setup();
     const result = await saveDive(input());
-    expect(result).toEqual({ ok: true, id: 'new-1' });
-    const saved = detail('new-1');
+    expect(result).toEqual({ ok: true, id: 'new-event', number: 128 });
+    const saved = detail('new-event');
     expect(saved).toMatchObject({
       number: 128,
       depthMaxM: 18,
@@ -58,24 +55,25 @@ describe('createInMemoryDiveRepository', () => {
       createdAt: NOW.toISOString(),
     });
     expect(saved.site.name).toBe('Pointe de la Revellata');
-    expect(log().dives[0]).toMatchObject({ id: 'new-1', number: 128 });
+    expect(log().dives[0]).toMatchObject({ id: 'new-event', number: 128 });
     expect(log().dives).toHaveLength(mockDiveLogResponse.dives.length + 1);
   });
 
   it('renumbers the later dives of an older dive, cached details included (D26)', async () => {
     const { saveDive, log, detail } = setup();
-    await saveDive(input(validValues({ date: '2000-01-01' })));
-    expect(detail('new-1').number).toBe(1);
+    const result = await saveDive(input(validValues({ date: '2000-01-01' })));
+    expect(result).toEqual({ ok: true, id: 'new-event', number: 1 });
+    expect(detail('new-event').number).toBe(1);
     expect(detail('d127').number).toBe(128);
     expect(detail('d1').number).toBe(2);
-    expect(log().dives.at(-1)?.id).toBe('new-1');
+    expect(log().dives.at(-1)?.id).toBe('new-event');
   });
 
   it('creates a site typed by its name, without region nor position', async () => {
     const { saveDive, detail } = setup();
     await saveDive(input(validValues({ site: { id: null, name: 'Le Sec' } })));
-    expect(detail('new-2').site).toEqual({
-      id: 'new-1',
+    expect(detail('new-event').site).toEqual({
+      id: 'new-site',
       name: 'Le Sec',
       locality: null,
       region: '',
@@ -89,9 +87,9 @@ describe('createInMemoryDiveRepository', () => {
     const { saveDive, log, detail } = setup();
     const dive = filledDive();
     const values = { ...editDiveValues(dive), notes: 'Corrigé' };
-    const update = toSaveDiveInput(values, editTarget(dive), ids());
+    const update = toSaveDiveInput(values, editTarget(dive), IDS);
     if (update === null) throw new Error('Invalid values');
-    expect(await saveDive(update)).toEqual({ ok: true, id: 'd127' });
+    expect(await saveDive(update)).toEqual({ ok: true, id: 'd127', number: 127 });
     expect(detail('d127')).toMatchObject({
       notes: 'Corrigé',
       number: 127,
@@ -99,6 +97,24 @@ describe('createInMemoryDiveRepository', () => {
       updatedAt: NOW.toISOString(),
     });
     expect(log().dives).toHaveLength(mockDiveLogResponse.dives.length);
+  });
+
+  it('keeps the known level of a buddy chosen without one (contact level, D-21)', async () => {
+    const { saveDive, detail } = setup();
+    const lucas = { key: 'b1', id: 'b1', firstName: 'Lucas', lastName: 'Bernard' };
+    await saveDive(input(validValues({ team: [{ ...lucas, level: '' }] })));
+    expect(detail('new-event').buddies[0]?.level).toEqual({
+      agency: 'FFESSM',
+      code: 'N3',
+      label: 'Niveau 3',
+    });
+
+    await saveDive(input(validValues({ team: [{ ...lucas, level: 'PA40' }] })));
+    expect(detail('new-event').buddies[0]?.level).toEqual({
+      agency: 'FFESSM',
+      code: 'PA40',
+      label: 'Plongeur autonome 40 m',
+    });
   });
 
   it('rejects a site that is no longer in the log, as a field error', async () => {

@@ -1,7 +1,8 @@
+import { useScrollSpy } from '@/shared/hooks/useScrollSpy';
 import { cx } from '@/shared/lib/classNames';
 import { Card } from '@/shared/ui/Card';
 import type { SectionStatus } from '../../../form/derived';
-import { SECTION_TITLES, type DiveFormSection } from '../../../form/model';
+import { DIVE_FORM_SECTIONS, SECTION_TITLES, type DiveFormSection } from '../../../form/model';
 import { sectionId } from '../fieldBinding';
 import { SectionStatusIcon, sectionStatusText } from '../SectionStatusIcon';
 import styles from './SectionNav.module.scss';
@@ -13,15 +14,18 @@ export interface SectionNavItem {
 
 export interface SectionNavProps {
   items: readonly SectionNavItem[];
-  /** Section being read (scroll-spy), highlighted. */
-  activeSection: DiveFormSection | undefined;
 }
+
+const SECTION_IDS = DIVE_FORM_SECTIONS.map(sectionId);
 
 /**
  * Anchors to the six sections with their state: ✓ complete, ◐ partial (« − Pression fin »),
- * ○ empty (dive-form.jsx · FormAside · navigation des sections).
+ * ○ empty (dive-form.jsx · FormAside · navigation des sections). The section being read is
+ * highlighted (scroll-spy): watched here, so that scrolling re-renders the summary only.
  */
-export function SectionNav({ items, activeSection }: SectionNavProps) {
+export function SectionNav({ items }: SectionNavProps) {
+  const activeId = useScrollSpy(SECTION_IDS);
+  const activeSection = DIVE_FORM_SECTIONS.find((section) => sectionId(section) === activeId);
   return (
     <Card padding="none" className={styles.card}>
       <nav aria-label="Sections du formulaire">

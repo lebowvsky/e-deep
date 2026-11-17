@@ -1,6 +1,6 @@
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 import { cx } from '@/shared/lib/classNames';
-import { findTextMatch, isSameText } from '@/shared/lib/textMatch';
+import { foldText, isSameText, matchesText } from '@/shared/lib/textMatch';
 import { fieldBoxState, fieldControlProps, useFormField } from '@/shared/ui/FormField';
 import { Chip, RemovableChip } from '@/shared/ui/Chip';
 import { Icon } from '@/shared/ui/Icon';
@@ -35,8 +35,9 @@ function withAdded(values: readonly string[], candidates: readonly string[]): st
 }
 
 /**
- * Free values as tags (dive-form.jsx · Espèces observées): Entrée or a comma adds the text typed,
- * each tag has its « Retirer » button, Retour arrière in an empty field removes the last one.
+ * Free values as tags (dive-form.jsx · Espèces observées): Entrée, a comma or leaving the field
+ * adds the text typed (a save never drops it), each tag has its « Retirer » button, Retour arrière
+ * in an empty field removes the last one.
  */
 export function TagInput({
   values,
@@ -54,10 +55,16 @@ export function TagInput({
   const [announcement, setAnnouncement] = useState('');
   const isLocked = Boolean(field?.locked);
 
-  const offered = suggestions
-    .filter((suggestion) => !values.some((value) => isSameText(value, suggestion)))
-    .filter((suggestion) => draft.trim() === '' || findTextMatch(suggestion, draft))
-    .slice(0, maxSuggestions);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const offered = useMemo(() => {
+    const taken = new Set(values.map((value) => foldText(value.trim())));
+    return suggestions
+      .map((suggestion) => ({ suggestion, folded: foldText(suggestion.trim()) }))
+      .filter(({ folded }) => !taken.has(folded))
+      .filter(({ folded }) => draft.trim() === '' || matchesText(folded, draft))
+      .slice(0, maxSuggestions)
+      .map(({ suggestion }) => suggestion);
+  }, [suggestions, values, draft, maxSuggestions]);
 
   const add = (candidates: readonly string[]) => {
     const next = withAdded(values, candidates);
@@ -83,6 +90,16 @@ export function TagInput({
     add(parts);
   };
 
+  // Leaving the component with text typed adds it; moving to one of its own buttons (a suggestion,
+  // a « Retirer ») does not, so that « Mur » typed to find « Murène » is not added as well.
+  const onBlur = (event: FocusEvent<HTMLInputElement>) => {
+    if (isLocked || draft.trim() === '') return;
+    if (event.relatedTarget instanceof Node && rootRef.current?.contains(event.relatedTarget))
+      return;
+    add([draft]);
+    setDraft('');
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       // Never submits the form from here, even with an empty field.
@@ -96,7 +113,7 @@ export function TagInput({
   };
 
   return (
-    <div className={cx(styles.root, className)}>
+    <div ref={rootRef} className={cx(styles.root, className)}>
       <div
         className={styles.box}
         {...fieldBoxState(field?.status ?? 'default', isLocked)}
@@ -105,7 +122,8 @@ export function TagInput({
         }}
       >
         {values.length > 0 && (
-          <ul className={styles.tags}>
+          // Keeps the focus in the field on a click (Safari does not focus a clicked button).
+          <ul className={styles.tags} onPointerDown={(event) => event.preventDefault()}>
             {values.map((value) => (
               <li key={value}>
                 <RemovableChip
@@ -134,11 +152,16 @@ export function TagInput({
           value={draft}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={onKeyDown}
+          onBlur={onBlur}
           {...fieldControlProps(field)}
         />
       </div>
       {offered.length > 0 && !isLocked && (
-        <ul className={styles.suggestions} aria-label="Suggestions">
+        <ul
+          className={styles.suggestions}
+          aria-label="Suggestions"
+          onPointerDown={(event) => event.preventDefault()}
+        >
           {offered.map((suggestion) => (
             <li key={suggestion}>
               <Chip

@@ -3,9 +3,12 @@ import { Icon } from '@/shared/ui/Icon';
 import styles from './DiveFormHeader.module.scss';
 
 export interface DiveFormHeaderProps {
-  /** `edit`: « Modifier la plongée #127 »; otherwise « Nouvelle plongée ». */
-  isEdit: boolean;
-  /** Logbook number of the dive: the next one, or the edited one. */
+  /**
+   * Number of the edited dive as the log shows it now (« Modifier la plongée #127 »), `null` for a
+   * new dive (« Nouvelle plongée »).
+   */
+  editedNumber: number | null;
+  /** Logbook number the dive will have once saved (overline), computed from its date (D26). */
   number: number;
   /** Id of the h1, which names the form. */
   titleId: string;
@@ -14,8 +17,9 @@ export interface DiveFormHeaderProps {
 }
 
 /** Breadcrumb, overline, h1 and subtitle of the dive form (dive-form.jsx · DiveFormDesktop). */
-export function DiveFormHeader({ isEdit, number, titleId, diveHref }: DiveFormHeaderProps) {
-  const title = isEdit ? `Modifier la plongée #${number}` : 'Nouvelle plongée';
+export function DiveFormHeader({ editedNumber, number, titleId, diveHref }: DiveFormHeaderProps) {
+  const isEdit = editedNumber !== null;
+  const title = isEdit ? `Modifier la plongée #${editedNumber}` : 'Nouvelle plongée';
 
   return (
     <header className={styles.header}>
@@ -30,7 +34,7 @@ export function DiveFormHeader({ isEdit, number, titleId, diveHref }: DiveFormHe
           {diveHref !== null && (
             <li className={styles.crumb}>
               <Link to={diveHref} className={styles.link}>
-                #{number}
+                #{editedNumber}
               </Link>
             </li>
           )}

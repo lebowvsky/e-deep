@@ -15,6 +15,9 @@ export const color = {
   surface3: '#24406D', // marker rings, chips, hover on surface2
   line: 'rgba(154, 186, 224, 0.10)', // hairline divider
   lineStrong: 'rgba(154, 186, 224, 0.18)',
+  // a11y (form review): ring of a form field, ≥ 3:1 on surface0 and surface1 (SC 1.4.11). The
+  // mockup's lineStrong (≈ 1.3:1) left an empty field without a visible edge.
+  lineField: 'rgba(154, 186, 224, 0.6)',
 
   // Text emphasis scale
   textHigh: '#EAF2FB', // AAA on surface0 (~16:1) — titles + KPI
@@ -160,7 +163,6 @@ export const shadow = {
   ringSurface2: '0 0 0 2px #1B3156', // overlapping avatars on a hovered row (surface2)
   thumb: '0 0 0 4px rgba(79, 214, 201, 0.14)', // range slider handle
   sheet: 'inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5)',
-  fieldFocus: '0 0 0 3px rgba(79, 214, 201, 0.18)', // halo around a focused form field (dive-form.jsx)
 } as const;
 
 // Page backgrounds: abyss + two discreet radial glows (dashboard mockups).
@@ -315,6 +317,10 @@ export const layout = {
   textareaMinHeight: 120,
   dialogWidth: 400,
   formAsideWidth: 340, // sticky side column: preview, section summary, actions
+  // Room kept clear of the sticky bars of the form when a field scrolls into view (SC 2.4.11): the
+  // phone top bar (44 + 2 × 14 + 1) and the bottom save bar (12 + 48 + 8 + 15 + 24), rounded up.
+  formTopBarClearance: 80,
+  formBottomBarClearance: 120,
   stepBadge: 26, // numbered circle of a form section
   statusDot: 18, // section state (complete · partial · empty)
   statusRing: 1.5, // outline of the partial / empty section state

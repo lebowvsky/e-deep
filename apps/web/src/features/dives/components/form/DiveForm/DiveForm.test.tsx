@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -32,11 +32,10 @@ function renderNew({
   canEditEvent = true,
   draftStore = NO_DRAFT,
 }: RenderOptions = {}) {
-  const onSaved = vi.fn<(id: string) => void>();
+  const onSaved = vi.fn<(id: string, number: number) => void>();
   const form = (
     <DiveForm
       mode={{ kind: 'new' }}
-      number={128}
       initialValues={initialValues}
       target={{ kind: 'create' }}
       context={CONTEXT}
@@ -118,7 +117,7 @@ describe('DiveForm — phone accordion', () => {
   it('keeps a duplicated dive folded, with the summaries filled', () => {
     stubPhone();
     renderNew({
-      initialValues: duplicateDiveValues(filledDive(), { today: CONTEXT.today, nextNumber: 128 }),
+      initialValues: duplicateDiveValues(filledDive(), { today: CONTEXT.today }),
     });
 
     const team = sectionToggle(/^Palanquée/);
@@ -211,8 +210,62 @@ describe('DiveForm — save', () => {
       expect((button as HTMLButtonElement).disabled).toBe(false);
     }
 
-    settle({ ok: true, id: 'd128' });
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('d128'));
+    settle({ ok: true, id: 'd128', number: 128 });
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('d128', 128));
+  });
+
+  it('never saves on Entrée alone in a field: only the button or Ctrl/⌘ + Entrée do', async () => {
+    const user = userEvent.setup();
+    const saveDive = vi.fn<SaveDive>().mockResolvedValue({ ok: true, id: 'd128', number: 128 });
+    renderNew({ saveDive });
+
+    await user.type(input(/^Profondeur max/), '{Enter}');
+    await user.type(input(/^Pression début/), '200{Enter}');
+    expect(saveDive).not.toHaveBeenCalled();
+
+    await user.keyboard('{Control>}{Enter}{/Control}');
+    await waitFor(() => expect(saveDive).toHaveBeenCalledTimes(1));
+  });
+
+  it('saves the species still typed in its field with Ctrl + Entrée', async () => {
+    const user = userEvent.setup();
+    const saveDive = vi.fn<SaveDive>().mockResolvedValue({ ok: true, id: 'd128', number: 128 });
+    renderNew({ saveDive });
+
+    await user.type(screen.getByRole('textbox', { name: /^Espèces observées/ }), 'Mérou brun');
+    await user.keyboard('{Control>}{Enter}{/Control}');
+
+    await waitFor(() => expect(saveDive).toHaveBeenCalledTimes(1));
+    expect(saveDive.mock.calls[0]?.[0].observations).toEqual([
+      { label: 'Mérou brun', count: null },
+    ]);
+  });
+});
+
+describe('DiveForm — logbook number (D26)', () => {
+  it('shows the number the dive will have, read only, and follows the date', () => {
+    renderNew();
+
+    const number = input(/^N° de plongée/);
+    expect(number.readOnly).toBe(true);
+    expect(number.value).toBe('128');
+    expect(screen.getByText('Calculé selon la date')).toBeTruthy();
+    expect(screen.getByText('Carnet · plongée #128')).toBeTruthy();
+
+    fireEvent.change(input(/^Date/), { target: { value: '2000-01-01' } });
+    expect(number.value).toBe('1');
+    expect(screen.getByText('Carnet · plongée #1')).toBeTruthy();
+    expect(screen.getByText(/^#1 · /)).toBeTruthy();
+  });
+});
+
+describe('DiveForm — site', () => {
+  it('says that a name none of my sites has will create a site', async () => {
+    const user = userEvent.setup();
+    renderNew({ initialValues: validValues({ site: { id: null, name: '' } }) });
+
+    await user.type(screen.getByRole('combobox', { name: /^Site/ }), 'Revel');
+    expect(screen.getByText('Nouveau site : il sera créé à l’enregistrement.')).toBeTruthy();
   });
 });
 
@@ -260,6 +313,20 @@ describe('DiveForm — leaving', () => {
     expect(save.mock.lastCall?.[1].values.maxDepthM).toBe('22');
   });
 
+  it('does not save with Ctrl + Entrée while asking to leave', async () => {
+    const user = userEvent.setup();
+    const saveDive = vi.fn<SaveDive>().mockResolvedValue({ ok: true, id: 'd128', number: 128 });
+    renderNew({ saveDive });
+
+    await user.type(screen.getByRole('textbox', { name: 'Notes' }), 'Mérou');
+    await user.click(screen.getAllByRole('link', { name: 'Annuler' })[0] ?? document.body);
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+    await user.keyboard('{Control>}{Enter}{/Control}');
+
+    expect(saveDive).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+  });
+
   it('leaves at once without changes', async () => {
     const user = userEvent.setup();
     const { router } = renderNew();
@@ -286,7 +353,7 @@ describe('DiveForm — leaving', () => {
 
   it('does not ask after a successful save', async () => {
     const user = userEvent.setup();
-    const saveDive = vi.fn<SaveDive>().mockResolvedValue({ ok: true, id: 'd128' });
+    const saveDive = vi.fn<SaveDive>().mockResolvedValue({ ok: true, id: 'd128', number: 128 });
     const { router, onSaved } = renderNew({ saveDive });
     onSaved.mockImplementation((id) => void router.navigate(`/dives/${id}`, { replace: true }));
 
@@ -294,7 +361,7 @@ describe('DiveForm — leaving', () => {
     await user.type(input(/^Profondeur max/), '22');
     await user.click(saveButton());
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('d128'));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('d128', 128));
     await waitFor(() => expect(router.state.location.pathname).toBe('/dives/d128'));
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
@@ -309,7 +376,6 @@ describe('DiveForm — shared event', () => {
         element: (
           <DiveForm
             mode={{ kind: 'edit', diveId: dive.id }}
-            number={dive.number}
             initialValues={editDiveValues(dive)}
             target={editTarget(dive)}
             context={CONTEXT}

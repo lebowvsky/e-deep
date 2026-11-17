@@ -1,10 +1,13 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockFilledDiveDetail } from '@/features/dives/mocks/diveDetailResponse';
+import { divesKeys } from '@/features/dives/api/queryKeys';
 import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
+import { ApiClientContext } from '@/shared/lib/apiClientContext';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { TestProviders } from '@/test/TestProviders';
 import { DiveFormPage, type DiveFormPageProps } from './DiveFormPage';
@@ -68,7 +71,7 @@ describe('DiveFormPage — new dive', () => {
 
     await title('Nouvelle plongée');
     expect(screen.getByText('Carnet · plongée #128')).toBeTruthy();
-    expect(field('N° de plongée').value).toBe('128');
+    expect(field(/^N° de plongée/).value).toBe('128');
     expect(screen.queryByRole('button', { name: 'Reprendre' })).toBeNull();
     expect(screen.queryByText(/Prérempli depuis/)).toBeNull();
     expect(screen.getAllByRole('button', { name: 'Enregistrer la plongée' })).toHaveLength(2);
@@ -112,7 +115,7 @@ describe('DiveFormPage — new dive', () => {
     renderAt('/dives/new');
     await title('Nouvelle plongée');
 
-    await user.click(field('N° de plongée'));
+    await user.click(field(/^N° de plongée/));
     await user.keyboard('{Control>}{Enter}{/Control}');
 
     const summary = await screen.findByRole('alert');
@@ -129,6 +132,46 @@ describe('DiveFormPage — new dive', () => {
 
     await user.click(within(summary).getByRole('link', { name: 'Profondeur max' }));
     expect(document.activeElement).toBe(field(/^Profondeur max/));
+  });
+
+  it('keeps the form when the log changes under it (no suggestion appearing midway)', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: Infinity } },
+    });
+    const router = createMemoryRouter([{ path: '/dives/new', element: <DiveFormPage /> }], {
+      initialEntries: ['/dives/new'],
+    });
+    render(
+      <ApiClientContext value={{ get: apiLike() }}>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </QueryClientProvider>
+      </ApiClientContext>,
+    );
+    await title('Nouvelle plongée');
+    fireEvent.change(field('Notes'), { target: { value: 'Mérou sous la voûte' } });
+
+    // A dive of the last 48 h lands in the log (a save, a refetch): it would offer « Reprendre ».
+    const [latest] = mockDiveLogResponse.dives;
+    if (!latest) throw new Error('Empty log');
+    const recent = {
+      ...latest,
+      id: 'recent',
+      date: new Date(Date.now() - 3_600_000).toISOString(),
+    };
+    await act(async () => {
+      queryClient.setQueryData(divesKeys.log(), {
+        dives: [recent, ...mockDiveLogResponse.dives],
+      });
+      // The query cache notifies its observers in a timeout.
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(screen.queryByRole('button', { name: 'Reprendre' })).toBeNull();
+    expect(screen.queryByText('Brouillon restauré')).toBeNull();
+    expect(field('Notes').value).toBe('Mérou sous la voûte');
   });
 
   it('shows the state of each section in the summary', async () => {
@@ -152,7 +195,7 @@ describe('DiveFormPage — duplicate', () => {
     expect(await screen.findByText(/Prérempli depuis/)).toBeTruthy();
     expect(screen.getByText(/palanquée, équipement et conditions repris/)).toBeTruthy();
     expect(siteField().value).toBe('Pointe de la Revellata');
-    expect(field('N° de plongée').value).toBe('128');
+    expect(field(/^N° de plongée/).value).toBe('128');
     expect(field('Structure').value).toBe('Calvi Plongée');
     for (const name of [/^Immersion/, /^Sortie/, /^Durée/, /^Profondeur max/]) {
       expect(field(name).value).toBe('');
@@ -194,6 +237,25 @@ describe('DiveFormPage — edit', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/dives/d127'));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(screen.getByRole('status').textContent).toBe('Plongée #127 enregistrée');
+  });
+
+  it('announces the number the dive got once moved to another date', async () => {
+    const router = renderAt('/dives/d127/edit');
+
+    await title('Modifier la plongée #127');
+    fireEvent.change(field(/^Date/), { target: { value: '2026-04-06' } });
+    fireEvent.change(field(/^Immersion/), { target: { value: '08:00' } });
+    // Before #125 (06/04 10:00 +02:00) whatever the time zone of the device running the test.
+    expect(field(/^N° de plongée/).value).toBe('125');
+    await userEvent
+      .setup()
+      .click(
+        screen.getAllByRole('button', { name: 'Enregistrer les modifications' })[0] ??
+          document.body,
+      );
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dives/d127'));
+    expect(screen.getByRole('status').textContent).toBe('Plongée #125 enregistrée');
   });
 
   it('locks the shared event when the diver cannot edit it', async () => {

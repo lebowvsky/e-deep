@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import type { DiveFormPreview } from '../../../form/derived';
-import type { DiveFormSection } from '../../../form/model';
 import { DivePreviewCard } from '../DivePreviewCard';
 import { SectionNav, type SectionNavItem } from '../SectionNav';
 import styles from './FormAside.module.scss';
@@ -8,7 +7,6 @@ import styles from './FormAside.module.scss';
 export interface FormAsideProps {
   preview: DiveFormPreview;
   sections: readonly SectionNavItem[];
-  activeSection: DiveFormSection | undefined;
   /** Save, cancel and the draft mention (`DiveFormActions`). */
   actions: ReactNode;
 }
@@ -18,11 +16,11 @@ export interface FormAsideProps {
  * summary, actions and the draft mention. Below, the sticky bottom bar of the form replaces it.
  * After the fields in the DOM: tabbing reaches it last.
  */
-export function FormAside({ preview, sections, activeSection, actions }: FormAsideProps) {
+export function FormAside({ preview, sections, actions }: FormAsideProps) {
   return (
     <div className={styles.aside}>
       <DivePreviewCard preview={preview} />
-      <SectionNav items={sections} activeSection={activeSection} />
+      <SectionNav items={sections} />
       {actions}
     </div>
   );

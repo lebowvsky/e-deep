@@ -1,10 +1,10 @@
 // Dive form — values of each mode: new, duplicated, edited, and « Reprendre » of the suggestion.
-import { formatClockValue, formatNumberInputValue } from '@/shared/lib/format';
+import { formatNumberInputValue } from '@/shared/lib/format';
 import { othersInTeam } from '@/shared/model/dive';
 import type { DiveDetailView, LoggedDive } from '../types';
 import { fromGasMix, type DiveFormTarget } from './convert';
 import { emptyDiveFormValues, type DiveFormValues, type TeamMemberValue } from './model';
-import { parseClock, splitLocalIso } from './timeLink';
+import { exitFromDuration, splitLocalIso } from './timeLink';
 
 /** How the form was opened: decides the defaults, the draft key and what saving does. */
 export type DiveFormMode =
@@ -15,15 +15,9 @@ const SUGGESTION_WINDOW_MS = 48 * 3_600_000;
 const numberValue = (value: number | null): string =>
   value === null ? '' : formatNumberInputValue(value);
 
-/** A new dive: everything empty, but the next logbook number and today. */
-export function newDiveValues({
-  today,
-  nextNumber,
-}: {
-  today: string;
-  nextNumber: number;
-}): DiveFormValues {
-  return { ...emptyDiveFormValues(), number: String(nextNumber), date: today };
+/** A new dive: everything empty, but today. */
+export function newDiveValues({ today }: { today: string }): DiveFormValues {
+  return { ...emptyDiveFormValues(), date: today };
 }
 
 function toTeamValues(dive: DiveDetailView): TeamMemberValue[] {
@@ -88,10 +82,10 @@ export function carriedValues(dive: DiveDetailView): CarriedValues {
   };
 }
 
-/** Duplicate: a new dive (today, next number) with the site and what `carriedValues` copies. */
+/** Duplicate: a new dive (today) with the site and what `carriedValues` copies. */
 export function duplicateDiveValues(
   source: DiveDetailView,
-  defaults: { today: string; nextNumber: number },
+  defaults: { today: string },
 ): DiveFormValues {
   return {
     ...newDiveValues(defaults),
@@ -103,16 +97,15 @@ export function duplicateDiveValues(
 /** Edit: every value of the dive, the exit computed from the immersion and the duration. */
 export function editDiveValues(dive: DiveDetailView): DiveFormValues {
   const { day, clock } = splitLocalIso(dive.date);
-  const entry = parseClock(clock);
   const { equipment } = dive;
   return {
     ...emptyDiveFormValues(),
     ...carriedValues(dive),
     site: { id: dive.site.id, name: dive.site.name },
-    number: String(dive.number),
     date: day,
     entryTime: clock,
-    exitTime: entry === null ? '' : formatClockValue((entry + dive.durationMin) % 1440),
+    // The dive exists: going past midnight is accepted whatever its moment.
+    exitTime: exitFromDuration(clock, dive.durationMin, true) ?? '',
     durationMin: String(dive.durationMin),
     maxDepthM: numberValue(dive.depthMaxM),
     safetyStop: dive.safetyStop !== null,
@@ -138,6 +131,7 @@ export function editTarget(dive: DiveDetailView): DiveFormTarget {
         count === null ? [] : [[label, count] as const],
       ),
     ),
+    isRepetitive: dive.isRepetitive,
   };
 }
 

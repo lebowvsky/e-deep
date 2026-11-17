@@ -11,13 +11,12 @@ import {
   newDiveValues,
 } from './prefill';
 
-const DEFAULTS = { today: '2026-04-10', nextNumber: 128 };
+const DEFAULTS = { today: '2026-04-10' };
 
 describe('Nouvelle', () => {
-  it('leaves everything empty but the next number and today', () => {
+  it('leaves everything empty but today', () => {
     expect(newDiveValues(DEFAULTS)).toEqual({
       ...emptyDiveFormValues(),
-      number: '128',
       date: '2026-04-10',
     });
   });
@@ -66,7 +65,6 @@ describe('Dupliquer', () => {
 
   it('never copies the times, depth, duration, stops nor notes', () => {
     expect(values).toMatchObject({
-      number: '128',
       date: '2026-04-10',
       entryTime: '',
       exitTime: '',
@@ -102,7 +100,6 @@ describe('Modifier', () => {
     const values = editDiveValues(dive);
     expect(values).toMatchObject({
       site: { id: dive.site.id, name: dive.site.name },
-      number: String(dive.number),
       date: dive.date.slice(0, 10),
       entryTime: dive.date.slice(11, 16),
       durationMin: String(dive.durationMin),

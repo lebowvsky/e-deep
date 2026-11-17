@@ -115,12 +115,12 @@
 }
 
 // Frame of a form field (dive-form.jsx · Input): surface-0 box with an inset ring that follows the
-// state. The box carries the state, the bare control inside uses `field-control`.
+// state (≥ 3:1, SC 1.4.11). The box carries the state, the bare control inside uses `field-control`.
 //   data-status="warning" | "error" · data-locked (read-only or disabled)
 @mixin field-box {
   background: $color-surface-0;
   border-radius: $radius-md;
-  box-shadow: inset 0 0 0 1px $color-line-strong;
+  box-shadow: inset 0 0 0 1px $color-line-field;
   transition: box-shadow $dur-fast $ease-out;
 
   &[data-status='warning'] {
@@ -136,23 +136,16 @@
     box-shadow: inset 0 0 0 1px $color-line;
   }
 
-  // The halo is the focus indicator of the field (the control inside has no outline).
+  // The focus indicator of the field, whatever its state (the control inside has no outline): the
+  // `focus-ring` outline, on the box. The ring keeps telling the state (danger, warning), so that a
+  // field reached from the error summary still shows where the focus is (SC 2.4.7).
   &:focus-within {
-    box-shadow:
-      inset 0 0 0 1px $color-accent,
-      $shadow-field-focus;
+    outline: 2px solid $color-accent;
+    outline-offset: 2px;
   }
 
-  &[data-status='warning']:focus-within {
-    box-shadow:
-      inset 0 0 0 1px $color-warning,
-      $shadow-field-focus;
-  }
-
-  &[data-status='error']:focus-within {
-    box-shadow:
-      inset 0 0 0 1px $color-danger,
-      $shadow-field-focus;
+  &:not([data-status]):focus-within {
+    box-shadow: inset 0 0 0 1px $color-accent;
   }
 
   @media (prefers-reduced-motion: reduce) {

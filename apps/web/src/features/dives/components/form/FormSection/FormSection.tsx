@@ -11,7 +11,8 @@ import styles from './FormSection.module.scss';
 /** Folded state of a section (mobile accordion): header button, summary and state. */
 export interface FormSectionCollapse {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  /** One handler for every section (stable, so that memoised sections skip renders). */
+  onOpenChange: (section: DiveFormSection, open: boolean) => void;
   /** « Air · 12 L · 200 bar · 7 mm » (`sectionSummary`). */
   summary: string;
   status: SectionStatus;
@@ -67,7 +68,7 @@ export function FormSection({
               className={styles.toggle}
               aria-expanded={isOpen}
               aria-controls={contentId}
-              onClick={() => collapse.onOpenChange(!isOpen)}
+              onClick={() => collapse.onOpenChange(section, !isOpen)}
             >
               {number}
               <span className={styles.heading}>
