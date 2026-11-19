@@ -125,10 +125,9 @@ export function DiveForm({
   onSaved,
   onCreateSite,
 }: DiveFormProps) {
-  const savedSiteIds = useMemo(
-    () => new Set(sources.sites.filter(({ isSaved }) => isSaved).map(({ id }) => id)),
-    [sources.sites],
-  );
+  // The sites of the API log, merged or deleted locally or not: any other one (created on this
+  // device) is sent as new. Not `sources.sites`, which leaves out a site merged here.
+  const savedSiteIds = useMemo(() => new Set(log.map((dive) => dive.site.id)), [log]);
   const form = useDiveForm({
     mode,
     initialValues,
@@ -136,7 +135,6 @@ export function DiveForm({
     context,
     saveDive,
     draftStore,
-    // A site absent from the API log (created here, or lost with a reload) is sent as new.
     isSavedSite: (id) => savedSiteIds.has(id),
   });
   const formRef = useRef<HTMLFormElement>(null);

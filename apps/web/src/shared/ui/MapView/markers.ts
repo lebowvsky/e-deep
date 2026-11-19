@@ -31,19 +31,40 @@ export interface MarkerClasses {
   cluster: string;
 }
 
-/** A round button with the count in it; its size in `--marker-size`. */
+export interface MarkerContent {
+  label: string;
+  text: string;
+  size: number;
+}
+
+/** A round button for a site or a cluster; its content comes from `applyMarkerContent`. */
 export function createMarkerButton(
   classes: MarkerClasses,
   kind: 'site' | 'cluster',
-  { label, text, size }: { label: string; text: string; size: number },
+  content: MarkerContent,
 ): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = kind === 'site' ? classes.marker : `${classes.marker} ${classes.cluster}`;
-  button.setAttribute('aria-label', label);
-  button.textContent = text;
-  button.style.setProperty('--marker-size', `${size}px`);
+  applyMarkerContent(button, content);
   return button;
+}
+
+/**
+ * Name, count and size (`--marker-size`) of a marker, written only when they changed: the markers
+ * are synchronised on every rendered frame, and a site can be renamed, merged (more dives) or a
+ * cluster id reused for other sites after new data.
+ */
+export function applyMarkerContent(
+  button: HTMLButtonElement,
+  { label, text, size }: MarkerContent,
+) {
+  if (button.getAttribute('aria-label') !== label) button.setAttribute('aria-label', label);
+  if (button.textContent !== text) button.textContent = text;
+  const sizePx = `${size}px`;
+  if (button.style.getPropertyValue('--marker-size') !== sizePx) {
+    button.style.setProperty('--marker-size', sizePx);
+  }
 }
 
 /** Keyboard moves of the marker being placed (spec: 1 px, Maj 10 px). */

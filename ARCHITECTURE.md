@@ -707,10 +707,12 @@ Issus des sites (création express, page Carte, fiche site, phases 0 à 5, 2026-
 - **API sites à créer** : `GET /sites` (type, profondeurs, accès, position, `createdVia`,
   horodatages), écriture, fusion côté serveur (réaffectation des plongées dans une transaction)
   et suppression refusée s'il reste des plongées. Elle remplacera `createMemorySitesRepository`
-  derrière le même port, et `GET /dashboard` comme source des positions (aujourd'hui une requête
-  de plus, cache distinct de celui du dashboard).
-- **Fusion locale non répercutée** : l'alias source → cible ne vaut que pour les écrans des sites ;
-  « Mes plongées » et le détail d'une plongée montrent encore l'ancien site.
+  derrière le même port, et `GET /dashboard` comme source des positions (même requête et même
+  cache que le dashboard : `shared/dashboard/dashboardApi.ts`, `select: toSitePositions`).
+- **Fusion locale non répercutée** : l'alias source → cible ne vaut que côté front (fiche, carte,
+  filtre `?site=` de « Mes plongées ») ; le nom du site dans « Mes plongées » et le détail d'une
+  plongée reste l'ancien. Une plongée d'un site fusionné localement, modifiée puis enregistrée,
+  garde l'id de ce site côté API (jamais renvoyé comme nouveau).
 - **Mise à l'eau et structure habituelles** : calculées, mais `GET /dives` ne porte ni
   `entryType` ni `diveCenter` : « — » tant que le carnet ne les sert pas.
 - **`?state=`** n'est géré ni sur `/map` ni sur `/sites/:id` (les mocks ne sont pas importés par le
@@ -720,6 +722,8 @@ Issus des sites (création express, page Carte, fiche site, phases 0 à 5, 2026-
   seule), ce qui supprimera `projectToMap` et `MapBackdrop`.
 - **Géocodage** : V2. La région est suggérée depuis le site placé le plus proche (< 15 km) ; la
   zone est déduite de la position (boîtes) ou des mots de la région (côtes françaises surtout).
+  Les boîtes ne distinguent pas la terre de la mer : un site intérieur dans une boîte (lac près
+  d'Avignon, carrière près de Rouen) prend la mer de la boîte ; il faudra un trait de côte.
 - **Tuiles** : CARTO sans clé et sans SLA ; au-delà d'un usage modéré, compte CARTO ou autre
   fournisseur (seule l'URL du style change). Hors ligne, la carte affiche « La carte n'a pas pu
   se charger » et la liste reste utilisable.

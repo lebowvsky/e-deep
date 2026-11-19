@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { ApiClientContext } from '@/shared/lib/apiClientContext';
 import { createQueryClient } from '@/shared/lib/queryClient';
+import { createMemorySitesRepository } from '@/shared/sites/repository/sitesRepository';
+import { SitesRepositoryContext } from '@/shared/sites/repository/sitesRepositoryContext';
 import { TestProviders } from '@/test/TestProviders';
 import { divesKeys } from '../api/queryKeys';
 import { DEFAULT_QUERY } from '../lib/query';
@@ -174,12 +176,15 @@ describe('useDives with the app query client', () => {
 
   function setup(get: ApiClient['get']) {
     const queryClient: QueryClient = createQueryClient();
+    const sitesRepository = createMemorySitesRepository();
     function Wrapper({ children }: { children: ReactNode }) {
       return (
         <ApiClientContext value={fakeApiClient({ get })}>
-          <QueryClientProvider client={queryClient}>
-            <MemoryRouter initialEntries={['/dives']}>{children}</MemoryRouter>
-          </QueryClientProvider>
+          <SitesRepositoryContext value={sitesRepository}>
+            <QueryClientProvider client={queryClient}>
+              <MemoryRouter initialEntries={['/dives']}>{children}</MemoryRouter>
+            </QueryClientProvider>
+          </SitesRepositoryContext>
         </ApiClientContext>
       );
     }

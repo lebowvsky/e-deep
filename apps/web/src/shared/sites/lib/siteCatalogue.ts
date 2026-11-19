@@ -7,6 +7,7 @@ import type { GeoPoint } from '@/shared/model/geo';
 import type { Site, SiteDive, SiteEntry } from '@/shared/model/site';
 import type { SitePositions } from '../api/sitePositionsApi';
 import type { SitesOverlay } from '../repository/sitesRepository';
+import { currentSiteId } from './siteAliases';
 import { byLatest, computeSiteStats } from './siteStats';
 import { deriveZone } from './zone';
 
@@ -83,7 +84,7 @@ export function buildSiteCatalogue({
     if (!sites.has(summary.site.id)) {
       sites.set(summary.site.id, toSite(summary.site, positions.get(summary.site.id) ?? null));
     }
-    const siteId = overlay.mergedInto.get(summary.site.id) ?? summary.site.id;
+    const siteId = currentSiteId(overlay.mergedInto, summary.site.id);
     const siteDives = divesBySite.get(siteId);
     if (siteDives) siteDives.push(toSiteDive(summary));
     else divesBySite.set(siteId, [toSiteDive(summary)]);

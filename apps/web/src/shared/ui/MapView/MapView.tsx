@@ -16,6 +16,7 @@ import { isNumber, isRecord } from '@/shared/lib/guards';
 import type { GeoPoint } from '@/shared/model/geo';
 import { BASEMAP_STYLES, tintStyle, type MapBasemap } from './mapStyle';
 import {
+  applyMarkerContent,
   arrowStep,
   clusterLabel,
   clusterSize,
@@ -132,9 +133,12 @@ function pickLabel(position: GeoPoint | null): string {
   return `Repère du site, ${where}. Flèches pour le déplacer, Maj pour aller plus vite.`;
 }
 
+/** A marker on the map, and what it stands for now (read by its click handler). */
 interface MarkerEntry {
   marker: Marker;
   element: HTMLButtonElement;
+  target: { kind: 'site'; id: string } | { kind: 'cluster'; id: number; lngLat: [number, number] };
+  lngLat: [number, number];
 }
 
 /**
@@ -198,29 +202,42 @@ export function MapView({
       const key = isCluster ? `cluster-${String(props.cluster_id)}` : `site-${String(props.id)}`;
       if (seen.has(key)) continue;
       seen.add(key);
+      const count = Number(isCluster ? props.point_count : props.count);
+      const content = isCluster
+        ? { label: clusterLabel(count), text: String(count), size: clusterSize(count) }
+        : {
+            label: siteMarkerLabel(String(props.name), count),
+            text: String(count),
+            size: markerSize(count),
+          };
+      const target: MarkerEntry['target'] = isCluster
+        ? { kind: 'cluster', id: Number(props.cluster_id), lngLat: [lng, lat] }
+        : { kind: 'site', id: String(props.id) };
       let entry = markersRef.current.get(key);
-      if (!entry) {
-        const count = Number(isCluster ? props.point_count : props.count);
-        const element = isCluster
-          ? createMarkerButton(MARKER_CLASSES, 'cluster', {
-              label: clusterLabel(count),
-              text: String(count),
-              size: clusterSize(count),
-            })
-          : createMarkerButton(MARKER_CLASSES, 'site', {
-              label: siteMarkerLabel(String(props.name), count),
-              text: String(count),
-              size: markerSize(count),
-            });
-        const clusterId = Number(props.cluster_id);
-        const siteId = String(props.id);
+      if (entry) {
+        // Same key, maybe other content: a site moved, renamed or merged, a cluster id reused.
+        applyMarkerContent(entry.element, content);
+        if (entry.lngLat[0] !== lng || entry.lngLat[1] !== lat) {
+          entry.marker.setLngLat([lng, lat]);
+          entry.lngLat = [lng, lat];
+        }
+        entry.target = target;
+      } else {
+        const element = createMarkerButton(MARKER_CLASSES, isCluster ? 'cluster' : 'site', content);
+        const created: MarkerEntry = {
+          element,
+          marker: new lib.Marker({ element }).setLngLat([lng, lat]).addTo(map),
+          target,
+          lngLat: [lng, lat],
+        };
         element.addEventListener('click', (event) => {
           event.stopPropagation();
-          if (isCluster) void zoomInto(clusterId, [lng, lat]);
-          else select(siteId);
+          const current = created.target;
+          if (current.kind === 'cluster') void zoomInto(current.id, current.lngLat);
+          else select(current.id);
         });
-        entry = { element, marker: new lib.Marker({ element }).setLngLat([lng, lat]).addTo(map) };
-        markersRef.current.set(key, entry);
+        markersRef.current.set(key, created);
+        entry = created;
       }
       if (!isCluster) {
         const id = String(props.id);
@@ -254,6 +271,9 @@ export function MapView({
       paint: { 'circle-opacity': 0, 'circle-radius': 1 },
     });
   });
+
+  /** Where the marker being placed starts (later moves go through `setLngLat`). */
+  const pickStart = useEffectEvent(() => pickPosition);
 
   /** What the map starts with; later changes go through their own effects. */
   const startOptions = useEffectEvent(() => ({ style: BASEMAP_STYLES[basemap], label }));
@@ -432,17 +452,22 @@ export function MapView({
     }
   }, [map, isCenterPick, pickLat, pickLng]);
 
-  // The marker being placed: dragged with the pointer, moved with the arrows when focused.
+  // The marker being placed: dragged with the pointer, moved with the arrows when focused. One
+  // element for the whole placing, moved by the effect below: it keeps the keyboard focus.
+  const pickMarkerRef = useRef<Marker | null>(null);
+  const hasPickPosition = pickPosition !== null;
   useEffect(() => {
     const lib = libRef.current;
-    if (!map || !lib || !isClickPick || pickPosition === null) return;
+    const start = pickStart();
+    if (!map || !lib || !isClickPick || start === null) return;
     const element = document.createElement('button');
     element.type = 'button';
     element.className = styles.pickMarker ?? '';
-    element.setAttribute('aria-label', pickLabel(pickPosition));
+    element.setAttribute('aria-label', pickLabel(start));
     const marker = new lib.Marker({ element, draggable: true })
-      .setLngLat(toLngLat(pickPosition))
+      .setLngLat(toLngLat(start))
       .addTo(map);
+    pickMarkerRef.current = marker;
     marker.on('dragend', () => {
       const { lat, lng } = marker.getLngLat();
       place({ latitude: lat, longitude: lng });
@@ -455,14 +480,20 @@ export function MapView({
       const moved = map.unproject([point.x + move[0], point.y + move[1]]);
       place({ latitude: moved.lat, longitude: moved.lng });
     });
-    const hadFocus = document.activeElement?.getAttribute('data-pick-marker') === 'true';
-    element.setAttribute('data-pick-marker', 'true');
-    // Moved with the keyboard: the new marker keeps the focus of the old one.
-    if (hadFocus) element.focus();
     return () => {
+      pickMarkerRef.current = null;
       marker.remove();
     };
-  }, [map, isClickPick, pickPosition]);
+  }, [map, isClickPick, hasPickPosition]);
+
+  useEffect(() => {
+    const marker = pickMarkerRef.current;
+    if (!marker || pickLat === null || pickLng === null) return;
+    marker.setLngLat([pickLng, pickLat]);
+    marker
+      .getElement()
+      .setAttribute('aria-label', pickLabel({ latitude: pickLat, longitude: pickLng }));
+  }, [pickLat, pickLng]);
 
   // The preview, beside the selected marker (on its left as in the mockup, or above it).
   const selectedLng = selected?.position.longitude ?? null;

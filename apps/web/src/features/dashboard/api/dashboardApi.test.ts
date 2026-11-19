@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isDashboardResponse, toDashboardState } from './dashboardApi';
+import { isDashboardResponse } from '@/shared/dashboard/dashboardApi';
+import { toDashboardState } from './dashboardApi';
 import { dashboardResponse } from './dashboardResponse.fixture';
 
 describe('isDashboardResponse', () => {

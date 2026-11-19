@@ -83,6 +83,16 @@ async function renderAt(path: string) {
   return router;
 }
 
+/** Whether `text` ever shows in the page, even for a single render. */
+function watchText(text: string) {
+  let seen = false;
+  const observer = new MutationObserver(() => {
+    if (document.body.textContent?.includes(text)) seen = true;
+  });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  return { seen: () => seen, stop: () => observer.disconnect() };
+}
+
 const menuButton = () => screen.getByRole('button', { name: 'Plus d’actions' });
 
 describe('SiteDetailPage', () => {
@@ -170,14 +180,23 @@ describe('SiteDetailPage', () => {
       'La plongée de La Bibliothèque sera rattachée à Pointe de la Revellata. Les infos de Pointe de la Revellata sont conservées ; les champs vides de Pointe de la Revellata sont complétés avec ceux de La Bibliothèque. La Bibliothèque sera supprimé. Action irréversible.',
     );
 
+    // The page leaves for the target without showing « this site does not exist » on the way.
+    const notFound = watchText('Ce site n’existe pas ou a été supprimé');
     await user.click(within(dialog).getByRole('button', { name: 'Fusionner' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/sites/s01'));
+    expect(notFound.seen()).toBe(false);
+    notFound.stop();
     expect(
       await screen.findByText('« La Bibliothèque » fusionné avec « Pointe de la Revellata »'),
     ).toBeTruthy();
-    const kpis = await screen.findByRole('list', { name: 'Tes chiffres sur ce site' });
-    expect(within(kpis).getByText('4 plongées')).toBeTruthy();
+    // The page of the target, once rendered (the source stays shown until then), counts the dive
+    // of La Bibliothèque.
+    await waitFor(() => {
+      const kpis = screen.getByRole('list', { name: 'Tes chiffres sur ce site' });
+      expect(within(kpis).getByText('4 plongées')).toBeTruthy();
+    });
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Pointe de la Revellata');
   });
 
   it('refuses to delete a site with dives, and offers to merge it', async () => {
@@ -210,9 +229,12 @@ describe('SiteDetailPage', () => {
     await user.click(menuButton());
     await user.click(screen.getByRole('menuitem', { name: 'Supprimer le site' }));
     const dialog = screen.getByRole('alertdialog');
+    const notFound = watchText('Ce site n’existe pas ou a été supprimé');
     await user.click(within(dialog).getByRole('button', { name: 'Supprimer' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/map'));
+    expect(notFound.seen()).toBe(false);
+    notFound.stop();
     expect(await screen.findByText('Site « Revellata — Grotte aux Corbs » supprimé')).toBeTruthy();
   });
 });

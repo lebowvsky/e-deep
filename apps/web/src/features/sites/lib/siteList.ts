@@ -1,5 +1,6 @@
 // The list of the map page: search, filters, sort, and the counters of the header and chips.
 import type { SiteEntry, SiteType, SiteZone } from '@/shared/model/site';
+import type { MapSite } from '@/shared/ui/MapView';
 import { SITE_ZONES } from '@/shared/model/site';
 import { searchSites } from '@/shared/sites/lib/searchSites';
 
@@ -106,4 +107,13 @@ export function zoneCounts(entries: readonly SiteEntry[]): { zone: SiteZone; cou
     zone,
     count: entries.filter(({ site }) => site.zone === zone).length,
   })).filter(({ count }) => count > 0);
+}
+
+/** The placed sites, as the map draws them (memoise the result: the map re-indexes on change). */
+export function toMapSites(entries: readonly SiteEntry[]): MapSite[] {
+  return entries.flatMap(({ site, stats }) =>
+    site.position
+      ? [{ id: site.id, name: site.name, position: site.position, diveCount: stats.diveCount }]
+      : [],
+  );
 }

@@ -6,6 +6,7 @@ import {
   regionGroups,
   selectSites,
   toCompleteCount,
+  toMapSites,
   zoneCounts,
   type SiteListQuery,
 } from './siteList';
@@ -70,5 +71,16 @@ describe('siteList', () => {
       { zone: 'atlantique', count: 4 },
       { zone: 'manche', count: 2 },
     ]);
+  });
+
+  it('gives the map the placed sites only, with their dive counts', () => {
+    const sites = toMapSites(mockSiteEntries);
+    expect(sites).toHaveLength(mockSiteEntries.length - 1);
+    expect(sites[0]).toStrictEqual({
+      id: 's01',
+      name: 'Pointe de la Revellata',
+      position: { latitude: 42.583, longitude: 8.725 },
+      diveCount: 8,
+    });
   });
 });

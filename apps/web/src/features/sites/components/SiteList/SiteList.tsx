@@ -132,7 +132,8 @@ export function SiteList({
             value={query.region ?? ALL}
             onChange={(region) => onQueryChange({ region: region === ALL ? null : region })}
           />
-          {waiting > 0 && (
+          {/* Kept while on: the last site placed must not leave a filter that cannot be undone. */}
+          {(waiting > 0 || query.toComplete) && (
             <button
               type="button"
               className={cx(styles.toComplete, query.toComplete && styles.toCompleteOn)}

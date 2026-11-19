@@ -6,9 +6,9 @@ import type { SaveDive, SaveDiveResult } from '../../../api/saveDive';
 import { EMPTY_SECTION_SUMMARY } from '../../../form/derived';
 import type { DiveFormValues } from '../../../form/model';
 import { duplicateDiveValues, editDiveValues, editTarget } from '../../../form/prefill';
-import { buildDiveFormSources } from '../../../form/sources';
-import { CONTEXT, filledDive, validValues } from '../../../mocks/diveFormFixture';
+import { CONTEXT, filledDive, formSourcesOf, validValues } from '../../../mocks/diveFormFixture';
 import { mockDives } from '../../../mocks/dives';
+import { MOCK_SITES } from '@/shared/sites/mocks/sites';
 import { LOCKED_EVENT_HINT } from '../fieldBinding';
 import { DiveForm, type DiveFormProps } from './DiveForm';
 
@@ -24,6 +24,7 @@ interface RenderOptions {
   canEditEvent?: boolean;
   draftStore?: DiveFormProps['draftStore'];
   onCreateSite?: DiveFormProps['onCreateSite'];
+  sources?: DiveFormProps['sources'];
 }
 
 /** A new dive (#128) in a data router: `/dives` is where « Annuler » leads. */
@@ -33,6 +34,7 @@ function renderNew({
   canEditEvent = true,
   draftStore = NO_DRAFT,
   onCreateSite = vi.fn<DiveFormProps['onCreateSite']>(),
+  sources = formSourcesOf(mockDives),
 }: RenderOptions = {}) {
   const onSaved = vi.fn<(id: string, number: number) => void>();
   const form = (
@@ -41,7 +43,7 @@ function renderNew({
       initialValues={initialValues}
       target={{ kind: 'create' }}
       context={CONTEXT}
-      sources={buildDiveFormSources(mockDives)}
+      sources={sources}
       log={mockDives}
       self={{ firstName: 'Marine', lastName: 'Rousseau', level: 'N2' }}
       prefill={{ kind: 'none' }}
@@ -386,6 +388,31 @@ describe('DiveForm — quick site creation', () => {
   });
 });
 
+describe('DiveForm — site merged on this device', () => {
+  it('sends a site of the API log as known, even once merged locally', async () => {
+    const user = userEvent.setup();
+    const saveDive = vi.fn<SaveDive>(() => Promise.resolve({ ok: true, id: 'd128', number: 128 }));
+    // La Pointe de la Revellata (s01) merged into La Bibliothèque (s02) here: not in the choices.
+    const sources = formSourcesOf(mockDives, {
+      saved: new Map([['s02', MOCK_SITES.bibliotheque]]),
+      removed: new Set(['s01']),
+      mergedInto: new Map([['s01', 's02']]),
+    });
+    expect(sources.sites.some(({ id }) => id === 's01')).toBe(false);
+    renderNew({ saveDive, sources });
+
+    await user.click(saveButton());
+
+    await waitFor(() => expect(saveDive).toHaveBeenCalledOnce());
+    // Still a site of the API: never « new » (the API would refuse or duplicate it).
+    expect(saveDive.mock.calls[0]?.[0].contacts.site).toEqual({
+      id: 's01',
+      name: 'Pointe de la Revellata',
+      isNew: false,
+    });
+  });
+});
+
 describe('DiveForm — removing a row', () => {
   it('keeps the focus in the form when a member or a stop is removed', async () => {
     const user = userEvent.setup();
@@ -496,7 +523,7 @@ describe('DiveForm — shared event', () => {
             initialValues={editDiveValues(dive)}
             target={editTarget(dive)}
             context={CONTEXT}
-            sources={buildDiveFormSources(mockDives)}
+            sources={formSourcesOf(mockDives)}
             log={mockDives}
             self={{ firstName: 'Marine', lastName: 'Rousseau', level: 'N2' }}
             prefill={{ kind: 'none' }}

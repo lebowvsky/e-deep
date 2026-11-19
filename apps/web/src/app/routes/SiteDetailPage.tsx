@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate, useParams } from 'react-router';
 import { mockUser } from '@/features/dashboard/mocks/dashboard';
 import { DeleteSiteDialog } from '@/features/sites/components/DeleteSiteDialog';
@@ -27,6 +28,9 @@ const SELF_INITIALS = formatInitials(mockUser.firstName, mockUser.lastName);
 export function SiteDetailPage() {
   const { siteId = '' } = useParams();
   const state = useSites();
+  // The site being merged or deleted from this page: still shown while the page leaves, rather
+  // than « this site does not exist » for the render before the navigation.
+  const [leaving, setLeaving] = useState<SiteEntry | null>(null);
 
   switch (state.status) {
     case 'loading':
@@ -38,10 +42,18 @@ export function SiteDetailPage() {
         </SiteMessage>
       );
     case 'ready': {
-      const entry = state.entries.find(({ site }) => site.id === siteId);
+      const entry =
+        state.entries.find(({ site }) => site.id === siteId) ??
+        (leaving?.site.id === siteId ? leaving : undefined);
       return entry ? (
         // Another site is another page: its dialogs start closed.
-        <SiteDetail key={entry.site.id} entry={entry} entries={state.entries} />
+        <SiteDetail
+          key={entry.site.id}
+          entry={entry}
+          entries={state.entries}
+          // Out of the dialog's transition: urgent, so in place before the sites are read again.
+          onLeave={() => flushSync(() => setLeaving(entry))}
+        />
       ) : (
         <SiteMessage title="Ce site n’existe pas ou a été supprimé">
           <ButtonLink to="/map" icon="map">
@@ -58,9 +70,11 @@ type Dialog = 'none' | 'merge' | 'delete';
 interface SiteDetailProps {
   entry: SiteEntry;
   entries: readonly SiteEntry[];
+  /** A merge or a deletion is about to remove the site: the page leaves next. */
+  onLeave: () => void;
 }
 
-function SiteDetail({ entry, entries }: SiteDetailProps) {
+function SiteDetail({ entry, entries, onLeave }: SiteDetailProps) {
   const { site, stats, dives } = entry;
   const [dialog, setDialog] = useState<Dialog>('none');
   const { merge, remove } = useSiteCommands();
@@ -97,7 +111,10 @@ function SiteDetail({ entry, entries }: SiteDetailProps) {
         <MergeSiteDialog
           source={entry}
           entries={entries}
-          merge={merge}
+          merge={(source, target) => {
+            onLeave();
+            return merge(source, target);
+          }}
           onCancel={() => setDialog('none')}
           onMerged={(target) => {
             notify(`« ${site.name} » fusionné avec « ${target.name} »`);
@@ -108,7 +125,10 @@ function SiteDetail({ entry, entries }: SiteDetailProps) {
       {dialog === 'delete' && (
         <DeleteSiteDialog
           entry={entry}
-          remove={remove}
+          remove={(removed) => {
+            onLeave();
+            return remove(removed);
+          }}
           onCancel={() => setDialog('none')}
           onMerge={() => setDialog('merge')}
           onDeleted={() => {

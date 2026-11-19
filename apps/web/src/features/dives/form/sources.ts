@@ -3,7 +3,7 @@
 // The log summary carries sites, dive teams, numbers and times; it has neither the dive centres nor
 // the species (detail-only fields): those suggestion lists stay empty until the API serves them.
 import type { DiveMember } from '@/shared/model/dive';
-import { EMPTY_SITES_OVERLAY, type SitesOverlay } from '@/shared/sites/repository/sitesRepository';
+import type { SiteEntry } from '@/shared/model/site';
 import { computeFacets } from '../lib/selectDives';
 import type { LoggedDive } from '../types';
 import { startedAtOf, type DiveFormTarget } from './convert';
@@ -51,78 +51,43 @@ export interface DiveFormSources {
 /** Number of « Fréquents » chips. */
 export const FREQUENT_DIVERS = 4;
 
-const byDiveCount = (a: DiveFormSiteOption, b: DiveFormSiteOption): number =>
-  b.diveCount - a.diveCount || a.name.localeCompare(b.name, 'fr');
-
 /**
- * The sites of the log under the local changes (D30): a site edited here shows its new name and
- * region, a site created here joins the list without dive, a merged site lends its dives to the
- * target, a deleted one leaves.
+ * `log`: the dive log, latest first. `sites`: the user's sites as `buildSiteCatalogue` gives them
+ * (the log under the local changes: sites created here, edited, merged, deleted), most dived
+ * first. The local changes are applied there, once for the whole app.
  */
-function withLocalChanges(
-  logSites: ReadonlyMap<string, DiveFormSiteOption>,
-  overlay: SitesOverlay,
-): DiveFormSiteOption[] {
-  const sites = new Map(logSites);
-  for (const site of overlay.saved.values()) {
-    const known = logSites.get(site.id);
-    sites.set(site.id, {
-      id: site.id,
-      name: site.name,
-      place: site.region,
-      diveCount: known?.diveCount ?? 0,
-      isSaved: known !== undefined,
-    });
-  }
-  for (const [sourceId, targetId] of overlay.mergedInto) {
-    const source = logSites.get(sourceId);
-    const target = sites.get(targetId);
-    if (source && target)
-      sites.set(targetId, { ...target, diveCount: target.diveCount + source.diveCount });
-  }
-  return [...sites.values()].filter(({ id }) => !overlay.removed.has(id)).sort(byDiveCount);
-}
-
-/** Distinct regions, in the order of the sites (most dived first). */
-function regionsOf(sites: readonly DiveFormSiteOption[]): string[] {
-  return [...new Set(sites.flatMap(({ place }) => (place === null ? [] : [place])))];
-}
-
-/** `log`: the dive log, latest first; `overlay`: the local changes on the sites. */
 export function buildDiveFormSources(
   log: readonly LoggedDive[],
-  overlay: SitesOverlay = EMPTY_SITES_OVERLAY,
+  sites: readonly SiteEntry[],
 ): DiveFormSources {
-  const logSites = new Map<string, DiveFormSiteOption>();
+  // In the API log: the others were created on this device (sent as new when the dive is saved).
+  const loggedSiteIds = new Set(log.map((dive) => dive.site.id));
   let maxNumber = 0;
   let latest: LoggedDive | null = null;
   for (const dive of log) {
     maxNumber = Math.max(maxNumber, dive.number);
     if (latest === null || dive.number > latest.number) latest = dive;
-    const site = logSites.get(dive.site.id);
-    if (site) site.diveCount += 1;
-    else {
-      logSites.set(dive.site.id, {
-        id: dive.site.id,
-        name: dive.site.name,
-        place: dive.site.place,
-        diveCount: 1,
-        isSaved: true,
-      });
-    }
   }
-  const sites = withLocalChanges(logSites, overlay);
-  const latestSiteId = latest ? (overlay.mergedInto.get(latest.site.id) ?? latest.site.id) : null;
+  const options: DiveFormSiteOption[] = sites.map(({ site, stats }) => ({
+    id: site.id,
+    name: site.name,
+    place: site.region,
+    diveCount: stats.diveCount,
+    isSaved: loggedSiteIds.has(site.id),
+  }));
+  // The site of the latest dive, once merges are applied: the entry that holds that dive.
+  const latestId = latest?.id;
+  const latestSite = sites.find(({ dives }) => dives.some(({ id }) => id === latestId))?.site;
   const divers = computeFacets(log).members;
   return {
-    sites,
+    sites: options,
     divers,
     frequentDivers: divers.slice(0, FREQUENT_DIVERS),
     diveCenters: [],
     species: [],
     maxNumber,
-    regions: regionsOf(sites),
-    lastRegion: sites.find(({ id }) => id === latestSiteId)?.place ?? null,
+    regions: [...new Set(options.flatMap(({ place }) => (place === null ? [] : [place])))],
+    lastRegion: latestSite?.region ?? null,
   };
 }
 

@@ -14,11 +14,11 @@ function manySites(count: number) {
   );
 }
 
-function renderList(count: number) {
+function renderList(count: number, query = DEFAULT_SITE_LIST_QUERY) {
   render(
     <SiteList
       entries={manySites(count)}
-      query={DEFAULT_SITE_LIST_QUERY}
+      query={query}
       onQueryChange={vi.fn()}
       selectedId={null}
       onSelect={vi.fn()}
@@ -39,5 +39,17 @@ describe('SiteList', () => {
     // jsdom has no layout: no height, only the overscan rows.
     expect(list.getAllByRole('listitem').length).toBeLessThan(20);
     expect(list.getByText(/sur/).textContent).toBe('500 sur 500 sites');
+  });
+
+  it('keeps « À compléter » while on, even once every site is placed', () => {
+    // Every generated site has a position: nothing left to complete.
+    const list = renderList(3, { ...DEFAULT_SITE_LIST_QUERY, toComplete: true });
+    const toggle = list.getByRole('button', { name: /À compléter/ });
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('hides « À compléter » when off and nothing is left to complete', () => {
+    const list = renderList(3);
+    expect(list.queryByRole('button', { name: /À compléter/ })).toBeNull();
   });
 });

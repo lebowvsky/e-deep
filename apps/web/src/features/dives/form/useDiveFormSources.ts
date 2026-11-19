@@ -3,9 +3,12 @@ import { useMemo } from 'react';
 import { diveLogQueryOptions } from '@/shared/diveLog/diveLogApi';
 import { useApiClient } from '@/shared/hooks/useApiClient';
 import { useSitesOverlay } from '@/shared/sites/hooks/useSitesOverlay';
+import { buildSiteCatalogue } from '@/shared/sites/lib/siteCatalogue';
 import { toDiveLog, type DiveLogOwner } from '../api/divesApi';
 import type { LoggedDive } from '../types';
 import { buildDiveFormSources, type DiveFormSources } from './sources';
+
+const NO_POSITIONS = new Map<string, never>();
 
 export type DiveFormSourcesState =
   | { status: 'loading' }
@@ -23,9 +26,17 @@ export function useDiveFormSources(owner: DiveLogOwner): DiveFormSourcesState {
   // Local and in memory: it does not fail, and settles at once.
   const { data: overlay } = useSitesOverlay();
   const log = useMemo(() => (data ? toDiveLog(data, owner) : null), [data, owner]);
+  // The sites under the local changes; positions are not needed here (no `GET /dashboard`).
+  const sites = useMemo(
+    () =>
+      data && overlay
+        ? buildSiteCatalogue({ dives: data.dives, positions: NO_POSITIONS, overlay })
+        : null,
+    [data, overlay],
+  );
   const sources = useMemo(
-    () => (log && overlay ? buildDiveFormSources(log, overlay) : null),
-    [log, overlay],
+    () => (log && sites ? buildDiveFormSources(log, sites) : null),
+    [log, sites],
   );
 
   if (log && sources) return { status: 'ready', log, sources };

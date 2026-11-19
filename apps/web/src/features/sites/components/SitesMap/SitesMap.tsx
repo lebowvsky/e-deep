@@ -2,16 +2,10 @@ import { useMemo, useRef, useState } from 'react';
 import { cx } from '@/shared/lib/classNames';
 import type { SiteEntry, SiteZone } from '@/shared/model/site';
 import { Button } from '@/shared/ui/Button';
-import {
-  MapView,
-  type MapPick,
-  type MapSite,
-  type MapViewHandle,
-  type MapViewport,
-} from '@/shared/ui/MapView';
+import { MapView, type MapPick, type MapViewHandle, type MapViewport } from '@/shared/ui/MapView';
 import { useToast } from '@/shared/ui/Toast';
 import { formatPosition } from '../../lib/coordinates';
-import { zoneCounts } from '../../lib/siteList';
+import { toMapSites, zoneCounts } from '../../lib/siteList';
 import { MapControls } from '../MapControls';
 import { SitePreviewPopover } from '../SitePreviewPopover';
 import { ZoneChips } from '../ZoneChips';
@@ -60,15 +54,7 @@ export function SitesMap({
 
   // Same array while the sites are the same: hovering a row or selecting a site must not send
   // the whole GeoJSON to the map again (no React Compiler here).
-  const sites: MapSite[] = useMemo(
-    () =>
-      entries.flatMap(({ site, stats }) =>
-        site.position
-          ? [{ id: site.id, name: site.name, position: site.position, diveCount: stats.diveCount }]
-          : [],
-      ),
-    [entries],
-  );
+  const sites = useMemo(() => toMapSites(entries), [entries]);
   const selected = entries.find(({ site }) => site.id === selectedId);
 
   const locate = () => {

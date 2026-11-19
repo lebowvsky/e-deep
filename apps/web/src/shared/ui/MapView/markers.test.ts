@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { layout } from '@/design/tokens';
 import {
+  applyMarkerContent,
   arrowStep,
   clusterLabel,
   createMarkerButton,
@@ -36,5 +37,21 @@ describe('placing marker with the keyboard', () => {
     expect(arrowStep('ArrowDown', true)).toEqual([0, 10]);
     expect(arrowStep('ArrowLeft', true)).toEqual([-10, 0]);
     expect(arrowStep('Enter', false)).toBeNull();
+  });
+});
+
+describe('marker content', () => {
+  it('follows the site: renamed, merged (more dives), or a cluster id reused', () => {
+    const button = createMarkerButton({ marker: 'm', cluster: 'c' }, 'cluster', {
+      label: clusterLabel(5),
+      text: '5',
+      size: 40,
+    });
+
+    applyMarkerContent(button, { label: clusterLabel(2), text: '2', size: 26 });
+
+    expect(button.getAttribute('aria-label')).toBe('2 sites ici. Zoomer pour les voir');
+    expect(button.textContent).toBe('2');
+    expect(button.style.getPropertyValue('--marker-size')).toBe('26px');
   });
 });

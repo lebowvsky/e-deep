@@ -3,6 +3,8 @@ import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { diveLogQueryOptions } from '@/shared/diveLog/diveLogApi';
 import { useApiClient } from '@/shared/hooks/useApiClient';
+import { useSitesOverlay } from '@/shared/sites/hooks/useSitesOverlay';
+import { NO_SITE_ALIASES } from '@/shared/sites/lib/siteAliases';
 import { toDiveLog, type DiveLogOwner } from '../api/divesApi';
 import { computeFacets, describeLog, filterDives, selectDives } from '../lib/selectDives';
 import type { DivesQuery, DivesState } from '../types';
@@ -33,18 +35,20 @@ export function useDives(query: DivesQuery, now: Date, owner: DiveLogOwner): Div
     enabled: forced === null,
   });
 
+  // Sites merged on this device: `?site=` of the target keeps their dives (as its site page).
+  const siteAliases = useSitesOverlay().data?.mergedInto ?? NO_SITE_ALIASES;
   const dives = useMemo(() => (data ? toDiveLog(data, owner) : null), [data, owner]);
   const overview = useMemo(
     () => (dives ? { log: describeLog(dives), facets: computeFacets(dives) } : null),
     [dives],
   );
   const selection = useMemo(
-    () => (dives ? selectDives(dives, query, now) : null),
-    [dives, query, now],
+    () => (dives ? selectDives(dives, query, now, siteAliases) : null),
+    [dives, query, now, siteAliases],
   );
   const count = useCallback(
-    (draft: DivesQuery) => (dives ? filterDives(dives, draft, now).length : 0),
-    [dives, now],
+    (draft: DivesQuery) => (dives ? filterDives(dives, draft, now, siteAliases).length : 0),
+    [dives, now, siteAliases],
   );
   // The outcome of the new attempt replaces the error state; details stay out of the UI.
   const retry = useCallback(() => void refetch(), [refetch]);

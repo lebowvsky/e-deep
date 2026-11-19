@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
+import { dashboardQueryOptions } from '@/shared/dashboard/dashboardApi';
 import { diveLogQueryOptions } from '@/shared/diveLog/diveLogApi';
 import { useApiClient } from '@/shared/hooks/useApiClient';
 import type { SiteEntry } from '@/shared/model/site';
-import { fetchSitePositions } from '../api/sitePositionsApi';
-import { sitesKeys } from '../api/queryKeys';
+import { toSitePositions } from '../api/sitePositionsApi';
 import { buildSiteCatalogue } from '../lib/siteCatalogue';
 import { useSitesOverlay } from './useSitesOverlay';
 
@@ -28,10 +28,7 @@ export type SiteState =
 export function useSites(): SitesState {
   const client = useApiClient();
   const log = useQuery(diveLogQueryOptions(client));
-  const positions = useQuery({
-    queryKey: sitesKeys.positions(),
-    queryFn: ({ signal }) => fetchSitePositions(client, { signal }),
-  });
+  const positions = useQuery({ ...dashboardQueryOptions(client), select: toSitePositions });
   const overlay = useSitesOverlay();
   const queries = [log, positions, overlay];
 

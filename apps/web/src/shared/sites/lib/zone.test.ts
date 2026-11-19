@@ -10,6 +10,12 @@ describe('deriveZone', () => {
     // Bay of Biscay (Biarritz) and Black Sea are not the Mediterranean.
     expect(deriveZone({ latitude: 43.48, longitude: -1.56 }, null)).toBe('atlantique');
     expect(deriveZone({ latitude: 43.2, longitude: 28.0 }, null)).toBe('autre');
+    // Ouessant (Iroise) is the Atlantic; Granville and Dieppe the Channel.
+    expect(deriveZone({ latitude: 48.45, longitude: -5.1 }, null)).toBe('atlantique');
+    expect(deriveZone({ latitude: 48.84, longitude: -1.6 }, null)).toBe('manche');
+    expect(deriveZone({ latitude: 49.93, longitude: 1.08 }, null)).toBe('manche');
+    // Inland, outside every box: a quarry near Paris.
+    expect(deriveZone({ latitude: 48.85, longitude: 2.35 }, null)).toBe('autre');
     // Red Sea.
     expect(deriveZone({ latitude: 27.9, longitude: 34.3 }, 'Corse')).toBe('autre');
   });

@@ -2,6 +2,7 @@
 // Pure functions: the API serves the whole log (one request), the selection stays client side.
 import type { GasMix } from '@e-deep/shared';
 import { foldText } from '@/shared/lib/textMatch';
+import { currentSiteId, NO_SITE_ALIASES, type SiteAliases } from '@/shared/sites/lib/siteAliases';
 import { activeFilterKeys, withoutFilter } from './query';
 import type {
   DiveLogOverview,
@@ -53,7 +54,15 @@ function twelveMonthsBefore(now: Date): string {
 }
 
 /** Predicate of the query filters (search, period, regions, depth, gas, dive team, site). */
-export function matchesQuery(query: DivesQuery, now: Date): (dive: LoggedDive) => boolean {
+/**
+ * `siteAliases`: sites merged on this device (`?site=` of the target keeps the dives of the merged
+ * site, as its site page counts them).
+ */
+export function matchesQuery(
+  query: DivesQuery,
+  now: Date,
+  siteAliases: SiteAliases = NO_SITE_ALIASES,
+): (dive: LoggedDive) => boolean {
   const terms = foldText(query.q).split(/\s+/).filter(Boolean);
   const since = twelveMonthsBefore(now);
   return (dive) => {
@@ -72,7 +81,9 @@ export function matchesQuery(query: DivesQuery, now: Date): (dive: LoggedDive) =
     if (query.depthMax !== null && dive.depthMaxM > query.depthMax) return false;
     if (query.gases.length > 0 && !query.gases.includes(gasFamily(dive.gasMix))) return false;
     if (!query.with.every((id) => dive.team.some((member) => member.id === id))) return false;
-    if (query.site !== null && dive.site.id !== query.site) return false;
+    if (query.site !== null && currentSiteId(siteAliases, dive.site.id) !== query.site) {
+      return false;
+    }
     if (terms.length > 0) {
       const text = searchableText(dive);
       if (!terms.every((term) => text.includes(term))) return false;
@@ -125,8 +136,9 @@ export function filterDives(
   dives: readonly LoggedDive[],
   query: DivesQuery,
   now: Date,
+  siteAliases: SiteAliases = NO_SITE_ALIASES,
 ): LoggedDive[] {
-  return dives.filter(matchesQuery(query, now));
+  return dives.filter(matchesQuery(query, now, siteAliases));
 }
 
 /**
@@ -137,10 +149,11 @@ export function findRelaxation(
   dives: readonly LoggedDive[],
   query: DivesQuery,
   now: Date,
+  siteAliases: SiteAliases = NO_SITE_ALIASES,
 ): Relaxation | null {
   let best: Relaxation | null = null;
   for (const filter of activeFilterKeys(query)) {
-    const total = filterDives(dives, withoutFilter(query, filter), now).length;
+    const total = filterDives(dives, withoutFilter(query, filter), now, siteAliases).length;
     if (total > 0 && (best === null || total > best.total)) best = { filter, total };
   }
   return best;
@@ -150,8 +163,9 @@ export function selectDives(
   dives: readonly LoggedDive[],
   query: DivesQuery,
   now: Date = new Date(),
+  siteAliases: SiteAliases = NO_SITE_ALIASES,
 ): DivesSelection {
-  const selection = sortDives(filterDives(dives, query, now), query.sort);
+  const selection = sortDives(filterDives(dives, query, now, siteAliases), query.sort);
   const total = selection.length;
   const pageCount = Math.max(1, Math.ceil(total / query.size));
   const page = Math.min(query.page, pageCount);
@@ -163,7 +177,7 @@ export function selectDives(
     page,
     pageCount,
     summary: summarize(selection),
-    relaxation: total === 0 ? findRelaxation(dives, query, now) : null,
+    relaxation: total === 0 ? findRelaxation(dives, query, now, siteAliases) : null,
   };
 }
 

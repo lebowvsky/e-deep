@@ -1,5 +1,9 @@
 // Sea area of a site: from its position when placed, else guessed from the words of its region.
 // French coasts first (the zones of the product); anything else is `autre`.
+//
+// Limit: rectangles, not coastlines. A position inland but inside a box (a quarry near Rouen, a
+// lake near Avignon, Nantes) takes the sea of the box; telling land from sea needs coastline data
+// (or the geocoding of V2). Paris and the centre of France fall outside every box (`autre`).
 import { foldText } from '@/shared/lib/textMatch';
 import type { GeoPoint } from '@/shared/model/geo';
 import type { SiteZone } from '@/shared/model/site';
@@ -14,8 +18,11 @@ interface Box {
 const inBox = ({ latitude, longitude }: GeoPoint, box: Box): boolean =>
   latitude >= box.south && latitude <= box.north && longitude >= box.west && longitude <= box.east;
 
-// The Channel: from the north coast of Brittany (Portsall, Sept-Îles) to the Strait of Dover.
-const CHANNEL: Box = { south: 48.4, north: 51.5, west: -6, east: 2.5 };
+// The Channel, in two boxes: the north coast of Brittany from Portsall to the bay of the
+// Mont-Saint-Michel (west of it, Ouessant and the Iroise sea are the Atlantic), then Normandy
+// to the Strait of Dover (north of Paris).
+const CHANNEL_BRITTANY: Box = { south: 48.4, north: 49.1, west: -4.8, east: -1.4 };
+const CHANNEL_NORMANDY: Box = { south: 49.1, north: 51.5, west: -2.5, east: 2.5 };
 // Gibraltar to the Levant; the Bay of Biscay and the Black Sea are carved out below.
 const MEDITERRANEAN: Box = { south: 30, north: 46, west: -5.6, east: 36.5 };
 const BAY_OF_BISCAY: Box = { south: 42.5, north: 46, west: -5.6, east: 1 };
@@ -24,7 +31,7 @@ const BLACK_SEA: Box = { south: 40.9, north: 46, west: 26.5, east: 36.5 };
 const ATLANTIC: Box = { south: 35, north: 52, west: -30, east: -1 };
 
 function zoneOfPosition(position: GeoPoint): SiteZone {
-  if (inBox(position, CHANNEL)) return 'manche';
+  if (inBox(position, CHANNEL_BRITTANY) || inBox(position, CHANNEL_NORMANDY)) return 'manche';
   if (
     inBox(position, MEDITERRANEAN) &&
     !inBox(position, BAY_OF_BISCAY) &&

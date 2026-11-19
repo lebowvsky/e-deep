@@ -167,8 +167,8 @@ sheet → `shadow.sheet` ; padding 11 des lignes d'infos → `space.3` ; colonne
   positions.
 - Une fusion locale ne change pas le site des plongées côté API : le détail d'une plongée et
   « Mes plongées » montrent encore l'ancien site.
-- Les positions demandent tout `GET /dashboard` (une requête de plus si le dashboard n'a pas été
-  ouvert, cache distinct de celui du dashboard).
+- Les positions demandent tout `GET /dashboard` (même requête et même cache que le dashboard
+  depuis la revue : `shared/dashboard/dashboardApi.ts`, `select: toSitePositions`).
 - Les zones par mots de la région ne couvrent que les côtes françaises et quelques destinations.
 
 ## 7. Phase 2 — création express

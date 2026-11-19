@@ -1,10 +1,12 @@
+import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router';
 import type { Site, SiteEntry } from '@/shared/model/site';
 import { ButtonLink } from '@/shared/ui/Button';
 import { Icon } from '@/shared/ui/Icon';
-import { MapView, type MapSite } from '@/shared/ui/MapView';
+import { MapView } from '@/shared/ui/MapView';
 import { formatPosition } from '../../lib/coordinates';
 import { mapHrefOf, placeHrefOf, siteHrefOf } from '../../lib/labels';
+import { toMapSites } from '../../lib/siteList';
 import styles from './SiteMiniMap.module.scss';
 
 export interface SiteMiniMapProps {
@@ -20,6 +22,8 @@ export interface SiteMiniMapProps {
  */
 export function SiteMiniMap({ site, entries }: SiteMiniMapProps) {
   const navigate = useNavigate();
+  // Same array while the sites are the same: no new GeoJSON for the map on every render.
+  const sites = useMemo(() => toMapSites(entries), [entries]);
   const { position } = site;
 
   if (position === null) {
@@ -36,12 +40,6 @@ export function SiteMiniMap({ site, entries }: SiteMiniMapProps) {
       </section>
     );
   }
-
-  const sites: MapSite[] = entries.flatMap(({ site: other, stats }) =>
-    other.position
-      ? [{ id: other.id, name: other.name, position: other.position, diveCount: stats.diveCount }]
-      : [],
-  );
 
   return (
     <section className={styles.map} aria-label="Position du site">
