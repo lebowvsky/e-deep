@@ -28,13 +28,16 @@ un monorepo pnpm de trois applications et deux paquets internes :
 ```
 
 Phase actuelle : **schéma du carnet de plongée** (entités, migrations, services de synchronisation)
-et **premiers écrans branchés sur l'API** en lecture seule, sans authentification réelle (stub de
-dev, D23 et D28). Routes :
+et **écrans branchés sur l'API**, en lecture et en écriture de plongée, sans authentification
+réelle (stub de dev, D23 et D28). Routes :
 
 - `GET /api/health` : affichée par les deux fronts ;
 - `GET /api/dashboard` : dashboard du plongeur courant (`apps/web`, `/dashboard`) ;
 - `GET /api/dives` et `GET /api/dives/:id` : carnet complet et détail d'une plongée du plongeur
-  courant (`apps/web`, `/dives` et `/dives/:diveId`, D25).
+  courant (`apps/web`, `/dives` et `/dives/:diveId`, D25) ;
+- `POST /api/dives` et `PUT /api/dives/:id` : création et remplacement complet d'une plongée, avec
+  son site et ses binômes créés par leur nom (`apps/web`, formulaire `/dives/new` et
+  `/dives/:id/edit`, D29).
 
 Modèle de données : `docs/data-model/` (`schema.md`, `decisions.md`).
 
@@ -207,7 +210,11 @@ Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
 - **Garde-fou** : une règle ESLint `no-restricted-syntax` sur `packages/shared` refuse toute
   instruction de niveau supérieur qui n'est pas un type.
 - **Contrats actuels** : `health.ts`, `dashboard.ts` (`DashboardResponse`…) et `dives.ts`
-  (`DiveSiteRef`, `DiveBuddyRef`, `DiveSummary`, `DiveDetail`, `DiveLogResponse`). `DiveDetail`
+  (`DiveSiteRef`, `DiveBuddyRef`, `DiveSummary`, `DiveDetail`, `DiveLogResponse`) et
+  `dive-write.ts` (écriture, D29 : `DiveWriteRequest`, `DiveWriteResponse`, erreurs
+  `ApiValidationErrorResponse` / `ApiDomainErrorResponse` et `ApiDomainErrorCode`, que l'API
+  réutilise pour `DomainError.code`). La région d'un site et sa position (latitude et longitude
+  ensemble) sont `null` quand elles ne sont pas renseignées (D-23). `DiveDetail`
   porte à plat tous les champs de l'événement, de la participation et du site (D-13 à D-21 de
   `docs/data-model/decisions.md`) : chaque champ est **présent**, `null` s'il n'est pas renseigné
   (pas de `?`), sauf `observations` (tableau, vide par défaut) et `diverLevel` (toujours en base).
@@ -280,7 +287,14 @@ Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
   l'upsert LWW. `upsertDive` remplace les observations dans la transaction de l'agrégat (libellés
   `btrim`, casse conservée ; doublon → `DuplicateObservationError`, plus de 50 →
   `TooManyObservationsError`, rien n'est écrit). Un niveau de binôme inconnu →
-  `InvalidReferenceError`.
+  `InvalidReferenceError`. Chaque service d'écriture a une variante `…In(manager, …)` qui écrit
+  dans la transaction de l'appelant ; sa méthode publique ouvre la sienne (D29).
+
+- **Migration `AllowDiveSiteWithoutPosition`** (D-23) : `dive_sites.region`, `latitude` et
+  `longitude` deviennent **nullables** (site créé par son nom seul), leurs `CHECK` acceptent `NULL`,
+  et `ck_dive_sites__position` impose latitude et longitude ensemble ou aucune. Les `CHECK`
+  réécrits le sont à la main (le générateur compare les `CHECK` par nom). Le `down()` échoue tant
+  qu'un site n'a pas de région ou de position.
 
 - **Seed de développement** : `pnpm db:seed` (`src/database/seeds/`, lancé depuis `dist`). Il vide
   les tables du carnet (le référentiel des niveaux est conservé) puis crée 3 plongeurs fictifs :
@@ -305,12 +319,12 @@ Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`).
 
 ## 8. Tests
 
-| App   | Outil                              | Commande                                                           | Contenu actuel                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ----- | ---------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| api   | Jest 30 + ts-jest, supertest       | `pnpm --filter api run test` (unit + e2e), `test:unit`, `test:e2e` | `HealthService`, filtre d'exceptions, transformer, règles de sync, mappings contrat front (détail : numeric → number, `null` conservés, observations triées, niveaux des binômes), `DiveLogService` (propriétaire, numérotation, 404, liste sans champ du détail), `CurrentDiverGuard` (401, `no-store`), validation d'env (stub refusé en prod) ; e2e `/api/health`, `/api/dives`, `/api/dives/:id` (contrat complet, 200, 400, 401, 404, `Cache-Control`)                                                                                                                             |
-| api   | Jest 30 + ts-jest, PostgreSQL 18   | `pnpm --filter api run test:db` (projet `db`, hors `test`)         | migrations (noms, colonnes du détail nullables sans défaut, revert de `AddDiveDetailFields` seule puis de toutes), contraintes (dont chaque `CHECK` du détail, `o2_percent`, pressions, palier), triggers (dont observations), cascades (observations à la purge et à l'effacement du compte), services de synchronisation (observations remplacées, doublon et plafond refusés sans écriture, pull, niveau de binôme) et purge, `DiveLogService` (isolation entre plongeurs, tombstones hors numérotation, `locality`, champs du détail, `null` sur une plongée ancienne, `updatedAt`) |
-| web   | Vitest 5 + Testing Library (jsdom) | `pnpm --filter web run test`                                       | client API, guards (`HealthResponse`, dashboard, dives), `shouldRetry` et politique réelle de retry, mapping et clés de région, `HealthPanel`, `useDashboard` et `useDives` sur `useQuery` (cache, refetch en échec), états de `DivesPage` (région live, vide, erreur et retry avec focus, pages, filtres sans refetch, focus de la pagination)                                                                                                                                                                                                                                         |
-| admin | Vitest 5 + Testing Library (jsdom) | `pnpm --filter admin run test`                                     | client API, guard, `HealthCard`, `AdminLayout`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| App   | Outil                              | Commande                                                           | Contenu actuel                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----- | ---------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| api   | Jest 30 + ts-jest, supertest       | `pnpm --filter api run test` (unit + e2e), `test:unit`, `test:e2e` | `HealthService`, filtre d'exceptions, transformer, règles de sync, mappings contrat front (détail : numeric → number, `null` conservés, observations triées, niveaux des binômes), `DiveLogService` (propriétaire, numérotation, 404, liste sans champ du détail), `CurrentDiverGuard` (401, `no-store`), validation d'env (stub refusé en prod) ; e2e `/api/health`, `/api/dives`, `/api/dives/:id` (contrat complet, 200, 400, 401, 404, `Cache-Control`) ; écriture : DTO (bornes, null/absent, règles croisées), `fieldErrors`, mapping des erreurs métier, mapper et rejeu, `DiveWriteService` ; e2e `POST`/`PUT /api/dives` (201, 200, 400 par champ, 404, 409, 422)                                                                                                                                                |
+| api   | Jest 30 + ts-jest, PostgreSQL 18   | `pnpm --filter api run test:db` (projet `db`, hors `test`)         | migrations (noms, colonnes du détail nullables sans défaut, revert de `AddDiveDetailFields` seule puis de toutes), contraintes (dont chaque `CHECK` du détail, `o2_percent`, pressions, palier), triggers (dont observations), cascades (observations à la purge et à l'effacement du compte), services de synchronisation (observations remplacées, doublon et plafond refusés sans écriture, pull, niveau de binôme) et purge, `DiveLogService` (isolation entre plongeurs, tombstones hors numérotation, `locality`, champs du détail, `null` sur une plongée ancienne, `updatedAt`) ; écriture (`dive-write.db-spec.ts`) : transaction unique et rollback, idempotence et POST concurrents, numéro D26, snapshot de niveau au PUT, propriété (404/409/422), interblocage, lien de binôme restauré, site sans position |
+| web   | Vitest 5 + Testing Library (jsdom) | `pnpm --filter web run test`                                       | client API, guards (`HealthResponse`, dashboard, dives), `shouldRetry` et politique réelle de retry, mapping et clés de région, `HealthPanel`, `useDashboard` et `useDives` sur `useQuery` (cache, refetch en échec), états de `DivesPage` (région live, vide, erreur et retry avec focus, pages, filtres sans refetch, focus de la pagination) ; client API `post`/`put` et erreurs par champ, `httpDiveRepository` (POST/PUT, repli 409 → PUT, invalidation), `fieldErrorMapping`, bornes du formulaire, aller-retour formulaire → détail sur un faux serveur                                                                                                                                                                                                                                                           |
+| admin | Vitest 5 + Testing Library (jsdom) | `pnpm --filter admin run test`                                     | client API, guard, `HealthCard`, `AdminLayout`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 - **`pnpm test` n'a besoin d'aucune base** : l'e2e de l'API monte les modules (`HealthModule`,
   `DivesController` avec le vrai service et le vrai garde) sur une `DataSource` et une config
@@ -415,6 +429,12 @@ Décisions prises avec le carnet « Mes plongées » branché sur l'API (**2026-
 | D27 | **`dive_sites.locality`** (texte facultatif). La région reste un texte libre : côté front, les régions du filtre viennent des données (clé normalisée dans l'URL, `r-<hash>` quand le nom n'a pas de translittération latine).                                                                                                                                                                                                                                                                                                   | La maquette affiche « Calvi · Corse » ; une liste figée de régions ne survit pas à des sites saisis librement.                                                                                                                                                                                                                                                         |
 | D28 | **Garde-fou du stub** : la validation d'env refuse `DEV_AUTH_STUB=true` avec `NODE_ENV=production` (le boot échoue), et `CurrentDiverGuard` pose `Cache-Control: no-store` sur toutes les réponses des routes qu'il protège. On garde `Diver` et `CurrentDiverGuard` plutôt qu'une entité `User` et un `CurrentUserProvider`.                                                                                                                                                                                                    | Le garde existait déjà (D23) : un échec au démarrage est plus sûr qu'une erreur à chaque requête. Les réponses portent des données de santé, aucun cache intermédiaire ne doit les garder.                                                                                                                                                                             |
 
+Décision prise avec l'API d'écriture des plongées (**2026-11-18**). Détail : `docs/data-model/decisions.md` (D-23 à D-26).
+
+| #   | Décision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Raison                                                                                                                                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D29 | **`POST /api/dives` et `PUT /api/dives/:id`** (remplacement complet, D-22) : une transaction pour le site et les binômes créés par leur nom, le niveau D-21 des binômes et l'agrégat ; numéro D26 calculé dans la transaction ; `POST` idempotent (même contenu → 200, sérialisé par un verrou consultatif sur l'id), sinon `409 identifier-conflict` ; `PUT` d'une plongée absente, supprimée ou d'un autre → 404 ; site, binôme ou niveau inconnu ou d'un autre → même 422. **LWW strict** (D-25, choix du porteur) : pas de 409 « modifiée ailleurs ». DTO class-validator couvrant tous les `CHECK` ; erreurs `{ statusCode, code, fieldErrors? }` par chemin et par code, jamais la valeur reçue (D-26). | Le formulaire écrivait dans un dépôt en mémoire. Les services de synchronisation existants sont réutilisés sans duplication (variantes `…In(manager)`), ce qui laisse la synchronisation en lot à construire au-dessus. |
+
 ## 11. Points ouverts
 
 Issus de la revue de l'initialisation (2026-11-06). Ils ne sont pas bloquants.
@@ -439,8 +459,8 @@ Issus du schéma du carnet (2026-11-08) :
 - **Contrat front** : `UserLevel` (`'N1'…'N4'`) devra s'élargir dès qu'un niveau non FFESSM sera
   inséré (`toUserLevel` refuse aujourd'hui ces niveaux). (`utcOffsetMinutes` et la date locale ISO
   sont exposés par `DashboardDive` et `DiveSummary`.)
-- **Endpoints** : erreurs métier (`common/errors/domain-errors.ts`) à mapper en réponses HTTP ;
-  pour l'instant elles finissent en 500 générique via `LogSafeExceptionFilter`.
+- ~~**Endpoints** : erreurs métier en 500 générique~~ : traduites par `LogSafeExceptionFilter`
+  (`common/errors/domain-error-http.ts`, D29).
 - **Authentification réelle à brancher avant toute exposition hors dev.** `DEV_AUTH_STUB` est
   refusé si `NODE_ENV=production` (D28), mais un `NODE_ENV` absent vaut `development` : un
   déploiement qui l'oublie accepterait le stub. La session remplacera le stub dans
@@ -481,8 +501,8 @@ Issus du carnet « Mes plongées » (revue et audits, 2026-11-13) :
   - la jointure des sites se fait sur le créateur de l'événement, celle du dashboard sur le
     plongeur : même résultat dans le MVP, à aligner avec le partage des plongées (D-08) ;
   - ~~sync des sites : un `locality` omis devient `null` dans l'upsert LWW~~ : tranché par D-22
-    (`decisions.md`), tous les champs sont obligatoires à l'écriture ; reste à le porter dans les
-    DTO class-validator de l'endpoint de sync (400 sur un champ absent) ;
+    (`decisions.md`), tous les champs sont obligatoires à l'écriture ; porté par les DTO de
+    `POST` / `PUT /api/dives` (D29), reste à faire pour l'endpoint de synchronisation en lot ;
   - recherche : `normalize('NFD')` refait à chaque frappe sur tout le carnet (0,25 ms pour 127
     plongées, 8,4 ms pour 5 000) ; précalculer le texte normalisé si un gros carnet le justifie.
 - **Seed** : pas de transaction globale (les services ouvrent leurs propres transactions) ; un
@@ -587,20 +607,22 @@ Issus du détail de plongée (`/dives/:diveId`, front, 2026-11-16) :
 Issus du formulaire de plongée (`/dives/new`, `?from=:id`, `/dives/:id/edit`, phases 1 à 5,
 2026-11-17) :
 
-- **Écriture provisoire** : `saveDive` passe par `inMemoryDiveRepository` (cache TanStack Query),
-  perdu au refetch ou au rechargement. Conséquence voulue de ce dépôt en mémoire : le brouillon est
-  effacé dès l'enregistrement, donc une plongée enregistrée puis perdue au rechargement (ou au
-  refetch, après `staleTime`) ne laisse aucune copie de la saisie. Restent à faire : endpoints `POST` / `PATCH /api/dives`,
-  synchro hors ligne (D22) et un **contrat d'écriture partagé** dans `@e-deep/shared` (`SaveDiveInput`
-  recopie aujourd'hui à la main `DiveWrite` de l'API). Les ids sont en UUID v4
-  (`crypto.randomUUID()`) au lieu de v7 (D22) ; ceux de la plongée et d'un site créé par son nom
-  sont tirés une fois par formulaire (un plongeur créé par son nom garde la clé de sa ligne) : un
-  nouvel essai après un échec renvoie les mêmes. Un site créé par son nom s'affiche en
-  « 0,000° N · 0,000° E » sur le détail tant que sa position n'existe pas ; un site existant aussi,
-  quand aucun détail de plongée en cache ne porte sa position (le résumé du carnet n'en a pas, et le
-  refetch du détail d'une plongée créée en mémoire répond 404). Les erreurs de champ du port
-  `SaveDive` sont typées par les champs du formulaire : l'adaptateur HTTP devra traduire celles de
-  l'API (format à définir avec le mapping des erreurs métier, plus haut).
+- **Écriture** (2026-11-18, D29) : `saveDive` passe par `httpDiveRepository` (`POST /api/dives`,
+  `PUT /api/dives/:id`, contrat `DiveWriteRequest`), qui remplace le dépôt en mémoire. Après
+  l'enregistrement, le carnet et le détail sont invalidés (relus depuis l'API), et le dashboard par
+  `DiveFormPage` (une feature n'importe pas l'autre) ; les détails d'autres plongées en cache gardent
+  leur ancien n° jusqu'à leur `staleTime`. Erreurs : `400 validation-failed` → champs du formulaire
+  (`fieldErrorMapping.ts`, chemin du corps → champ, messages du formulaire) ; `422
+invalid-reference` → le site s'il vient du carnet, la palanquée si elle a des membres (l'API ne
+  dit pas quelle référence manque) ; le reste (404, 409, réseau…) → « L'enregistrement n'a pas
+  abouti ». Les bornes du formulaire sont égales ou plus strictes que les `CHECK` (une décimale,
+  entiers, palanquée de 50 au plus). Les ids de la plongée et d'un site créé par son nom sont tirés
+  une fois par formulaire et **gardés dans le brouillon** (`DRAFT_VERSION` 3) : un nouvel essai,
+  même après rechargement, renvoie les mêmes (idempotence du `POST`) ; un `409
+identifier-conflict` en création est rejoué en `PUT` (la plongée a été enregistrée par un essai
+  précédent). Les ids restent en UUID v4 (`crypto.randomUUID()`) au lieu de v7 (D22). Un site créé
+  par son nom n'a ni région ni position (D-23) : « Position non renseignée » sur le détail, pas de
+  marqueur sur la carte du dashboard.
 - **N° de plongée** (écart avec la spec, D26 prime) : la spec en fait un champ libre prérempli à
   max + 1, avec un avertissement « n° déjà pris ». Le n° étant calculé et jamais stocké, le champ est
   en lecture seule (« Calculé selon la date ») et montre le rang qu'aura la plongée (`diveNumberFor`,
@@ -648,3 +670,22 @@ Issus du formulaire de plongée (`/dives/new`, `?from=:id`, `/dives/:id/edit`, p
   plus (seuls le bouton et `Ctrl/⌘ + Entrée`), et le raccourci est inactif sous la boîte « Quitter
   sans enregistrer ? ».
 - **Import** de fichiers ou d'un ordinateur de plongée : V2.
+
+Issus de l'API d'écriture des plongées (PR #17, 2026-11-18) :
+
+- **Synchronisation en lot** hors ligne (D22, D-12) : pas d'endpoint ; à construire sur les
+  variantes `…In(manager)` des services, avec leurs DTO (D-22) et le contrôle d'horizon de purge.
+- **Suppression** d'une plongée (question ouverte #19) et **client périmé** (#20) : non traitées.
+- **Ids** : le front tire des UUID v4, D22 demande des v7 ; l'API accepte tout UUID.
+- **LWW strict** (D-25) : deux onglets qui modifient la même plongée s'écrasent sans
+  avertissement ; un contrôle `updatedAt > baseUpdatedAt` → 409 s'ajouterait sans migration.
+- **`422 invalid-reference`** ne nomme pas la référence manquante (site, binôme ou niveau) : le
+  front met en cause le site et la palanquée. Un chemin dans la réponse permettrait de cibler.
+- **Niveau des binômes** : `levelCode` est cherché dans l'agence FFESSM seule ; à faire porter
+  l'agence au contrat dès qu'un autre référentiel partage un code.
+- `GET /api/dives/abc` répond encore la 400 par défaut de `ParseUUIDPipe` (le `PUT` répond
+  `validation-failed`), conservée parce que le front s'appuie sur elle.
+- Le canal de synchronisation dédoublonne désormais les `buddyIds` sans tenir compte de la casse
+  (`canonicalUuids`) : `['A', 'a']` donne un binôme au lieu d'une 422 (non testé).
+- Test `test:db` d'interblocage : délai porté à 30 s après un dépassement isolé de 5 s, sans
+  interblocage observé (cause non identifiée).

@@ -736,6 +736,9 @@ Révision du **2026-11-18**.
     écriture ; un contenu différent, une plongée supprimée ou un id d'un autre plongeur → **409**
     `identifier-conflict`, au corps identique dans les trois cas.
   - L'API accepte tout UUID (le front tire encore des v4) ; UUIDv7 (D-02) reste à faire côté front.
+  - La palanquée envoyée compte **50 binômes au plus** (`too-many`), comme les observations ;
+    les binômes et les lignes de palanquée sont verrouillés dans l'ordre des ids (pas
+    d'interblocage entre deux écritures concurrentes).
 - **Réversibilité** : élevée (routes additives).
 
 ### D-25 — Canal en ligne : LWW strict, sans contrôle optimiste
