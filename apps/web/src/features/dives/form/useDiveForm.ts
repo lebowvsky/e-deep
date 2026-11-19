@@ -35,6 +35,8 @@ export interface UseDiveFormOptions {
   context: ValidationContext;
   saveDive: SaveDive;
   draftStore: DraftStore;
+  /** The site is in the log on the API; any other is sent as new (`toSaveDiveInput`). */
+  isSavedSite: (id: string) => boolean;
   /**
    * Ids of new dives, sites, buddies and rows: `crypto.randomUUID()` (v4) by default, D22 expects a
    * UUIDv7. Keep it stable (memoised actions).
@@ -172,6 +174,7 @@ export function useDiveForm({
   context,
   saveDive,
   draftStore,
+  isSavedSite,
   newId = randomId,
   now = Date.now,
 }: UseDiveFormOptions): DiveForm {
@@ -242,7 +245,7 @@ export function useDiveForm({
     const issues = validateDiveForm(state.values, context);
     dispatch({ type: 'submitValidated', issues });
     if (issues.errors.length > 0) return { status: 'invalid', fields: issueFields(issues.errors) };
-    const input = toSaveDiveInput(state.values, target, ids);
+    const input = toSaveDiveInput(state.values, target, ids, isSavedSite);
     if (input === null) {
       // Validation guarantees the required values: reaching this is a bug, not a user error.
       const error = new Error('Validated dive form values could not be converted.');

@@ -42,7 +42,7 @@ import { DiveFormTopBar } from '../DiveFormTopBar';
 import { DraftBanner } from '../DraftBanner';
 import { EquipmentSection } from '../EquipmentSection';
 import { ErrorSummary } from '../ErrorSummary';
-import { EssentialSection } from '../EssentialSection';
+import { EssentialSection, type EssentialSectionProps } from '../EssentialSection';
 import { fieldId } from '../fieldBinding';
 import { FormAside } from '../FormAside';
 import type { FormSectionCollapse } from '../FormSection';
@@ -78,6 +78,8 @@ export interface DiveFormProps {
   cancelHref: string;
   /** The dive was saved under `id`, with the logbook number it got. */
   onSaved: (id: string, number: number) => void;
+  /** Quick creation of a site from the site field (D30): the site created. Keep it stable. */
+  onCreateSite: EssentialSectionProps['onCreateSite'];
 }
 
 /** Same bound as `until($bp-tablet)` in SCSS. */
@@ -121,8 +123,22 @@ export function DiveForm({
   draftStore,
   cancelHref,
   onSaved,
+  onCreateSite,
 }: DiveFormProps) {
-  const form = useDiveForm({ mode, initialValues, target, context, saveDive, draftStore });
+  const savedSiteIds = useMemo(
+    () => new Set(sources.sites.filter(({ isSaved }) => isSaved).map(({ id }) => id)),
+    [sources.sites],
+  );
+  const form = useDiveForm({
+    mode,
+    initialValues,
+    target,
+    context,
+    saveDive,
+    draftStore,
+    // A site absent from the API log (created here, or lost with a reload) is sent as new.
+    isSavedSite: (id) => savedSiteIds.has(id),
+  });
   const formRef = useRef<HTMLFormElement>(null);
   const titleId = useId();
   const [isPrefillDismissed, setPrefillDismissed] = useState(false);
@@ -306,7 +322,10 @@ export function DiveForm({
               form={form}
               canEditEvent={canEditEvent}
               sites={sources.sites}
+              regions={sources.regions}
+              lastRegion={sources.lastRegion}
               number={number}
+              onCreateSite={onCreateSite}
             />
             <RunSection
               form={form}

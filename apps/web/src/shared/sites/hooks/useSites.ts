@@ -6,7 +6,7 @@ import type { SiteEntry } from '@/shared/model/site';
 import { fetchSitePositions } from '../api/sitePositionsApi';
 import { sitesKeys } from '../api/queryKeys';
 import { buildSiteCatalogue } from '../lib/siteCatalogue';
-import { useSitesRepository } from '../repository/useSitesRepository';
+import { useSitesOverlay } from './useSitesOverlay';
 
 export type SitesState =
   | { status: 'loading' }
@@ -27,16 +27,12 @@ export type SiteState =
  */
 export function useSites(): SitesState {
   const client = useApiClient();
-  const repository = useSitesRepository();
   const log = useQuery(diveLogQueryOptions(client));
   const positions = useQuery({
     queryKey: sitesKeys.positions(),
     queryFn: ({ signal }) => fetchSitePositions(client, { signal }),
   });
-  const overlay = useQuery({
-    queryKey: sitesKeys.overlay(),
-    queryFn: () => repository.read(),
-  });
+  const overlay = useSitesOverlay();
   const queries = [log, positions, overlay];
 
   const entries = useMemo(

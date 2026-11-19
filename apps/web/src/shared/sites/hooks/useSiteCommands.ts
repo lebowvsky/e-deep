@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import type { Site, SiteDraft, SiteEntry, SiteOrigin } from '@/shared/model/site';
 import { sitesKeys } from '../api/queryKeys';
 import {
@@ -26,19 +27,21 @@ export function useSiteCommands(): SiteCommands {
   const repository = useSitesRepository();
   const queryClient = useQueryClient();
 
-  async function refreshed<T>(write: Promise<T>): Promise<T> {
-    const result = await write;
-    await queryClient.invalidateQueries({ queryKey: sitesKeys.overlay() });
-    return result;
-  }
-
-  return {
-    create: (draft, createdVia) =>
-      refreshed(
-        createSite(repository, draft, { id: crypto.randomUUID(), createdVia, now: new Date() }),
-      ),
-    update: (site, draft) => refreshed(updateSite(repository, site, draft, new Date())),
-    merge: (source, target) => refreshed(mergeSites(repository, source, target, new Date())),
-    remove: (entry) => refreshed(deleteSite(repository, entry)),
-  };
+  // Stable while the repository and the cache are: safe in effects and memoised children.
+  return useMemo<SiteCommands>(() => {
+    async function refreshed<T>(write: Promise<T>): Promise<T> {
+      const result = await write;
+      await queryClient.invalidateQueries({ queryKey: sitesKeys.overlay() });
+      return result;
+    }
+    return {
+      create: (draft, createdVia) =>
+        refreshed(
+          createSite(repository, draft, { id: crypto.randomUUID(), createdVia, now: new Date() }),
+        ),
+      update: (site, draft) => refreshed(updateSite(repository, site, draft, new Date())),
+      merge: (source, target) => refreshed(mergeSites(repository, source, target, new Date())),
+      remove: (entry) => refreshed(deleteSite(repository, entry)),
+    };
+  }, [repository, queryClient]);
 }

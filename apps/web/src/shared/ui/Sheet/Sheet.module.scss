@@ -29,6 +29,12 @@
   animation: slide-up $dur-slow $ease-out;
 }
 
+// As high as the content, never above the full sheet (sites.jsx · QuickCreateMobile).
+.fitContent {
+  top: auto;
+  max-height: calc(100% - #{$layout-sheet-top});
+}
+
 .handle {
   align-self: center;
   width: $layout-sheet-handle;

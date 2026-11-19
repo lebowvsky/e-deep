@@ -10,6 +10,9 @@ import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
 import { createFakeDiveApi } from '@/features/dives/mocks/fakeDiveApi';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { ApiClientContext } from '@/shared/lib/apiClientContext';
+import { isRecord } from '@/shared/lib/guards';
+import { createMemorySitesRepository } from '@/shared/sites/repository/sitesRepository';
+import { SitesRepositoryContext } from '@/shared/sites/repository/sitesRepositoryContext';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { fakeApiClient } from '@/test/fakeApiClient';
 import { TestProviders } from '@/test/TestProviders';
@@ -138,11 +141,13 @@ describe('DiveFormPage — new dive', () => {
     });
     render(
       <ApiClientContext value={createFakeDiveApi().client}>
-        <QueryClientProvider client={queryClient}>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
-        </QueryClientProvider>
+        <SitesRepositoryContext value={createMemorySitesRepository()}>
+          <QueryClientProvider client={queryClient}>
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
+          </QueryClientProvider>
+        </SitesRepositoryContext>
       </ApiClientContext>,
     );
     await title('Nouvelle plongée');
@@ -179,6 +184,52 @@ describe('DiveFormPage — new dive', () => {
     fireEvent.change(field('Notes'), { target: { value: 'Mérou sous la voûte' } });
     expect(sectionLink(/^Notes & observations, partielle, il manque Espèces$/)).toBeTruthy();
     expect(sectionLink(/^Notes & observations/).getAttribute('href')).toBe('#dive-section-notes');
+  });
+});
+
+describe('DiveFormPage — sites', () => {
+  it('starts on the site of `?site=` (« Nouvelle plongée ici »)', async () => {
+    renderAt('/dives/new?site=s11');
+
+    await title('Nouvelle plongée');
+    expect(siteField().value).toBe('La Gabinière');
+  });
+
+  it('ignores a `?site=` that is none of my sites', async () => {
+    renderAt('/dives/new?site=unknown');
+
+    await title('Nouvelle plongée');
+    expect(siteField().value).toBe('');
+  });
+
+  it('sends a site created on the fly as new, with its own id, so that the API creates it', async () => {
+    const user = userEvent.setup();
+    const api = createFakeDiveApi();
+    const router = renderAt('/dives/new', {}, api.client);
+    await title('Nouvelle plongée');
+
+    await user.type(siteField(), 'Grotte aux Corbs');
+    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Créer et sélectionner' }));
+    await waitFor(() => expect(document.activeElement).toBe(field(/^Date/)));
+    expect(screen.getByText('Nouveau site : il sera créé à l’enregistrement.')).toBeTruthy();
+    // The site is one of mine now: its region shows at the end of the field.
+    expect(siteField().parentElement?.textContent).toContain('Calvi · Corse');
+
+    fireEvent.change(field(/^Immersion/), { target: { value: '10:05' } });
+    fireEvent.change(field(/^Sortie/), { target: { value: '10:49' } });
+    fireEvent.change(field(/^Profondeur max/), { target: { value: '22' } });
+    await user.click(
+      screen.getAllByRole('button', { name: 'Enregistrer la plongée' })[0] ?? document.body,
+    );
+    await waitFor(() => expect(router.state.location.pathname).not.toBe('/dives/new'));
+
+    const [post] = api.requests.filter(({ method }) => method === 'POST');
+    const body: unknown = post?.body;
+    expect(body).toMatchObject({ site: { name: 'Grotte aux Corbs', isNew: true } });
+    const siteId = isRecord(body) && isRecord(body.site) ? body.site.id : undefined;
+    expect(siteId).toEqual(expect.any(String));
+    expect(body).toMatchObject({ event: { siteId } });
   });
 });
 
@@ -275,11 +326,13 @@ describe('DiveFormPage — edit', () => {
     );
     render(
       <ApiClientContext value={createFakeDiveApi().client}>
-        <QueryClientProvider client={queryClient}>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
-        </QueryClientProvider>
+        <SitesRepositoryContext value={createMemorySitesRepository()}>
+          <QueryClientProvider client={queryClient}>
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
+          </QueryClientProvider>
+        </SitesRepositoryContext>
       </ApiClientContext>,
     );
 

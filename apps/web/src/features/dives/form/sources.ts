@@ -3,6 +3,7 @@
 // The log summary carries sites, dive teams, numbers and times; it has neither the dive centres nor
 // the species (detail-only fields): those suggestion lists stay empty until the API serves them.
 import type { DiveMember } from '@/shared/model/dive';
+import { EMPTY_SITES_OVERLAY, type SitesOverlay } from '@/shared/sites/repository/sitesRepository';
 import { computeFacets } from '../lib/selectDives';
 import type { LoggedDive } from '../types';
 import { startedAtOf, type DiveFormTarget } from './convert';
@@ -15,6 +16,11 @@ export interface DiveFormSiteOption {
   /** « Calvi · Corse »; `null` when neither the locality nor the region was entered. */
   place: string | null;
   diveCount: number;
+  /**
+   * In the log on the API. `false` for a site created on this device (quick creation): saving the
+   * dive creates it (`toSaveDiveInput`).
+   */
+  isSaved: boolean;
 }
 
 export interface DiveFormDiverOption {
@@ -36,37 +42,87 @@ export interface DiveFormSources {
   species: string[];
   /** Highest logbook number, 0 for an empty log. */
   maxNumber: number;
+  /** Regions (« Calvi · Corse ») of the sites, most dived first: choices of a new site. */
+  regions: string[];
+  /** Region of the site of the latest dive: what a new site most likely shares. */
+  lastRegion: string | null;
 }
 
 /** Number of « Fréquents » chips. */
 export const FREQUENT_DIVERS = 4;
 
-export function buildDiveFormSources(log: readonly LoggedDive[]): DiveFormSources {
-  const sites = new Map<string, DiveFormSiteOption>();
+const byDiveCount = (a: DiveFormSiteOption, b: DiveFormSiteOption): number =>
+  b.diveCount - a.diveCount || a.name.localeCompare(b.name, 'fr');
+
+/**
+ * The sites of the log under the local changes (D30): a site edited here shows its new name and
+ * region, a site created here joins the list without dive, a merged site lends its dives to the
+ * target, a deleted one leaves.
+ */
+function withLocalChanges(
+  logSites: ReadonlyMap<string, DiveFormSiteOption>,
+  overlay: SitesOverlay,
+): DiveFormSiteOption[] {
+  const sites = new Map(logSites);
+  for (const site of overlay.saved.values()) {
+    const known = logSites.get(site.id);
+    sites.set(site.id, {
+      id: site.id,
+      name: site.name,
+      place: site.region,
+      diveCount: known?.diveCount ?? 0,
+      isSaved: known !== undefined,
+    });
+  }
+  for (const [sourceId, targetId] of overlay.mergedInto) {
+    const source = logSites.get(sourceId);
+    const target = sites.get(targetId);
+    if (source && target)
+      sites.set(targetId, { ...target, diveCount: target.diveCount + source.diveCount });
+  }
+  return [...sites.values()].filter(({ id }) => !overlay.removed.has(id)).sort(byDiveCount);
+}
+
+/** Distinct regions, in the order of the sites (most dived first). */
+function regionsOf(sites: readonly DiveFormSiteOption[]): string[] {
+  return [...new Set(sites.flatMap(({ place }) => (place === null ? [] : [place])))];
+}
+
+/** `log`: the dive log, latest first; `overlay`: the local changes on the sites. */
+export function buildDiveFormSources(
+  log: readonly LoggedDive[],
+  overlay: SitesOverlay = EMPTY_SITES_OVERLAY,
+): DiveFormSources {
+  const logSites = new Map<string, DiveFormSiteOption>();
   let maxNumber = 0;
+  let latest: LoggedDive | null = null;
   for (const dive of log) {
     maxNumber = Math.max(maxNumber, dive.number);
-    const site = sites.get(dive.site.id);
+    if (latest === null || dive.number > latest.number) latest = dive;
+    const site = logSites.get(dive.site.id);
     if (site) site.diveCount += 1;
     else {
-      sites.set(dive.site.id, {
+      logSites.set(dive.site.id, {
         id: dive.site.id,
         name: dive.site.name,
         place: dive.site.place,
         diveCount: 1,
+        isSaved: true,
       });
     }
   }
+  const sites = withLocalChanges(logSites, overlay);
+  const latestSiteId = latest ? (overlay.mergedInto.get(latest.site.id) ?? latest.site.id) : null;
   const divers = computeFacets(log).members;
   return {
-    sites: [...sites.values()].sort(
-      (a, b) => b.diveCount - a.diveCount || a.name.localeCompare(b.name, 'fr'),
-    ),
+    sites,
     divers,
     frequentDivers: divers.slice(0, FREQUENT_DIVERS),
     diveCenters: [],
     species: [],
     maxNumber,
+    regions: regionsOf(sites),
+    lastRegion: sites.find(({ id }) => id === latestSiteId)?.place ?? null,
   };
 }
 

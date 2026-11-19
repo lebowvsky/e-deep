@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { dashboardKeys } from '@/features/dashboard/api/queryKeys';
 import { mockUser } from '@/features/dashboard/mocks/dashboard';
@@ -31,6 +31,8 @@ import { DIVE_LOAD_ERROR_HINT, DIVE_LOAD_ERROR_MESSAGE } from '@/features/dives/
 import type { DiveDetailView, LoggedDive } from '@/features/dives/types';
 import { DiveFormTopBar } from '@/features/dives/components/form/DiveFormTopBar';
 import { pageTitle } from '@/shared/config/app';
+import type { SiteDraft } from '@/shared/model/site';
+import { useSiteCommands } from '@/shared/sites/hooks/useSiteCommands';
 import { useToast } from '@/shared/ui/Toast';
 
 // TODO(auth): the diver will come from the session, as in AppShell.
@@ -121,10 +123,21 @@ interface ModeFormProps {
   canEditEvent: boolean;
 }
 
+/** `?site=:id` (« Nouvelle plongée ici » of a site page): that site, when it is one of mine. */
+function useSiteParam(sources: DiveFormSources): DiveFormValues['site'] | null {
+  const [searchParams] = useSearchParams();
+  const id = searchParams.get('site');
+  const site = id === null ? undefined : sources.sites.find((option) => option.id === id);
+  return site ? { id: site.id, name: site.name } : null;
+}
+
 function ModeForm({ mode, log, sources, canEditEvent }: ModeFormProps) {
+  const siteParam = useSiteParam(sources);
   // Read once: the day and the suggestion must not move while the diver types. A log that changes
   // meanwhile (a save written in the cache, a refetch) must not swap the form for another one.
   const [now] = useState(() => new Date());
+  // Read once too: the initial values of the form.
+  const [initialSite] = useState(siteParam);
   const [suggestionId] = useState(() =>
     mode.kind === 'new' ? (findResumeSuggestion(log, now)?.id ?? null) : null,
   );
@@ -135,7 +148,9 @@ function ModeForm({ mode, log, sources, canEditEvent }: ModeFormProps) {
     case 'new': {
       const props: SharedFormProps = {
         ...common,
-        initialValues: newDiveValues({ today }),
+        initialValues: initialSite
+          ? { ...newDiveValues({ today }), site: initialSite }
+          : newDiveValues({ today }),
         target: { kind: 'create' },
         canEditEvent: true,
       };
@@ -246,8 +261,11 @@ function PageDiveForm({ today, ...props }: SharedFormProps & Pick<DiveFormProps,
   const { notify } = useToast();
   const queryClient = useQueryClient();
   const saveDive = useSaveDive();
+  const { create } = useSiteCommands();
   // Read once per form: the memoised actions of the form depend on it.
   const [context] = useState(() => ({ today, diverLevel: DIVER.level }));
+  // Stable: the site section skips the renders caused by the other sections.
+  const createSite = useCallback((draft: SiteDraft) => create(draft, 'quick'), [create]);
 
   return (
     <DiveForm
@@ -256,6 +274,7 @@ function PageDiveForm({ today, ...props }: SharedFormProps & Pick<DiveFormProps,
       self={SELF}
       saveDive={saveDive}
       draftStore={draftStore}
+      onCreateSite={createSite}
       onSaved={(id, number) => {
         // The dashboard sums up the log (stats, last dive, sites): another feature, so marked
         // stale here rather than by the dive write. Not awaited: the dashboard is not the next page.

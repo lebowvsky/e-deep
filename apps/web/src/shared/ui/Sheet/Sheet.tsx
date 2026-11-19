@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
+import { cx } from '@/shared/lib/classNames';
 import { useBodyScrollLock } from '@/shared/hooks/useBodyScrollLock';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { IconButton } from '@/shared/ui/IconButton';
@@ -12,6 +13,10 @@ export interface SheetProps {
   action?: ReactNode;
   /** Sticky footer (main action). */
   footer?: ReactNode;
+  /** `full`: from under the top bar to the bottom (default) · `content`: as high as its content. */
+  height?: 'full' | 'content';
+  /** Focused on opening (the first field); default the first focusable element (✕). */
+  initialFocusRef?: RefObject<HTMLElement | null>;
   children: ReactNode;
 }
 
@@ -19,10 +24,19 @@ export interface SheetProps {
  * Bottom sheet (dives-list.jsx · DivesMobileFilters): modal dialog over a scrim. Closes on Esc and
  * on the scrim, traps the focus and gives it back on close, locks the page scroll.
  */
-export function Sheet({ open, onClose, title, action, footer, children }: SheetProps) {
+export function Sheet({
+  open,
+  onClose,
+  title,
+  action,
+  footer,
+  height = 'full',
+  initialFocusRef,
+  children,
+}: SheetProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  useFocusTrap(panelRef, open);
+  useFocusTrap(panelRef, open, initialFocusRef);
   useBodyScrollLock(open);
 
   useEffect(() => {
@@ -41,7 +55,7 @@ export function Sheet({ open, onClose, title, action, footer, children }: SheetP
       <div className={styles.scrim} onClick={onClose} aria-hidden="true" />
       <div
         ref={panelRef}
-        className={styles.panel}
+        className={cx(styles.panel, height === 'content' && styles.fitContent)}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

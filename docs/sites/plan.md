@@ -170,3 +170,16 @@ sheet → `shadow.sheet` ; padding 11 des lignes d'infos → `space.3` ; colonne
 - Les positions demandent tout `GET /dashboard` (une requête de plus si le dashboard n'a pas été
   ouvert, cache distinct de celui du dashboard).
 - Les zones par mots de la région ne couvrent que les côtes françaises et quelques destinations.
+
+## 7. Phase 2 — création express
+
+- `QuickCreateSitePanel` (`features/dives/components/form/`) : dialogue non modal sous le champ
+  Site à partir de 768 px, bottom sheet modale (`Sheet`, hauteur ajustée au contenu) en dessous.
+  La combobox Site cherche avec `searchSites`.
+- Un site créé ici n'existe pas encore dans l'API : `DiveFormSiteOption.isSaved` le distingue, et
+  `toSaveDiveInput` l'envoie en `isNew: true` avec son propre id (le dépôt local garde ses détails
+  sous le même id). Un `422 invalid-reference` ne le met donc pas en cause. Un site local perdu au
+  rechargement (brouillon restauré) part aussi en `isNew`.
+- `/dives/new?site=:id` préremplit le champ Site si `id` est l'un de mes sites.
+- Écarts : types proposés = ceux de la maquette (sans « Herbier », disponible sur la page Carte) ;
+  titre de la bottom sheet en `h2` (20 px) comme les autres sheets, au lieu de 18 px.
