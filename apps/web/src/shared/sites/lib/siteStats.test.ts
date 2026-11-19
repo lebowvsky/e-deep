@@ -9,6 +9,7 @@ function dive(overrides: Partial<SiteDive> & Pick<SiteDive, 'id' | 'number' | 'd
     temperatureC: null,
     entryType: null,
     diveCenter: null,
+    buddies: [],
     ...overrides,
   };
 }

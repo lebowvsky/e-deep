@@ -29,6 +29,8 @@ export interface SitePanelProps {
   /** The marker on the map (the page holds it: the map moves it too). */
   position: GeoPoint | null;
   onPositionChange: (position: GeoPoint | null) => void;
+  /** `click` on the map (default), or `center`: the map moves under a fixed marker (phones). */
+  placing?: 'click' | 'center';
   /** Writes the site (`createSite` or `updateSite`). */
   save: (draft: SiteDraft, site: Site | null) => Promise<Site>;
   onSaved: (site: Site) => void;
@@ -42,7 +44,10 @@ const TITLES: Record<SitePanelProps['mode'], string> = {
   edit: 'Modifier le site',
 };
 
-const HELP = 'Clique sur la carte pour placer le site, puis ajuste en glissant le repère.';
+const HELP = {
+  click: 'Clique sur la carte pour placer le site, puis ajuste en glissant le repère.',
+  center: 'Déplace la carte pour placer le repère sur le site.',
+} as const;
 const NAME_REQUIRED = 'Donne un nom au site.';
 const DEPTH_ORDER = 'La profondeur min dépasse la max.';
 const SAVE_FAILED = 'Le site n’a pas pu être enregistré. Réessaie.';
@@ -63,6 +68,7 @@ export function SitePanel({
   sites,
   position,
   onPositionChange,
+  placing = 'click',
   save,
   onSaved,
   onClose,
@@ -154,7 +160,7 @@ export function SitePanel({
       <div ref={bodyRef} className={styles.body}>
         <p className={styles.help}>
           <Icon name="crosshair" size="md" className={styles.helpIcon} />
-          {HELP}
+          {HELP[placing]}
         </p>
         <CoordinatesInput value={position} onChange={onPositionChange} />
         <FormField label="Nom" required error={errors.name}>

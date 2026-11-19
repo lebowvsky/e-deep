@@ -355,6 +355,9 @@ export const layout = {
   pickMarkerRing: 52,
   blurMap: 8, // glass of the zone chips
   menuWidth: 230, // « … » menu of the site page
+  siteMiniMapHeight: 300, // map of the site page
+  siteMiniMapHeightSm: 240,
+  siteSheetPeek: 96, // phone bottom sheet folded: its header only
   textareaMinHeightSm: 76, // « Accès & conseils » in the site panel
   rowHeightSm: 56, // « Tes plongées ici » rows
   colNumberSm: 52,

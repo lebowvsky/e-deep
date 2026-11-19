@@ -14,6 +14,7 @@ import {
   formatInitials,
   formatMeasure,
   placeLabel,
+  formatDiveDayMonthYear,
   formatMonthInitial,
   formatMonthLabel,
   formatMonthShort,
@@ -132,5 +133,11 @@ describe('placeLabel', () => {
     expect(placeLabel('Calvi', null)).toBe('Calvi');
     expect(placeLabel(null, 'Corse')).toBe('Corse');
     expect(placeLabel(null, null)).toBeNull();
+  });
+});
+
+describe('formatDiveDayMonthYear', () => {
+  it('reads the calendar day of the dive, whatever the device time zone', () => {
+    expect(formatDiveDayMonthYear('2026-04-08T23:30:00+02:00')).toBe('08 avr. 2026');
   });
 });

@@ -3,18 +3,38 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: $space-6;
+
+  @include from($bp-tablet) {
+    gap: $space-6;
+  }
 }
 
 .srOnly {
   @include visually-hidden;
 }
 
-// Map (flex) and list (380) or panel (420), same height: the viewport under the header.
+// Phones: the map fills the screen under the top bar, the list in a bottom sheet over it; the
+// panel takes the screen, the map on its top 40 %. From 1024px: map (flex) and list (380) or
+// panel (420), same height, the viewport under the header.
 .stage {
+  position: relative;
   display: grid;
-  grid-template-rows: $layout-map-height minmax(0, auto);
-  gap: $space-4;
+  grid-template-rows: minmax(0, 1fr);
+  height: calc(100dvh - #{$layout-hit-target + 2 * $layout-top-bar-pad-y});
+
+  &[data-panel] {
+    grid-template-rows: 40% minmax(0, 1fr);
+  }
+
+  @include from($bp-tablet) {
+    grid-template-rows: $layout-map-height minmax(0, auto);
+    gap: $space-4;
+    height: auto;
+
+    &[data-panel] {
+      grid-template-rows: $layout-map-height minmax(0, auto);
+    }
+  }
 
   @include from($bp-desktop) {
     grid-template-rows: none;
@@ -22,6 +42,7 @@
     height: max(#{$layout-map-page-min-height}, calc(100dvh - #{$layout-map-page-chrome}));
 
     &[data-panel] {
+      grid-template-rows: none;
       grid-template-columns: minmax(0, 1fr) $layout-site-panel-width;
     }
   }
@@ -48,6 +69,11 @@
 
 .message {
   @include card(1);
+
+  // Phones: the page has no shell padding (edge-to-edge map).
+  @include until($bp-tablet) {
+    margin: $space-5;
+  }
 
   display: flex;
   flex-direction: column;

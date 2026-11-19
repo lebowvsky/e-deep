@@ -231,9 +231,23 @@ describe('DiveDetailReady, site created by its name (D-23)', () => {
     expect(container.querySelector('[class*="marker"]')).toBeNull();
   });
 
+  it('offers to place the site on the map', () => {
+    renderReady(<DiveDetailReady dive={nameOnly()} insights={null} />);
+    const place = screen.getByRole('link', { name: 'Placer sur la carte' });
+    expect(place.getAttribute('href')).toBe(`/map?panel=place&id=${nameOnly().site.id}`);
+  });
+
   it('shows no place line, in the header nor in the site card', () => {
     const { container } = renderReady(<DiveDetailReady dive={nameOnly()} insights={null} />);
     expect(container.querySelectorAll('[class*="place"]')).toHaveLength(0);
     expect(screen.getByRole('heading', { level: 1, name: 'Le Sec' })).toBeTruthy();
+  });
+});
+
+describe('DiveDetailReady, link to the site page', () => {
+  it('leads to the site page from the name of the site', () => {
+    renderReady(<DiveDetailReady dive={filled()} insights={null} />);
+    const link = screen.getByRole('link', { name: filled().site.name });
+    expect(link.getAttribute('href')).toBe(`/sites/${filled().site.id}`);
   });
 });

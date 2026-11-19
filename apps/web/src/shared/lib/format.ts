@@ -159,6 +159,18 @@ export function formatDiveDayMonth(iso: string): string {
   return diveDayMonth.format(calendarDay(iso));
 }
 
+const diveDayMonthYear = new Intl.DateTimeFormat('fr-FR', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** "2026-04-08T10:30:00+02:00" → "08 avr. 2026" (the dive's own calendar day) */
+export function formatDiveDayMonthYear(iso: string): string {
+  return diveDayMonthYear.format(calendarDay(iso));
+}
+
 /** "2026-04-08T10:30:00+02:00" → "mer." */
 export function formatWeekdayShort(iso: string): string {
   return weekdayShort.format(calendarDay(iso));

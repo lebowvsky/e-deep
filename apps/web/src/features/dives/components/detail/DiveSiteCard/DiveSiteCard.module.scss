@@ -12,6 +12,23 @@
   margin: 0;
 }
 
+.link {
+  @include focus-ring;
+
+  color: inherit;
+  text-decoration: none;
+  border-radius: $radius-xs;
+
+  &:hover {
+    color: $color-accent;
+    text-decoration: underline;
+  }
+}
+
+.toMap {
+  align-self: flex-start;
+}
+
 .place {
   @include type($type-caption);
 

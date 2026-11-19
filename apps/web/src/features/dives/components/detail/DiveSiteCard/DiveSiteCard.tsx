@@ -1,4 +1,6 @@
+import { Link } from 'react-router';
 import { formatDiveCount, formatMeasure } from '@/shared/lib/format';
+import { ButtonLink } from '@/shared/ui/Button';
 import type { DiveDetailView, DiveLogInsights } from '../../../types';
 import { Quantity } from '../../Quantity';
 import { DetailSection } from '../DetailSection';
@@ -13,13 +15,26 @@ export interface DiveSiteCardProps {
   className?: string | undefined;
 }
 
-/** « Site »: mini map, name and place, then the user's dives and deepest dive there. */
+/**
+ * « Site »: mini map, name (to the site page) and place, then the user's dives and deepest dive
+ * there. A site without position offers to place it on the map.
+ */
 export function DiveSiteCard({ site, stats, className }: DiveSiteCardProps) {
+  const id = encodeURIComponent(site.id);
   return (
     <DetailSection title="Site" icon="pin" className={className}>
       <SiteMiniMap position={site.position} />
+      {site.position === null && (
+        <ButtonLink to={`/map?panel=place&id=${id}`} icon="crosshair" className={styles.toMap}>
+          Placer sur la carte
+        </ButtonLink>
+      )}
       <div className={styles.identity}>
-        <h3 className={styles.name}>{site.name}</h3>
+        <h3 className={styles.name}>
+          <Link to={`/sites/${id}`} className={styles.link}>
+            {site.name}
+          </Link>
+        </h3>
         {site.place !== null && <p className={styles.place}>{site.place}</p>}
       </div>
       {stats && (

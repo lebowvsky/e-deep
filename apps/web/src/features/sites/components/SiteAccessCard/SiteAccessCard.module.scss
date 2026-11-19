@@ -1,0 +1,42 @@
+@use '@/styles/tokens' as *;
+
+.card {
+  @include card(1);
+
+  padding: $space-5;
+
+  @include from($bp-tablet) {
+    padding: $space-5 $space-6;
+  }
+}
+
+.title {
+  @include overline;
+
+  margin-bottom: $space-3;
+}
+
+// Reading text: line height of the notes of a dive.
+.notes {
+  @include type($type-body-loose);
+
+  color: $color-text-med;
+  white-space: pre-line;
+}
+
+.missing {
+  @include type($type-body);
+
+  color: $color-text-low;
+}
+
+.complete {
+  @include focus-ring;
+
+  color: $color-accent;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

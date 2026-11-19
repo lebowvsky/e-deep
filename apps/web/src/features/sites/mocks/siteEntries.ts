@@ -29,6 +29,7 @@ function divesOf(site: Site, count: number, offset: number): SiteDive[] {
     temperatureC: 15,
     entryType: null,
     diveCenter: null,
+    buddies: [],
   }));
 }
 

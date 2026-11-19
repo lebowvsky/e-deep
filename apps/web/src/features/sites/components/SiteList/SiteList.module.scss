@@ -2,12 +2,16 @@
 
 // sites.jsx · ListPanel — surface1 card, tools on top, scrolling rows, count at the bottom.
 .list {
-  @include card(1);
-
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+
+  // Phones: inside the bottom sheet, no card of its own.
+  @include from($bp-tablet) {
+    @include card(1);
+  }
 }
 
 .tools {
@@ -57,6 +61,11 @@
 
 .sort {
   margin-left: auto;
+
+  // Phones: the sheet keeps the most dived first.
+  @include until($bp-tablet) {
+    display: none;
+  }
 }
 
 .scroll {
@@ -81,6 +90,10 @@
 }
 
 .footer {
+  @include until($bp-tablet) {
+    display: none;
+  }
+
   @include type($type-caption);
 
   padding: $space-3 $space-4;

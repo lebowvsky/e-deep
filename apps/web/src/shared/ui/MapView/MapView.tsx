@@ -16,6 +16,7 @@ import { isNumber, isRecord } from '@/shared/lib/guards';
 import type { GeoPoint } from '@/shared/model/geo';
 import { BASEMAP_STYLES, tintStyle, type MapBasemap } from './mapStyle';
 import {
+  arrowStep,
   clusterLabel,
   clusterSize,
   createMarkerButton,
@@ -36,12 +37,19 @@ export interface MapSite {
 export interface MapViewport {
   key: string;
   points: readonly GeoPoint[];
+  /** Share of the map height covered at the bottom (a bottom sheet): framed above it. */
+  bottomCover?: number;
 }
 
-/** Placing a site: a click puts the marker, which can be dragged or moved with the arrows. */
+/**
+ * Placing a site. `click` (default): a click puts the marker, which can be dragged or moved with
+ * the arrows. `center` (phones): the marker stays in the middle, the map moves under it (finger,
+ * or arrows on the focused map).
+ */
 export interface MapPick {
   position: GeoPoint | null;
   onPick: (position: GeoPoint) => void;
+  mode?: 'click' | 'center';
 }
 
 export interface MapViewHandle {
@@ -65,6 +73,8 @@ export interface MapViewProps {
   basemap?: MapBasemap;
   /** Shown beside the selected marker (preview of the site). */
   popover?: ReactNode;
+  /** `left` of the marker (default, as in the mockup) or `above` it (narrow screens). */
+  popoverPlacement?: 'left' | 'above';
   /** The map could not start (WebGL, style or network): the page says so and keeps the list. */
   onError?: () => void;
   className?: string | undefined;
@@ -79,15 +89,6 @@ const SITE_ZOOM = 12;
 const CLUSTER_MAX_ZOOM = 11;
 /** France and Corsica, before the sites are known. */
 const START = { center: [3.5, 46] as [number, number], zoom: 4.5 };
-/** Keyboard moves of the marker being placed (spec: 1 px, Maj 10 px). */
-const STEP_PX = 1;
-const FAST_STEP_PX = 10;
-const ARROWS: Readonly<Record<string, [number, number]>> = {
-  ArrowUp: [0, -1],
-  ArrowDown: [0, 1],
-  ArrowLeft: [-1, 0],
-  ArrowRight: [1, 0],
-};
 
 type MapLibre = typeof import('maplibre-gl');
 
@@ -152,6 +153,7 @@ export function MapView({
   pick = null,
   basemap = 'labels',
   popover,
+  popoverPlacement = 'left',
   onError,
   className,
 }: MapViewProps) {
@@ -163,7 +165,11 @@ export function MapView({
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [popoverHost, setPopoverHost] = useState<HTMLDivElement | null>(null);
   const isPicking = pick !== null;
+  const isCenterPick = pick?.mode === 'center';
+  const isClickPick = isPicking && !isCenterPick;
   const pickPosition = pick?.position ?? null;
+  const pickLat = pickPosition?.latitude ?? null;
+  const pickLng = pickPosition?.longitude ?? null;
   const selected = sites.find((site) => site.id === selectedId) ?? null;
 
   const select = useEffectEvent((id: string) => onSelect(id));
@@ -257,13 +263,25 @@ export function MapView({
     const [first, ...others] = viewport.points;
     if (!map || !lib || !first) return;
     const animate = !prefersReducedMotion();
+    const covered = (viewport.bottomCover ?? 0) * map.getContainer().clientHeight;
+    const padding = {
+      top: space[10],
+      right: space[10],
+      bottom: space[10] + covered,
+      left: space[10],
+    };
     if (others.length === 0) {
-      map.flyTo({ center: toLngLat(first), zoom: Math.max(map.getZoom(), SITE_ZOOM), animate });
+      map.flyTo({
+        center: toLngLat(first),
+        zoom: Math.max(map.getZoom(), SITE_ZOOM),
+        padding: { top: 0, right: 0, bottom: covered, left: 0 },
+        animate,
+      });
       return;
     }
     const bounds = new lib.LngLatBounds(toLngLat(first), toLngLat(first));
     for (const point of others) bounds.extend(toLngLat(point));
-    map.fitBounds(bounds, { padding: space[10], maxZoom: CLUSTER_MAX_ZOOM, animate });
+    map.fitBounds(bounds, { padding, maxZoom: CLUSTER_MAX_ZOOM, animate });
   });
 
   // The map itself: MapLibre and its stylesheet are loaded with the first map shown.
@@ -381,19 +399,43 @@ export function MapView({
 
   // Placing: cross cursor and a click puts the marker.
   useEffect(() => {
-    if (!map || !isPicking) return;
+    if (!map || !isClickPick) return;
     const onClick = (event: { lngLat: { lat: number; lng: number } }) =>
       place({ latitude: event.lngLat.lat, longitude: event.lngLat.lng });
     map.on('click', onClick);
     return () => {
       map.off('click', onClick);
     };
-  }, [map, isPicking]);
+  }, [map, isClickPick]);
+
+  // Placing under a fixed marker: the centre is the position once the diver has moved the map.
+  useEffect(() => {
+    if (!map || !isCenterPick) return;
+    const onMoveEnd = (event: { originalEvent?: unknown }) => {
+      // Programmatic moves (typed coordinates, framing) have no original event.
+      if (event.originalEvent === undefined) return;
+      const { lat, lng } = map.getCenter();
+      place({ latitude: lat, longitude: lng });
+    };
+    map.on('moveend', onMoveEnd);
+    return () => {
+      map.off('moveend', onMoveEnd);
+    };
+  }, [map, isCenterPick]);
+
+  // Typed coordinates bring the map under the fixed marker.
+  useEffect(() => {
+    if (!map || !isCenterPick || pickLat === null || pickLng === null) return;
+    const center = map.getCenter();
+    if (Math.abs(center.lat - pickLat) > 1e-6 || Math.abs(center.lng - pickLng) > 1e-6) {
+      map.jumpTo({ center: [pickLng, pickLat] });
+    }
+  }, [map, isCenterPick, pickLat, pickLng]);
 
   // The marker being placed: dragged with the pointer, moved with the arrows when focused.
   useEffect(() => {
     const lib = libRef.current;
-    if (!map || !lib || !isPicking || pickPosition === null) return;
+    if (!map || !lib || !isClickPick || pickPosition === null) return;
     const element = document.createElement('button');
     element.type = 'button';
     element.className = styles.pickMarker ?? '';
@@ -406,12 +448,11 @@ export function MapView({
       place({ latitude: lat, longitude: lng });
     });
     element.addEventListener('keydown', (event) => {
-      const direction = ARROWS[event.key];
-      if (!direction) return;
+      const move = arrowStep(event.key, event.shiftKey);
+      if (!move) return;
       event.preventDefault();
-      const step = event.shiftKey ? FAST_STEP_PX : STEP_PX;
       const point = map.project(marker.getLngLat());
-      const moved = map.unproject([point.x + direction[0] * step, point.y + direction[1] * step]);
+      const moved = map.unproject([point.x + move[0], point.y + move[1]]);
       place({ latitude: moved.lat, longitude: moved.lng });
     });
     const hadFocus = document.activeElement?.getAttribute('data-pick-marker') === 'true';
@@ -421,9 +462,9 @@ export function MapView({
     return () => {
       marker.remove();
     };
-  }, [map, isPicking, pickPosition]);
+  }, [map, isClickPick, pickPosition]);
 
-  // The preview, beside the selected marker (on its left, as in the mockup).
+  // The preview, beside the selected marker (on its left as in the mockup, or above it).
   const selectedLng = selected?.position.longitude ?? null;
   const selectedLat = selected?.position.latitude ?? null;
   const selectedSize = selected ? markerSize(selected.diveCount) : 0;
@@ -432,21 +473,35 @@ export function MapView({
     const lib = libRef.current;
     if (!map || !lib || !popoverHost || !hasPopover || isPicking) return;
     if (selectedLng === null || selectedLat === null) return;
+    const gap = selectedSize / 2 + space[3];
     const marker = new lib.Marker({
       element: popoverHost,
-      anchor: 'right',
-      offset: [-(selectedSize / 2 + space[3]), 0],
+      ...(popoverPlacement === 'left'
+        ? { anchor: 'right', offset: [-gap, 0] }
+        : { anchor: 'bottom', offset: [0, -gap] }),
     })
       .setLngLat([selectedLng, selectedLat])
       .addTo(map);
     return () => {
       marker.remove();
     };
-  }, [map, popoverHost, hasPopover, selectedLng, selectedLat, selectedSize, isPicking]);
+  }, [
+    map,
+    popoverHost,
+    hasPopover,
+    selectedLng,
+    selectedLat,
+    selectedSize,
+    isPicking,
+    popoverPlacement,
+  ]);
 
   return (
     <div className={cx(styles.root, isPicking && styles.picking, className)}>
       <div ref={containerRef} className={styles.map} />
+      {isCenterPick && (
+        <span className={cx(styles.pickMarker, styles.centered)} aria-hidden="true" />
+      )}
       {popoverHost && hasPopover && createPortal(popover, popoverHost)}
     </div>
   );

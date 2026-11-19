@@ -105,6 +105,16 @@
   }
 }
 
+// Phones: the marker stays in the middle, the map moves under it.
+.centered {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
 // MapLibre controls kept: scale (bottom left) and attribution (bottom right), in the tokens.
 .root :global {
   .maplibregl-ctrl-bottom-left {

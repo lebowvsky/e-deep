@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { MapHeader } from '@/features/sites/components/MapHeader';
 import { SiteList } from '@/features/sites/components/SiteList';
 import { SitePanel } from '@/features/sites/components/SitePanel';
+import { SiteSheet } from '@/features/sites/components/SiteSheet';
 import { SitesMap } from '@/features/sites/components/SitesMap';
 import { useMapQuery } from '@/features/sites/hooks/useMapQuery';
 import { formatSiteCount, siteItemId } from '@/features/sites/lib/labels';
@@ -12,7 +13,9 @@ import {
   toCompleteCount,
   type SiteListQuery,
 } from '@/features/sites/lib/siteList';
+import { breakpoint } from '@/design/tokens';
 import { pageTitle } from '@/shared/config/app';
+import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import type { GeoPoint } from '@/shared/model/geo';
 import type { Site, SiteDraft, SiteEntry, SiteZone } from '@/shared/model/site';
 import { useSiteCommands } from '@/shared/sites/hooks/useSiteCommands';
@@ -21,6 +24,9 @@ import { Button } from '@/shared/ui/Button';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useToast } from '@/shared/ui/Toast';
 import styles from './MapPage.module.scss';
+
+/** Same bound as `until($bp-tablet)` in SCSS. */
+const PHONE = `(max-width: ${breakpoint.tablet - 1}px)`;
 
 /** What the camera frames: every site, a zone, or one site. */
 type FrameTarget =
@@ -119,19 +125,29 @@ function MapStage({ entries, panel }: MapStageProps) {
   const [query, updateQuery] = useMapQuery();
   const { create, update } = useSiteCommands();
   const { notify } = useToast();
+  // Phones place under a fixed marker (the map moves); a click places it above (spec § 2).
+  const isPhone = useMediaQuery(PHONE);
   const [listQuery, setListQuery] = useState<SiteListQuery>(DEFAULT_SITE_LIST_QUERY);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   // The camera moves on demand (zone chip, row of the list), not on every selection.
   const [frame, setFrame] = useState<{ n: number; target: FrameTarget }>(() => ({
     n: 0,
-    target: query.siteId
-      ? { kind: 'site', id: query.siteId }
-      : query.zone
-        ? { kind: 'zone', zone: query.zone }
-        : { kind: 'all' },
+    target:
+      query.panel && query.panel.kind !== 'new'
+        ? { kind: 'site', id: query.panel.id }
+        : query.siteId
+          ? { kind: 'site', id: query.siteId }
+          : query.zone
+            ? { kind: 'zone', zone: query.zone }
+            : { kind: 'all' },
   }));
   const points = framedPoints(entries, frame.target);
-  const viewport = { key: `${frame.n}:${points.length}`, points };
+  // Phones: the bottom sheet covers half of the map (its default height).
+  const viewport = {
+    key: `${frame.n}:${points.length}`,
+    points,
+    bottomCover: isPhone && !panel ? 0.5 : 0,
+  };
   const reframe = (target: FrameTarget) => setFrame(({ n }) => ({ n: n + 1, target }));
 
   // The marker being placed: the site's position when the panel opens, then the diver's.
@@ -171,12 +187,21 @@ function MapStage({ entries, panel }: MapStageProps) {
         onSelect={(id) => updateQuery({ siteId: id }, { replace: true })}
         onDeselect={() => updateQuery({ siteId: null }, { replace: true })}
         viewport={viewport}
+        isNarrow={isPhone}
         zone={query.zone}
         onZoneChange={(zone) => {
           updateQuery({ zone }, { replace: true });
           reframe(zone ? { kind: 'zone', zone } : { kind: 'all' });
         }}
-        pick={panel ? { position: pickPosition, onPick: setPickPosition } : null}
+        pick={
+          panel
+            ? {
+                position: pickPosition,
+                onPick: setPickPosition,
+                mode: isPhone ? 'center' : 'click',
+              }
+            : null
+        }
       />
       {panel ? (
         <SitePanel
@@ -186,6 +211,7 @@ function MapStage({ entries, panel }: MapStageProps) {
           sites={entries.map(({ site }) => site)}
           position={pickPosition}
           onPositionChange={setPickPosition}
+          placing={isPhone ? 'center' : 'click'}
           save={save}
           onSaved={(site) => {
             notify(`Site « ${site.name} » enregistré`);
@@ -195,15 +221,21 @@ function MapStage({ entries, panel }: MapStageProps) {
           onClose={closePanel}
         />
       ) : (
-        <SiteList
-          entries={entries}
-          query={listQuery}
-          onQueryChange={(patch) => setListQuery((current) => ({ ...current, ...patch }))}
-          selectedId={query.siteId}
-          onSelect={selectFromList}
-          onHighlight={setHighlightedId}
-          onPlace={(id) => updateQuery({ panel: { kind: 'place', id }, siteId: id })}
-        />
+        <SiteSheet
+          siteCount={entries.length}
+          waitingCount={toCompleteCount(entries)}
+          onAdd={() => updateQuery({ panel: { kind: 'new' } })}
+        >
+          <SiteList
+            entries={entries}
+            query={listQuery}
+            onQueryChange={(patch) => setListQuery((current) => ({ ...current, ...patch }))}
+            selectedId={query.siteId}
+            onSelect={selectFromList}
+            onHighlight={setHighlightedId}
+            onPlace={(id) => updateQuery({ panel: { kind: 'place', id }, siteId: id })}
+          />
+        </SiteSheet>
       )}
     </div>
   );

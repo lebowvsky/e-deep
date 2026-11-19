@@ -1,6 +1,7 @@
 // Dive sites: shared by the dive pages (site field of the form, detail) and the sites pages (map,
 // site page). Sites are private: the user only ever sees their own.
 import type { EntryType } from '@e-deep/shared';
+import type { DiveMember } from './dive';
 import type { GeoPoint } from './geo';
 
 /** Sea area of a site, derived from its position, else from its region (`deriveZone`). */
@@ -53,6 +54,8 @@ export interface SiteDive {
   /** Detail fields: `null` when not entered, or not known from the log (`GET /dives`). */
   entryType: EntryType | null;
   diveCenter: string | null;
+  /** The other members of the dive team (the user is implied). */
+  buddies: DiveMember[];
 }
 
 /** Computed from the user's dives on the site, never stored. */

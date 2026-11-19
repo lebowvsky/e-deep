@@ -1,0 +1,8 @@
+@use '@/styles/tokens' as *;
+
+.error {
+  @include type($type-field-hint);
+
+  margin: $space-3 0 0;
+  color: $color-danger;
+}

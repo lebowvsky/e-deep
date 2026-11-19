@@ -24,7 +24,7 @@ import {
 } from '@/shared/lib/guards';
 import type { DiveMember } from '@/shared/model/dive';
 import { toGeoPoint } from '@/shared/model/geo';
-import { avatarColorOf } from '../lib/avatarColor';
+import { avatarColorOf } from '@/shared/lib/avatarColor';
 import { oxygenPercent } from '../lib/labels';
 import { toRegionKey } from '../lib/region';
 import {

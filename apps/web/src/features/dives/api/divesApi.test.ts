@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { avatarPalette } from '@/design/tokens';
 import { fetchDiveLog, isDiveLogResponse, isDiveSummary } from '@/shared/diveLog/diveLogApi';
 import { ApiError, createApiClient } from '@/shared/lib/apiClient';
-import { avatarColorOf } from '../lib/avatarColor';
+import { avatarColorOf } from '@/shared/lib/avatarColor';
 import { MOCKUP_DETAIL_FIELDS } from '../mocks/diveDetailResponse';
 import { mockDiveLogResponse, mockOwner } from '../mocks/diveLogResponse';
 import {

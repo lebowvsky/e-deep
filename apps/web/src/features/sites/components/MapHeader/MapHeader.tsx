@@ -26,7 +26,7 @@ export function MapHeader({ counts, onAdd }: MapHeaderProps) {
           )}
         </p>
       </div>
-      <Button variant="primary" icon="plus" onClick={onAdd}>
+      <Button variant="primary" icon="plus" onClick={onAdd} className={styles.add}>
         Ajouter un site
       </Button>
     </header>

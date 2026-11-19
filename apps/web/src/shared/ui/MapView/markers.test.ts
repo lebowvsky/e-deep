@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { layout } from '@/design/tokens';
-import { clusterLabel, createMarkerButton, markerSize, siteMarkerLabel } from './markers';
+import {
+  arrowStep,
+  clusterLabel,
+  createMarkerButton,
+  markerSize,
+  siteMarkerLabel,
+} from './markers';
 
 describe('map markers', () => {
   it('grow with the dives, capped', () => {
@@ -20,5 +26,15 @@ describe('map markers', () => {
     expect(button.textContent).toBe('8');
     expect(button.style.getPropertyValue('--marker-size')).toBe('30px');
     expect(clusterLabel(5)).toBe('5 sites ici. Zoomer pour les voir');
+  });
+});
+
+describe('placing marker with the keyboard', () => {
+  it('moves 1 px with an arrow, 10 px with Maj', () => {
+    expect(arrowStep('ArrowUp', false)).toEqual([0, -1]);
+    expect(arrowStep('ArrowRight', false)).toEqual([1, 0]);
+    expect(arrowStep('ArrowDown', true)).toEqual([0, 10]);
+    expect(arrowStep('ArrowLeft', true)).toEqual([-10, 0]);
+    expect(arrowStep('Enter', false)).toBeNull();
   });
 });

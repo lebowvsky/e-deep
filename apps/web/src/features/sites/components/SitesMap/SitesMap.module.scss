@@ -2,11 +2,14 @@
 
 // sites.jsx · MapSitesDesktop — surface1 card holding the map and its overlays.
 .card {
-  @include card(1);
-
   position: relative;
   min-height: 0;
   overflow: hidden;
+
+  // Phones: edge to edge, no card.
+  @include from($bp-tablet) {
+    @include card(1);
+  }
 }
 
 .zones {

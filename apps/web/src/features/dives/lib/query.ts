@@ -21,6 +21,7 @@ export const DEFAULT_QUERY: DivesQuery = {
   depthMax: null,
   gases: [],
   with: [],
+  site: null,
   sort: '-date',
   page: 1,
   size: 10,
@@ -37,6 +38,7 @@ const OWN_PARAMS = [
   'depthMax',
   'gas',
   'with',
+  'site',
   'sort',
   'page',
   'size',
@@ -97,6 +99,7 @@ export function parseDivesQuery(params: URLSearchParams): DivesQuery {
     depthMax,
     gases: parseList(params.get('gas'), GAS_FAMILIES),
     with: parseIds(params.get('with')),
+    site: params.get('site') || null,
     sort: isOneOf(sort, DIVES_SORTS) ? sort : DEFAULT_QUERY.sort,
     page: Math.max(1, parseInteger(params.get('page')) ?? 1),
     size: parsePageSize(params.get('size')),
@@ -124,6 +127,7 @@ export function serializeDivesQuery(
   set('depthMax', String(query.depthMax), query.depthMax === null);
   set('gas', query.gases.join(LIST_SEPARATOR), query.gases.length === 0);
   set('with', query.with.join(LIST_SEPARATOR), query.with.length === 0);
+  set('site', query.site ?? '', query.site === null);
   set('sort', query.sort, query.sort === DEFAULT_QUERY.sort);
   set('page', String(query.page), query.page === 1);
   set('size', String(query.size), query.size === DEFAULT_QUERY.size);
@@ -149,6 +153,7 @@ export function activeFilterKeys(query: DivesQuery): DivesFilterKey[] {
     depth: query.depthMin !== null || query.depthMax !== null,
     gases: query.gases.length > 0,
     with: query.with.length > 0,
+    site: query.site !== null,
   };
   return (Object.keys(active) as DivesFilterKey[]).filter((key) => active[key]);
 }
@@ -162,6 +167,7 @@ export function withoutFilter(query: DivesQuery, key: DivesFilterKey): DivesQuer
     depth: { depthMin: null, depthMax: null },
     gases: { gases: [] },
     with: { with: [] },
+    site: { site: null },
   };
   return updateDivesQuery(query, reset[key]);
 }

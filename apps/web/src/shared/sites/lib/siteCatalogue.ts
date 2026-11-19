@@ -1,7 +1,8 @@
 // The user's sites: those of the dive log (`GET /dives`) with their positions, under the local
 // changes (`SitesOverlay`), each with its dives and statistics.
 import type { DiveSiteRef, DiveSummary } from '@e-deep/shared';
-import { placeLabel } from '@/shared/lib/format';
+import { avatarColorOf } from '@/shared/lib/avatarColor';
+import { formatInitials, placeLabel } from '@/shared/lib/format';
 import type { GeoPoint } from '@/shared/model/geo';
 import type { Site, SiteDive, SiteEntry } from '@/shared/model/site';
 import type { SitePositions } from '../api/sitePositionsApi';
@@ -50,6 +51,14 @@ function toSiteDive(summary: DiveSummary): SiteDive {
     // Detail fields, absent from the log: the usual entry and dive centre stay unknown.
     entryType: null,
     diveCenter: null,
+    buddies: summary.buddies.map((buddy) => ({
+      id: buddy.id,
+      firstName: buddy.firstName,
+      lastName: buddy.lastName,
+      initials: formatInitials(buddy.firstName, buddy.lastName),
+      color: avatarColorOf(buddy.id),
+      isSelf: false,
+    })),
   };
 }
 

@@ -3,7 +3,10 @@
 // sites.jsx · RegionChips — glass bar, 30px chips, the chosen one in surface2.
 .group {
   display: flex;
-  flex-wrap: wrap;
+  // Phones: one row that scrolls sideways.
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
   gap: $space-1;
   padding: $space-1;
   background: $color-map-overlay;
@@ -13,6 +16,8 @@
 }
 
 .chip {
+  flex-shrink: 0;
+
   @include focus-ring;
   @include type($type-caption);
 

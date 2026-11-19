@@ -52,7 +52,7 @@ function twelveMonthsBefore(now: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Predicate of the query filters (search, period, regions, depth, gas, dive team). */
+/** Predicate of the query filters (search, period, regions, depth, gas, dive team, site). */
 export function matchesQuery(query: DivesQuery, now: Date): (dive: LoggedDive) => boolean {
   const terms = foldText(query.q).split(/\s+/).filter(Boolean);
   const since = twelveMonthsBefore(now);
@@ -72,6 +72,7 @@ export function matchesQuery(query: DivesQuery, now: Date): (dive: LoggedDive) =
     if (query.depthMax !== null && dive.depthMaxM > query.depthMax) return false;
     if (query.gases.length > 0 && !query.gases.includes(gasFamily(dive.gasMix))) return false;
     if (!query.with.every((id) => dive.team.some((member) => member.id === id))) return false;
+    if (query.site !== null && dive.site.id !== query.site) return false;
     if (terms.length > 0) {
       const text = searchableText(dive);
       if (!terms.every((term) => text.includes(term))) return false;
@@ -169,9 +170,11 @@ export function selectDives(
 export function computeFacets(dives: readonly LoggedDive[]): DivesFacets {
   const regions = new Map<string, RegionFacet>();
   const members = new Map<string, DivesFacets['members'][number]>();
+  const sites = new Map<string, string>();
 
   for (const dive of dives) {
     const { region: key, regionName: name } = dive.site;
+    if (!sites.has(dive.site.id)) sites.set(dive.site.id, dive.site.name);
     // A site without region has no region facet.
     if (key !== null && name !== null) {
       const region = regions.get(key);
@@ -193,6 +196,7 @@ export function computeFacets(dives: readonly LoggedDive[]): DivesFacets {
     members: [...members.values()].sort(
       (a, b) => b.count - a.count || a.member.firstName.localeCompare(b.member.firstName, 'fr'),
     ),
+    sites: [...sites].map(([id, siteName]) => ({ id, name: siteName })),
   };
 }
 

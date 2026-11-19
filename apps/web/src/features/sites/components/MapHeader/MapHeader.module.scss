@@ -1,7 +1,12 @@
 @use '@/styles/tokens' as *;
 
 // sites.jsx · MapHeader — same rhythm as the header of « Mes plongées ».
+// Phones: the bottom sheet shows the title and « + Site »; the h1 stays for screen readers.
 .header {
+  @include until($bp-tablet) {
+    @include visually-hidden;
+  }
+
   display: flex;
   flex-wrap: wrap;
   gap: $space-4;
@@ -32,4 +37,11 @@
 
 .waiting {
   color: $color-text-low;
+}
+
+// Phones: « + Site » of the sheet instead.
+.add {
+  @include until($bp-tablet) {
+    display: none;
+  }
 }

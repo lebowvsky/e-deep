@@ -8,7 +8,13 @@
 }
 
 .zoom {
-  display: flex;
+  // Phones zoom with two fingers: only « my position » is shown (sites.jsx · MapSitesMobile).
+  display: none;
+
+  @include from($bp-tablet) {
+    display: flex;
+  }
+
   flex-direction: column;
   overflow: hidden;
   background: $color-surface-2;
@@ -40,6 +46,14 @@
 
   &:focus-visible {
     outline-offset: calc(-1 * #{$layout-hairline});
+  }
+}
+
+.layers {
+  display: none;
+
+  @include from($bp-tablet) {
+    display: flex;
   }
 }
 

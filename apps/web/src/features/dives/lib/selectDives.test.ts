@@ -73,6 +73,11 @@ describe('selectDives — filters', () => {
     expect(numbers({})).toEqual([5, 4, 3, 2, 1]);
   });
 
+  it('filters by site (« Voir dans Mes plongées » of a site page)', () => {
+    expect(numbers({ site: 's06' })).toEqual([2]);
+    expect(numbers({ site: 'unknown' })).toEqual([]);
+  });
+
   it('filters by region, depth range (inclusive), gas family and dive team', () => {
     expect(numbers({ regions: ['corse'] })).toEqual([5, 4, 3]);
     expect(numbers({ regions: ['corse', 'marseille'] })).toEqual([5, 4, 3, 2]);

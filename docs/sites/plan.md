@@ -199,3 +199,18 @@ sheet → `shadow.sheet` ; padding 11 des lignes d'infos → `space.3` ; colonne
 - `?state=` n'est pas géré sur `/map` (pas de mocks dans le code applicatif).
 - Saisie de coordonnées invalide : le repère garde la dernière position valide, l'erreur
   s'affiche à la sortie du champ ; l'enregistrement prend cette dernière position valide.
+
+## 9. Phase 4 — fiche site et mobile
+
+- `/sites/:siteId` (route lazy, `ownMobileBars` + `hideFab`) : fil d'Ariane, ou barre du haut
+  « ‹ Carte » + « … » sur téléphone ; KPI (2 sur téléphone), mini-carte `MapView` centrée (ou
+  encart « Position à préciser »), 5 dernières plongées (3 sur téléphone), infos en `<dl>`, accès,
+  dialogues `MergeSiteDialog` et `DeleteSiteDialog`.
+- « Mes plongées » accepte `?site=:id` (filtre « Site : nom », retirable) : cible de « Voir dans
+  Mes plongées ».
+- `/map` sur téléphone (handles `hideFab` + `fullBleed`) : carte plein écran, liste en bottom sheet
+  à 3 crans (`SiteSheet`), ajout et édition avec la carte sur 40 % et le repère fixe au centre
+  (`MapPick.mode = 'center'`).
+- Nav : « Carte » reste active sur une fiche site (`NavEntry.section`).
+- Dette : `?state=` n'est géré ni sur `/map` ni sur `/sites/:id` (pas de mocks dans le code
+  applicatif) ; la mise à l'eau et la structure habituelles restent « — » (absentes du carnet).

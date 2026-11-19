@@ -1,0 +1,78 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · SiteMiniMap — 300px card (240 on phones), coordinates and link over the map.
+.map {
+  @include card(1);
+
+  position: relative;
+  height: $layout-site-mini-map-height-sm;
+  overflow: hidden;
+
+  @include from($bp-tablet) {
+    height: $layout-site-mini-map-height;
+  }
+}
+
+.coordinates,
+.open {
+  position: absolute;
+  // At the top: the attribution of the map holds the bottom right corner.
+  top: $space-3;
+  z-index: 2;
+  padding: $space-2 $space-3;
+  margin: 0;
+  background: $color-map-overlay-strong;
+  border-radius: $radius-sm;
+}
+
+.coordinates {
+  @include type($type-chip, $font: $font-mono, $tabular: true);
+
+  left: $space-3;
+  color: $color-text-med;
+}
+
+.open {
+  @include focus-ring;
+  @include type($type-caption);
+
+  right: $space-3;
+  color: $color-accent;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Without position: an inset that says what to do.
+.missing {
+  @include card(1);
+
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  align-items: center;
+  justify-content: center;
+  min-height: $layout-site-mini-map-height-sm;
+  padding: $space-6;
+  text-align: center;
+  background: $gradient-map-empty, $color-surface-1;
+}
+
+.missingIcon {
+  color: $color-warning;
+}
+
+.missingTitle {
+  @include type($type-h-3);
+
+  color: $color-text-high;
+}
+
+.missingText {
+  @include type($type-body);
+
+  max-width: $layout-empty-card-text-max;
+  color: $color-text-low;
+}

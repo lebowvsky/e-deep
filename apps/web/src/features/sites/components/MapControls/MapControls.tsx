@@ -40,7 +40,7 @@ export function MapControls({
       </button>
       <button
         type="button"
-        className={cx(styles.button, styles.single)}
+        className={cx(styles.button, styles.single, styles.layers)}
         aria-label="Noms de lieux sur la carte"
         aria-pressed={showsLabels}
         onClick={onToggleLabels}

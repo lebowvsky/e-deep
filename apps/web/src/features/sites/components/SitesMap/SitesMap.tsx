@@ -28,6 +28,8 @@ export interface SitesMapProps {
   onZoneChange: (zone: SiteZone | null) => void;
   /** Placing a site (panel open): the zone chips and the preview leave room for the marker. */
   pick: MapPick | null;
+  /** Narrow screen: the preview goes above the marker. */
+  isNarrow: boolean;
 }
 
 const LOCATE_FAILED = 'Ta position n’est pas disponible.';
@@ -47,6 +49,7 @@ export function SitesMap({
   zone,
   onZoneChange,
   pick,
+  isNarrow,
 }: SitesMapProps) {
   const mapRef = useRef<MapViewHandle>(null);
   const { notify } = useToast();
@@ -101,6 +104,7 @@ export function SitesMap({
           viewport={viewport}
           pick={pick}
           basemap={showsLabels ? 'labels' : 'plain'}
+          popoverPlacement={isNarrow ? 'above' : 'left'}
           popover={
             selected && !pick ? <SitePreviewPopover entry={selected} onClose={onDeselect} /> : null
           }
@@ -134,6 +138,8 @@ export function SitesMap({
             <>
               {formatPosition(pick.position)} · <span className={styles.placed}>repère posé</span>
             </>
+          ) : pick.mode === 'center' ? (
+            'Déplace la carte sous le repère'
           ) : (
             'Clique sur la carte pour poser le repère'
           )}
