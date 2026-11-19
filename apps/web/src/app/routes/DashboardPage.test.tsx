@@ -4,8 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { routes } from '@/app/routes';
 import { dashboardResponse } from '@/features/dashboard/api/dashboardResponse.fixture';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
+import type { MapViewProps } from '@/shared/ui/MapView';
 import { TestProviders } from '@/test/TestProviders';
 import { fakeApiClient } from '@/test/fakeApiClient';
+
+// No WebGL in jsdom: the map is a labelled picture.
+vi.mock('@/shared/ui/MapView', () => ({
+  MapView: ({ label }: MapViewProps) => <div role="img" aria-label={label} />,
+}));
 
 const renderAt = (path: string, get: ApiClient['get'] = vi.fn()) =>
   render(

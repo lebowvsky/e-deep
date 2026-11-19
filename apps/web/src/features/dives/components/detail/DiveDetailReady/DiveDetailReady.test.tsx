@@ -1,12 +1,20 @@
 import { render, screen, within } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { MapViewProps } from '@/shared/ui/MapView';
 import { toDiveDetailView, toSelfMember } from '../../../api/divesApi';
 import { mockDiveDetail, mockFilledDiveDetail } from '../../../mocks/diveDetailResponse';
 import { mockOwner } from '../../../mocks/diveLogResponse';
 import type { DiveDetailView } from '../../../types';
 import { DiveDetailReady } from './DiveDetailReady';
+
+// No WebGL in jsdom: the map is a labelled picture.
+vi.mock('@/shared/ui/MapView', () => ({
+  MapView: ({ label, readOnly }: MapViewProps) => (
+    <div role="img" aria-label={label} data-read-only={readOnly} />
+  ),
+}));
 
 const self = toSelfMember(mockOwner);
 
@@ -198,6 +206,8 @@ describe('DiveDetailReady, nothing entered', () => {
     const { container } = renderReady(<DiveDetailReady dive={empty()} insights={null} />);
     const site = card(/^Site/);
     expect(within(site).getByText('Latitude 42,580 nord, longitude 8,725 est')).toBeTruthy();
+    const map = within(site).getByRole('img', { name: /^Carte autour de / });
+    expect(map.dataset.readOnly).toBe('true');
     expect(container.querySelector('[class*="marker"]')).not.toBeNull();
     expect(container.querySelectorAll('[class*="place"]').length).toBeGreaterThan(0);
     expect(within(site).queryByText('Position non renseignée')).toBeNull();
@@ -228,6 +238,7 @@ describe('DiveDetailReady, site created by its name (D-23)', () => {
 
     expect(within(site).getByText('Position non renseignée')).toBeTruthy();
     expect(within(site).queryByText(/^Latitude/)).toBeNull();
+    expect(within(site).queryByRole('img', { name: /^Carte/ })).toBeNull();
     expect(container.querySelector('[class*="marker"]')).toBeNull();
   });
 

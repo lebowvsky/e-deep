@@ -81,6 +81,7 @@
   justify-content: center;
   height: $layout-map-height-sm;
   overflow: hidden;
+  background: $gradient-map-empty, $color-surface-0;
   border-radius: $radius-md;
   box-shadow: inset 0 0 0 1px $color-line;
 
@@ -88,6 +89,23 @@
     @include card(1);
 
     height: $layout-map-height;
+    background: $gradient-map-empty, $color-surface-0;
+  }
+
+  // dashboard-states.jsx · EmptyMap: a dim grid, no geography (no site, no map to load).
+  &::before {
+    position: absolute;
+    inset: 0;
+    content: '';
+    background-image:
+      linear-gradient($color-gridline 1px, transparent 1px),
+      linear-gradient(90deg, $color-gridline 1px, transparent 1px);
+    background-size: $layout-map-grid-sm $layout-map-grid-sm;
+    opacity: $opacity-map-grid-empty;
+
+    @include from($bp-tablet) {
+      background-size: $layout-map-grid $layout-map-grid;
+    }
   }
 }
 

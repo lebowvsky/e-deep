@@ -5,11 +5,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { mockDiveDetail } from '@/features/dives/mocks/diveDetailResponse';
 import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
+import type { MapViewProps } from '@/shared/ui/MapView';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { TestProviders } from '@/test/TestProviders';
 import { DiveDetailPage } from './DiveDetailPage';
 import { DivesPage } from './DivesPage';
 import { fakeApiClient } from '@/test/fakeApiClient';
+
+// No WebGL in jsdom: the map is a labelled picture.
+vi.mock('@/shared/ui/MapView', () => ({
+  MapView: ({ label }: MapViewProps) => <div role="img" aria-label={label} />,
+}));
 
 const DETAIL_PREFIX = 'dives/';
 

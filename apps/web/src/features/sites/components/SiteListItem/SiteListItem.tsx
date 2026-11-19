@@ -1,9 +1,10 @@
 import { cx } from '@/shared/lib/classNames';
 import { formatDiveDayMonth, formatMeasure } from '@/shared/lib/format';
 import type { SiteEntry } from '@/shared/model/site';
+import { siteHrefOf } from '@/shared/sites/lib/siteHref';
 import { Button } from '@/shared/ui/Button';
 import { IconLink } from '@/shared/ui/IconButton';
-import { siteHrefOf, siteItemId, siteMeta } from '../../lib/labels';
+import { siteItemId, siteMeta } from '../../lib/labels';
 import { PositionTag } from '../PositionTag';
 import styles from './SiteListItem.module.scss';
 

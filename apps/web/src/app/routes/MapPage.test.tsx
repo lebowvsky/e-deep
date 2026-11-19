@@ -27,7 +27,7 @@ vi.mock('@/shared/ui/MapView', () => ({
             type="button"
             aria-label={`Repère ${site.name}`}
             aria-pressed={site.id === selectedId}
-            onClick={() => onSelect(site.id)}
+            onClick={() => onSelect?.(site.id)}
           />
         ))}
         {pick && (

@@ -36,7 +36,7 @@ CSS-in-JS, pas de lib de composants UI.
 - Un composant par dossier : `<Name>/<Name>.tsx` + `<Name>.module.scss` + `index.ts`, placé selon
   sa portée :
   - primitives UI (Button, Card, Overline, Icon, Badge, Avatar, Skeleton, KpiCard, Measure,
-    MapBackdrop) → `src/shared/ui/<Name>/` ;
+    MapView — seul module qui charge `maplibre-gl`, à la demande) → `src/shared/ui/<Name>/` ;
   - layout applicatif (AppShell, Sidebar, NavItem, UserCard, TopBar, Drawer, Fab) →
     `src/app/layout/<Name>/` ;
   - dashboard (KpiRow, SiteMap, LastDiveCard…) → `src/features/dashboard/components/<Name>/`,

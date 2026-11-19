@@ -5,7 +5,8 @@ import { ButtonLink } from '@/shared/ui/Button';
 import { Icon } from '@/shared/ui/Icon';
 import { MapView } from '@/shared/ui/MapView';
 import { formatPosition } from '../../lib/coordinates';
-import { mapHrefOf, placeHrefOf, siteHrefOf } from '../../lib/labels';
+import { siteHrefOf } from '@/shared/sites/lib/siteHref';
+import { mapHrefOf, placeHrefOf } from '../../lib/labels';
 import { toMapSites } from '../../lib/siteList';
 import styles from './SiteMiniMap.module.scss';
 
@@ -51,6 +52,7 @@ export function SiteMiniMap({ site, entries }: SiteMiniMapProps) {
           if (id !== site.id) void navigate(siteHrefOf(id));
         }}
         viewport={{ key: site.id, points: [position] }}
+        readOnly
       />
       <p className={styles.coordinates}>{formatPosition(position)}</p>
       <Link to={mapHrefOf(site.id)} className={styles.open}>

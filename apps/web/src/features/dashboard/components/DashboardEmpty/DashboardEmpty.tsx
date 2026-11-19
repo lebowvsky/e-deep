@@ -4,7 +4,6 @@ import { Icon } from '@/shared/ui/Icon';
 import { Overline } from '@/shared/ui/Overline';
 import type { User } from '../../types';
 import { KpiCard } from '@/shared/ui/KpiCard';
-import { MapBackdrop } from '@/shared/ui/MapBackdrop';
 import styles from './DashboardEmpty.module.scss';
 
 export interface DashboardEmptyProps {
@@ -56,7 +55,6 @@ export function DashboardEmpty({ user }: DashboardEmptyProps) {
       </ul>
 
       <section className={styles.map} aria-labelledby={mapTitleId}>
-        <MapBackdrop variant="empty" />
         <div className={styles.mapMessage}>
           <span className={styles.pin} aria-hidden="true">
             <Icon name="pin" size="xxl" />
