@@ -344,6 +344,8 @@ export const layout = {
   siteListWidth: 380, // list next to the map
   sitePanelWidth: 420, // add / place / edit panel, replaces the list
   mapPageMinHeight: 640,
+  // Room above and below the map grid on desktop: page padding (32 + 48) and the header (~120).
+  mapPageChrome: 200,
   sitePopoverWidth: 250, // preview of a marker
   siteMarkerMin: 18, // marker diameter for 1 dive…
   siteMarkerMax: 40, // …capped here

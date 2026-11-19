@@ -1,4 +1,5 @@
-const prefersReducedMotion = () =>
+/** The user asked for reduced motion: no smooth scroll, no camera flight. */
+export const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 

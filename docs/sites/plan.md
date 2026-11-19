@@ -183,3 +183,19 @@ sheet → `shadow.sheet` ; padding 11 des lignes d'infos → `space.3` ; colonne
 - `/dives/new?site=:id` préremplit le champ Site si `id` est l'un de mes sites.
 - Écarts : types proposés = ceux de la maquette (sans « Herbier », disponible sur la page Carte) ;
   titre de la bottom sheet en `h2` (20 px) comme les autres sheets, au lieu de 18 px.
+
+## 8. Phase 3 — page Carte desktop
+
+- `MapView` (`shared/ui/MapView/`) charge `maplibre-gl`, son worker (`setWorkerUrl`, requis
+  avec Vite) et sa feuille de style à la première carte affichée ; la page `/map` est elle-même
+  une route chargée à la demande. Les repères sont des `<button>` synchronisés avec la source
+  GeoJSON regroupée à chaque rendu (`querySourceFeatures`). Les tests remplacent `MapView` par
+  `vi.mock`.
+- Fond de carte : bascule « noms de lieux » (styles CARTO avec et sans libellés), faute d'un
+  second fond sans clé.
+- Région du compteur et du filtre : la partie la plus large de la région (« Calvi · Corse » →
+  « Corse »).
+- `/sites/:id` est un placeholder jusqu'à la phase 4 (« Voir la fiche » n'est pas un lien mort).
+- `?state=` n'est pas géré sur `/map` (pas de mocks dans le code applicatif).
+- Saisie de coordonnées invalide : le repère garde la dernière position valide, l'erreur
+  s'affiche à la sortie du champ ; l'enregistrement prend cette dernière position valide.

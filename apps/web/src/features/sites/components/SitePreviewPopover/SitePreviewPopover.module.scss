@@ -1,0 +1,82 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · SitePopover — 250px, surface2, raised.
+.popover {
+  width: $layout-site-popover-width;
+  padding: $layout-tile-pad;
+  line-height: normal;
+  text-align: left;
+  background: $color-surface-2;
+  border-radius: $radius-lg;
+  box-shadow:
+    inset 0 0 0 1px $color-line-strong,
+    $shadow-raised;
+}
+
+.eyebrow {
+  @include overline;
+}
+
+.name {
+  @include type($type-title-sm);
+
+  margin-top: $space-1;
+  color: $color-text-high;
+}
+
+.figures {
+  display: flex;
+  gap: $space-5;
+  margin: $space-3 0 0;
+
+  dd {
+    margin: 0;
+  }
+
+  // The figure first, its caption under it.
+  div {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+}
+
+.label {
+  @include type($type-caption-sm);
+
+  color: $color-text-low;
+}
+
+.dives,
+.value {
+  @include type($type-metric-xs, $font: $font-mono, $tabular: true);
+
+  color: $color-text-high;
+}
+
+.dives {
+  color: $color-accent;
+}
+
+.date {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  line-height: $space-5;
+  color: $color-text-high;
+}
+
+.link {
+  @include focus-ring;
+  @include type($type-body-sm);
+
+  display: inline-flex;
+  gap: $space-2;
+  align-items: center;
+  margin-top: $space-3;
+  color: $color-accent;
+  text-decoration: none;
+  border-radius: $radius-xs;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

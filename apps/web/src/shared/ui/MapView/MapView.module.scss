@@ -1,0 +1,151 @@
+@use '@/styles/tokens' as *;
+
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: $color-surface-0;
+}
+
+// Sized, not positioned: MapLibre's stylesheet makes its container `position: relative`.
+.map {
+  width: 100%;
+  height: 100%;
+}
+
+.picking :global(.maplibregl-canvas-container) {
+  cursor: crosshair;
+}
+
+// sites.jsx · Marker — surface3 disc, accentLine ring, dive count in mono.
+.marker {
+  @include type($type-marker-count, $font: $font-mono, $tabular: true);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--marker-size);
+  height: var(--marker-size);
+  padding: 0;
+  color: $color-text-high;
+  cursor: pointer;
+  background: $color-surface-3;
+  border: 0;
+  border-radius: $radius-pill;
+  box-shadow: $shadow-marker;
+  transition:
+    background-color $dur-fast $ease-out,
+    box-shadow $dur-fast $ease-out;
+
+  &:focus-visible {
+    outline: 2px solid $color-accent;
+    outline-offset: 2px;
+  }
+
+  &[data-highlighted],
+  &:hover {
+    box-shadow:
+      inset 0 0 0 1px $color-accent,
+      $shadow-marker;
+  }
+
+  // Selected: accent fill and a soft halo (r + 9).
+  &[data-selected] {
+    z-index: 1;
+    color: $color-accent-ink;
+    background: $color-accent;
+    box-shadow: 0 0 0 calc(#{$layout-site-marker-halo} / 2) $color-accent-soft;
+  }
+
+  .picking & {
+    pointer-events: none;
+  }
+}
+
+.cluster {
+  color: $color-text-med;
+  background: $color-surface-2;
+  box-shadow:
+    inset 0 0 0 1px $color-line-strong,
+    0 0 0 calc(#{$layout-site-marker-halo} / 4) $color-surface-3;
+}
+
+// sites.jsx · newPin — accent dot, dashed ring, cross ticks.
+.pickMarker {
+  position: relative;
+  width: $layout-pick-marker;
+  height: $layout-pick-marker;
+  padding: 0;
+  cursor: grab;
+  background: $color-accent-soft;
+  border: 1px solid $color-accent;
+  border-radius: $radius-pill;
+
+  // Centre dot.
+  &::before {
+    position: absolute;
+    inset: calc((#{$layout-pick-marker} - #{$space-2}) / 2);
+    content: '';
+    background: $color-accent;
+    border-radius: $radius-pill;
+  }
+
+  // Dashed ring around it.
+  &::after {
+    position: absolute;
+    inset: calc((#{$layout-pick-marker} - #{$layout-pick-marker-ring}) / 2);
+    content: '';
+    border: 1px dashed $color-accent-line;
+    border-radius: $radius-pill;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-accent;
+    outline-offset: $space-4;
+  }
+}
+
+// MapLibre controls kept: scale (bottom left) and attribution (bottom right), in the tokens.
+.root :global {
+  .maplibregl-ctrl-bottom-left {
+    bottom: $space-3;
+    left: $space-3;
+  }
+
+  .maplibregl-ctrl-scale {
+    @include type($type-meta, $font: $font-mono);
+
+    padding: 0 $space-1;
+    color: $color-text-low;
+    background: transparent;
+    border: 0;
+    border-bottom: $layout-hairline solid $color-text-low;
+  }
+
+  .maplibregl-ctrl.maplibregl-ctrl-attrib,
+  .maplibregl-ctrl-attrib.maplibregl-compact {
+    @include type($type-meta);
+
+    color: $color-text-low;
+    background: $color-map-overlay;
+    border-radius: $radius-sm;
+
+    a {
+      color: $color-text-med;
+    }
+  }
+
+  .maplibregl-ctrl-attrib-button {
+    filter: invert(1);
+  }
+
+  .maplibregl-marker {
+    line-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker {
+    transition: none;
+  }
+}

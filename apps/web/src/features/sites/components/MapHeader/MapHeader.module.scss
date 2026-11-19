@@ -1,0 +1,35 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · MapHeader — same rhythm as the header of « Mes plongées ».
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-4;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  min-width: 0;
+}
+
+.title {
+  @include type($type-h-1);
+
+  @include from($bp-desktop) {
+    @include type($type-display);
+  }
+}
+
+.subtitle {
+  @include type($type-body-lg);
+
+  color: $color-text-med;
+}
+
+.waiting {
+  color: $color-text-low;
+}

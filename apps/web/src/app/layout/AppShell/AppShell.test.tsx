@@ -80,12 +80,13 @@ describe('AppShell — mobile', () => {
     const current = within(dialog).getByRole('link', { name: 'Dashboard' });
     expect(current.getAttribute('aria-current')).toBe('page');
 
-    await user.click(within(dialog).getByRole('link', { name: 'Carte' }));
+    // A page rendered at once (the map page loads its own chunk).
+    await user.click(within(dialog).getByRole('link', { name: 'Statistiques' }));
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(router.state.location.pathname).toBe('/map');
+    expect(router.state.location.pathname).toBe('/stats');
     // Focus moves to the new content and the document title follows.
     expect(document.activeElement).toBe(document.querySelector('main'));
-    expect(document.title).toBe('Carte · E-Deep');
+    expect(document.title).toBe('Statistiques · E-Deep');
   });
 
   it('shows the FAB as a link to a new dive', async () => {

@@ -26,6 +26,11 @@ const lazyDiveForm = async () => ({
 });
 const diveFormHandle: AppRouteHandle = { ownMobileBars: true };
 
+// The map page loads MapLibre: its own chunk, and MapLibre itself only once a map is shown.
+const lazyMap = async () => ({
+  Component: (await import('./routes/MapPage')).MapPage,
+});
+
 const placeholder = (path: string, title: string): RouteObject => ({
   path,
   element: <PlaceholderPage title={title} />,
@@ -43,7 +48,9 @@ export const routes: RouteObject[] = [
       { path: '/dives/new', lazy: lazyDiveForm, handle: diveFormHandle },
       { path: '/dives/:diveId', element: <DiveDetailPage /> },
       { path: '/dives/:diveId/edit', lazy: lazyDiveForm, handle: diveFormHandle },
-      placeholder('/map', 'Carte'),
+      { path: '/map', lazy: lazyMap },
+      // « Voir la fiche » of the map preview: the site page comes next (phase 4).
+      placeholder('/sites/:siteId', 'Fiche site'),
       placeholder('/stats', 'Statistiques'),
       placeholder('/buddies', 'Binômes'),
       placeholder('/search', 'Recherche'),

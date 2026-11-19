@@ -1,0 +1,54 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · MapControls — 40px buttons on surface2, the zoom pair joined.
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.zoom {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: $color-surface-2;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+
+  .button + .button {
+    border-top: 1px solid $color-line;
+  }
+}
+
+.button {
+  @include focus-ring;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: $layout-control-height;
+  height: $layout-control-height;
+  padding: 0;
+  color: $color-text-med;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+
+  &:hover {
+    color: $color-text-high;
+  }
+
+  &:focus-visible {
+    outline-offset: calc(-1 * #{$layout-hairline});
+  }
+}
+
+.single {
+  background: $color-surface-2;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+
+  &[aria-pressed='true'] {
+    color: $color-text-high;
+  }
+}

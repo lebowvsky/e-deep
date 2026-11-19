@@ -33,6 +33,27 @@ export const ICON_PATHS = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  minus: <path d="M5 12h14" />,
+  // sites.jsx · Ix: crosshair (position to set), locate (my position), layers (basemap)
+  crosshair: (
+    <>
+      <circle cx="12" cy="12" r="7" />
+      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+    </>
+  ),
+  locate: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 1v3M12 20v3M1 12h3M20 12h3" />
+    </>
+  ),
+  layers: (
+    <>
+      <path d="m12 3 9 5-9 5-9-5 9-5z" />
+      <path d="m3 13 9 5 9-5" />
+    </>
+  ),
   chevronDown: <path d="M6 9l6 6 6-6" />,
   chevronRight: <path d="M9 6l6 6-6 6" />,
   search: (

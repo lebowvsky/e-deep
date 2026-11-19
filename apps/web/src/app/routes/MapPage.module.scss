@@ -1,0 +1,73 @@
+@use '@/styles/tokens' as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+}
+
+.srOnly {
+  @include visually-hidden;
+}
+
+// Map (flex) and list (380) or panel (420), same height: the viewport under the header.
+.stage {
+  display: grid;
+  grid-template-rows: $layout-map-height minmax(0, auto);
+  gap: $space-4;
+
+  @include from($bp-desktop) {
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr) $layout-site-list-width;
+    height: max(#{$layout-map-page-min-height}, calc(100dvh - #{$layout-map-page-chrome}));
+
+    &[data-panel] {
+      grid-template-columns: minmax(0, 1fr) $layout-site-panel-width;
+    }
+  }
+}
+
+.mapSkeleton {
+  @include card(1);
+
+  background: $gradient-map-empty, $color-surface-1;
+}
+
+.listSkeleton {
+  @include card(1);
+
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-4;
+}
+
+.rowSkeleton {
+  height: $layout-row-height;
+}
+
+.message {
+  @include card(1);
+
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  align-items: center;
+  justify-content: center;
+  min-height: $layout-empty-card-min-height;
+  padding: $space-8 $space-6;
+  text-align: center;
+}
+
+.messageTitle {
+  @include type($type-title);
+
+  color: $color-text-high;
+}
+
+.messageText {
+  @include type($type-body-loose);
+
+  max-width: $layout-empty-text-max;
+  color: $color-text-low;
+}
