@@ -17,10 +17,12 @@ import {
   isNullable,
   isNumber,
   isOneOf,
+  isPositionPair,
   isRecord,
   isString,
 } from '@/shared/lib/guards';
 import type { DiveMember } from '@/shared/model/dive';
+import { toGeoPoint } from '@/shared/model/geo';
 import type { Buddy, DashboardState, Dive, DiveSite, User } from '../types';
 
 const USER_LEVELS = ['N1', 'N2', 'N3', 'N4'] as const satisfies readonly UserLevel[];
@@ -47,11 +49,6 @@ function isBuddy(value: unknown): value is DashboardBuddy {
     isString(value.lastName) &&
     isNumber(value.sharedDives)
   );
-}
-
-/** Latitude and longitude come both set or both `null` (D-23): a lone half is a broken body. */
-function isPositionPair(latitude: unknown, longitude: unknown): boolean {
-  return (latitude === null && longitude === null) || (isNumber(latitude) && isNumber(longitude));
 }
 
 function isSite(value: unknown): value is DashboardSite {
@@ -164,10 +161,7 @@ function toMember(person: DashboardUser | DashboardBuddy, isSelf: boolean): Dive
 }
 
 function toSite({ latitude, longitude, ...site }: DashboardSite): DiveSite {
-  return {
-    ...site,
-    position: latitude === null || longitude === null ? null : { latitude, longitude },
-  };
+  return { ...site, position: toGeoPoint(latitude, longitude) };
 }
 
 /** The contract lists the buddies of the dive; the view model holds the whole team, user first. */

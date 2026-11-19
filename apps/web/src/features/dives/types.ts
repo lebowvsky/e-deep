@@ -15,6 +15,7 @@ import type {
   Weather,
 } from '@e-deep/shared';
 import type { DiveMember } from '@/shared/model/dive';
+import type { GeoPoint } from '@/shared/model/geo';
 
 /**
  * Filter and URL key of a region: its name normalised (« Côte Vermeille » → `cote-vermeille`).
@@ -169,12 +170,6 @@ export type DivesState =
     } & DivesSelection);
 
 // ── Dive detail (`/dives/:diveId`) ────────────────────────────────────────────────────────────
-
-/** WGS84 coordinates of a site, in degrees. */
-export interface GeoPoint {
-  latitude: number;
-  longitude: number;
-}
 
 /**
  * A member of the dive team in the detail, with a level: the user's at the time of the dive

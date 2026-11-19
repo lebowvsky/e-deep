@@ -6,6 +6,7 @@ import type { DiveDraft, DraftStore } from './draftStore';
 import { DRAFT_DEBOUNCE_MS, useDiveForm, type UseDiveFormOptions } from './useDiveForm';
 
 const KEY = 'e-deep:dive-draft:new';
+const DRAFT_IDS = { eventId: 'e-draft', newSiteId: 's-draft' };
 
 /** An in-memory `DraftStore` whose calls can be inspected. */
 function memoryStore(initial: Record<string, DiveDraft> = {}) {
@@ -143,7 +144,7 @@ describe('draft', () => {
 
   it('restores the draft of the mode, and discards it on demand', async () => {
     const { store } = memoryStore({
-      [KEY]: { values: validValues({ notes: 'brouillon' }), savedAt: 1 },
+      [KEY]: { values: validValues({ notes: 'brouillon' }), ids: DRAFT_IDS, savedAt: 1 },
     });
     const { hook } = setup({ draftStore: store });
     expect(hook.result.current.draft.isChecking).toBe(true);
@@ -154,6 +155,55 @@ describe('draft', () => {
     act(() => hook.result.current.discardDraft());
     expect(hook.result.current.values.notes).toBe('');
     expect(store.clear).toHaveBeenCalledWith(KEY);
+  });
+});
+
+describe('ids of a new dive in the draft', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('stores the ids with the values', async () => {
+    const { hook, drafts } = setup();
+    await flush();
+    act(() => hook.result.current.actions.change('notes', 'Mérou'));
+    await act(() => vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS));
+    expect(drafts.get(KEY)?.ids).toEqual(hook.result.current.ids);
+  });
+
+  // A save that timed out on the device may be stored by the API: sent again with other ids, it
+  // would be a second dive and a second site.
+  it('sends the ids of the restored draft, not new ones', async () => {
+    const { store } = memoryStore({
+      [KEY]: {
+        values: validValues({ site: { id: null, name: 'Le Sec' } }),
+        ids: DRAFT_IDS,
+        savedAt: 1,
+      },
+    });
+    const { hook, saveDive } = setup({ draftStore: store });
+    await flush();
+    expect(hook.result.current.ids).toEqual(DRAFT_IDS);
+    await act(async () => {
+      await hook.result.current.submit();
+    });
+    const input = saveDive.mock.calls[0]?.[0];
+    expect(input?.event.id).toBe(DRAFT_IDS.eventId);
+    expect(input?.contacts.site.id).toBe(DRAFT_IDS.newSiteId);
+  });
+
+  it('draws new ids once the restored draft is discarded: another dive from now on', async () => {
+    const { store } = memoryStore({
+      [KEY]: { values: validValues({ notes: 'brouillon' }), ids: DRAFT_IDS, savedAt: 1 },
+    });
+    const { hook } = setup({ draftStore: store });
+    await flush();
+    act(() => hook.result.current.discardDraft());
+    expect(hook.result.current.ids.eventId).not.toBe(DRAFT_IDS.eventId);
+    expect(hook.result.current.ids.newSiteId).not.toBe(DRAFT_IDS.newSiteId);
   });
 });
 

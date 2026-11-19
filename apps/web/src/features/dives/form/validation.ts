@@ -1,7 +1,8 @@
 // Dive form — validation rules. Pure functions: blocking errors and non-blocking warnings apart.
 //
-// Bounds: the spec where it sets one, the data model (H-10, H-17, RG-23 to RG-27) elsewhere. Every
-// message says what to do, in the spec's « tu ».
+// Bounds: the spec where it sets one, the data model (H-10, H-17, RG-23 to RG-27) elsewhere, and
+// never more lenient than the API (its `CHECK`s and column types): what the form lets through, the
+// API stores. Every message says what to do, in the spec's « tu ».
 import { formatCharacterCount, formatMeasure } from '@/shared/lib/format';
 import { parseNumberInput } from '@/shared/lib/numberInput';
 import { isSameText } from '@/shared/lib/textMatch';
@@ -51,7 +52,8 @@ export const BOUNDS = {
   tankVolumeL: { min: 1, max: 30 },
   startPressureBar: { min: 1, max: 300 },
   endPressureBar: { min: 0, max: 300 },
-  suitThicknessMm: { min: 0, max: 15 },
+  /** `> 0` in the database: the thinnest suit (lycra) is 0.5 mm. */
+  suitThicknessMm: { min: 0.5, max: 15 },
   weightKg: { min: 0, max: 30 },
   airTemperatureC: { min: -40, max: 60 },
   waterTemperatureC: { min: -2, max: 35 },
@@ -60,6 +62,8 @@ export const BOUNDS = {
   bottomAboveSurfaceC: 5,
   siteNameLength: 100,
   memberNameLength: 100,
+  /** The whole dive team, the diver included: 49 others at most. */
+  teamSize: 50,
   diveCenterLength: 120,
   notesLength: 5000,
   speciesCount: 50,
@@ -80,14 +84,27 @@ type Range = { min: number; max: number };
 
 const within = (value: number, { min, max }: Range) => value >= min && value <= max;
 
-/** Optional number: `null` when empty or within `range` (and whole when asked), else `message`. */
+/**
+ * Decimals a decimal column keeps (`numeric(x,1)`): the API refuses more (`precision`) rather than
+ * round them. Same test as the API's: `12,50` is `12.5`, one decimal.
+ */
+const DECIMAL_SCALE = 1;
+
+export const ONE_DECIMAL_MESSAGE = 'Garde une seule décimale (par exemple 12,5).';
+
+const hasExtraDecimals = (value: number) => Number(value.toFixed(DECIMAL_SCALE)) !== value;
+
+/**
+ * Optional number: `null` when empty, or within `range` and whole (`whole`, integer columns) or
+ * with one decimal at most (decimal columns); else `message`, or the decimal one.
+ */
 function optionalNumber(raw: string, range: Range, message: string, whole = false) {
   const value = parseNumberInput(raw);
   if (raw.trim() === '') return null;
   if (value === null || !within(value, range) || (whole && !Number.isInteger(value))) {
     return error(message);
   }
-  return null;
+  return hasExtraDecimals(value) ? error(ONE_DECIMAL_MESSAGE) : null;
 }
 
 const degreesRange = (range: Range) =>
@@ -160,6 +177,7 @@ const RULES: Partial<Record<DiveFormField, Rule>> = {
     if (value === null || !within(value, BOUNDS.maxDepthM)) {
       return error(`Indique une profondeur entre ${min} et ${max} m.`);
     }
+    if (hasExtraDecimals(value)) return error(ONE_DECIMAL_MESSAGE);
     const limit = diverLevel === null ? undefined : LEVEL_DEPTH_LIMITS[diverLevel];
     if (limit !== undefined && value > limit.limitM) {
       const who = limit.supervised ? `${diverLevel} encadré` : `${diverLevel}`;
@@ -171,9 +189,14 @@ const RULES: Partial<Record<DiveFormField, Rule>> = {
   safetyStopDurationMin: ({ safetyStop, safetyStopDurationMin, durationMin }) => {
     if (!safetyStop) return null;
     const { min, max } = BOUNDS.safetyStopDurationMin;
-    const message = `Indique une durée de palier entre ${min} et ${max} min, ou désactive le palier.`;
+    const message = `Indique une durée de palier en minutes entières, entre ${min} et ${max} min, ou désactive le palier.`;
     if (safetyStopDurationMin.trim() === '') return error(message);
-    const invalid = optionalNumber(safetyStopDurationMin, BOUNDS.safetyStopDurationMin, message);
+    const invalid = optionalNumber(
+      safetyStopDurationMin,
+      BOUNDS.safetyStopDurationMin,
+      message,
+      true,
+    );
     if (invalid) return invalid;
     // RG-25: shorter than the dive.
     const stop = parseNumberInput(safetyStopDurationMin);
@@ -231,6 +254,12 @@ const RULES: Partial<Record<DiveFormField, Rule>> = {
       (member) => member.firstName.trim() === '' || member.lastName.trim() === '',
     );
     if (incomplete) return error('Indique le prénom et le nom de chaque plongeur de la palanquée.');
+    // The diver is implied: the others are one fewer than the team.
+    if (team.length >= BOUNDS.teamSize) {
+      return error(
+        `Retire des plongeurs : la palanquée compte ${BOUNDS.teamSize} plongeurs au plus, toi compris.`,
+      );
+    }
     const tooLong = team.some(
       (member) =>
         member.firstName.trim().length > BOUNDS.memberNameLength ||
@@ -264,7 +293,7 @@ const RULES: Partial<Record<DiveFormField, Rule>> = {
     return optionalNumber(
       startPressureBar,
       BOUNDS.startPressureBar,
-      `Indique une pression de début entre ${min} et ${max} bar.`,
+      `Indique une pression de début en bar entiers, entre ${min} et ${max} bar.`,
       true,
     );
   },
@@ -274,7 +303,7 @@ const RULES: Partial<Record<DiveFormField, Rule>> = {
     const invalid = optionalNumber(
       endPressureBar,
       BOUNDS.endPressureBar,
-      `Indique une pression de fin entre ${min} et ${max} bar.`,
+      `Indique une pression de fin en bar entiers, entre ${min} et ${max} bar.`,
       true,
     );
     if (invalid) return invalid;
@@ -293,7 +322,7 @@ const RULES: Partial<Record<DiveFormField, Rule>> = {
     return optionalNumber(
       suitThicknessMm,
       BOUNDS.suitThicknessMm,
-      `Indique une épaisseur entre ${min} et ${max} mm.`,
+      `Indique une épaisseur entre ${formatMeasure(min)} et ${formatMeasure(max)} mm.`,
     );
   },
 
@@ -343,7 +372,8 @@ const RULES: Partial<Record<DiveFormField, Rule>> = {
     return optionalNumber(
       visibilityM,
       BOUNDS.visibilityM,
-      `Indique une visibilité entre ${min} et ${max} m.`,
+      `Indique une visibilité en mètres entiers, entre ${min} et ${max} m.`,
+      true,
     );
   },
 

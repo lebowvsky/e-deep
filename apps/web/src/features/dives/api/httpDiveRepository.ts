@@ -73,9 +73,22 @@ function fieldErrorsOf(error: unknown, input: SaveDiveInput): DiveFormFieldError
   return errors !== null && Object.keys(errors).length > 0 ? errors : null;
 }
 
+const isIdentifierConflict = (error: unknown) =>
+  error instanceof ApiError &&
+  error.kind === 'http' &&
+  error.status === 409 &&
+  error.code === 'identifier-conflict';
+
 /**
  * `SaveDive` over the API. Field errors resolve `{ ok: false }`; anything else (404 of an edited
- * dive gone meanwhile, `409 identifier-conflict`, network, timeout) rejects with the `ApiError`.
+ * dive gone meanwhile, network, timeout) rejects with the `ApiError`.
+ *
+ * A creation answered `409 identifier-conflict` is replayed as a `PUT` on the same id. That id was
+ * drawn by this form (D22) and kept by its draft: the API already holds a dive under it, stored by
+ * a POST whose answer never came (timeout), and the diver changed the form before sending again —
+ * same id, other content, so every new POST would be a 409. The PUT replaces that dive (last write
+ * wins, D-25) when it is the diver's and not deleted; otherwise it answers 404, which rejects as
+ * any other failure.
  */
 export function createHttpDiveRepository({
   apiClient,
@@ -83,16 +96,16 @@ export function createHttpDiveRepository({
 }: HttpDiveRepositoryDeps): SaveDive {
   return async function saveDive(input: SaveDiveInput): Promise<SaveDiveResult> {
     const body = toDiveWriteRequest(input);
+    const path = `dives/${encodeURIComponent(input.event.id)}`;
+    const replace = () => apiClient.put(path, body, isDiveWriteResponse);
+    const create = () =>
+      apiClient.post('dives', body, isDiveWriteResponse).catch((error: unknown) => {
+        if (isIdentifierConflict(error)) return replace();
+        throw error;
+      });
     let saved: DiveWriteResponse;
     try {
-      saved =
-        input.kind === 'create'
-          ? await apiClient.post('dives', body, isDiveWriteResponse)
-          : await apiClient.put(
-              `dives/${encodeURIComponent(input.event.id)}`,
-              body,
-              isDiveWriteResponse,
-            );
+      saved = input.kind === 'create' ? await create() : await replace();
     } catch (error) {
       const fieldErrors = fieldErrorsOf(error, input);
       if (fieldErrors === null) throw error;

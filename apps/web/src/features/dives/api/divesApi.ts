@@ -17,10 +17,12 @@ import {
   isNullable,
   isNumber,
   isOneOf,
+  isPositionPair,
   isRecord,
   isString,
 } from '@/shared/lib/guards';
 import type { DiveMember } from '@/shared/model/dive';
+import { toGeoPoint } from '@/shared/model/geo';
 import { avatarColorOf } from '../lib/avatarColor';
 import { oxygenPercent, placeLabel } from '../lib/labels';
 import { toRegionKey } from '../lib/region';
@@ -38,7 +40,6 @@ import type {
   DiveDetailMember,
   DiveDetailView,
   DiveSiteRef,
-  GeoPoint,
   LoggedDive,
   SafetyStop,
 } from '../types';
@@ -94,11 +95,6 @@ export function isDiveObservation(value: unknown): value is DiveObservation {
 /** A buddy of the detail: the list's buddy plus the level of their contact card. */
 function isDiveDetailBuddy(value: unknown): value is DiveDetailBuddy {
   return isRecord(value) && isNullable(isCertificationLevelRef)(value.level) && isBuddyRef(value);
-}
-
-/** Latitude and longitude come both set or both `null` (D-23): a lone half is a broken body. */
-function isPositionPair(latitude: unknown, longitude: unknown): boolean {
-  return (latitude === null && longitude === null) || (isNumber(latitude) && isNumber(longitude));
 }
 
 const isNullableNumber = isNullable(isNumber);
@@ -238,11 +234,6 @@ export function toLoggedDive(summary: DiveSummary, self: DiveMember): LoggedDive
 export function toDiveLog(response: DiveLogResponse, owner: DiveLogOwner): LoggedDive[] {
   const self = toSelfMember(owner);
   return response.dives.map((summary) => toLoggedDive(summary, self));
-}
-
-/** The contract pairs both coordinates (D-23): no position rather than half of one. */
-function toGeoPoint(latitude: number | null, longitude: number | null): GeoPoint | null {
-  return latitude === null || longitude === null ? null : { latitude, longitude };
 }
 
 /** The contract pairs both values (D-16); a lone half is not shown rather than guessed. */

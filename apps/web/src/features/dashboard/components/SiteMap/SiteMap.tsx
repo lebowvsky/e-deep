@@ -2,10 +2,11 @@ import { useId, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { cx } from '@/shared/lib/classNames';
 import { formatDiveCount } from '@/shared/lib/format';
+import type { GeoPoint } from '@/shared/model/geo';
 import { Overline } from '@/shared/ui/Overline';
 import { TextLink } from '@/shared/ui/TextLink';
 import { projectToMap } from '../../lib/mapProjection';
-import type { DiveSite, SitePosition } from '../../types';
+import type { DiveSite } from '../../types';
 import { MapBackdrop } from '@/shared/ui/MapBackdrop';
 import styles from './SiteMap.module.scss';
 
@@ -30,7 +31,7 @@ const BIG_MARKER_MIN_DIVES = 6;
 const FALLBACK_TITLE = 'Mes sites';
 
 /** A site with a known position: the only ones the map can place. */
-type PlottedSite = DiveSite & { position: SitePosition };
+type PlottedSite = DiveSite & { position: GeoPoint };
 
 const isPlotted = (site: DiveSite): site is PlottedSite => site.position !== null;
 

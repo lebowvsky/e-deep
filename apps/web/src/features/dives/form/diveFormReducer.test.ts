@@ -10,13 +10,16 @@ import type { DiveFormValues } from './model';
 import { validateDiveForm } from './validation';
 
 const context = CONTEXT;
+const IDS = { eventId: 'e-open', newSiteId: 's-open' };
+const DRAFT_IDS = { eventId: 'e-draft', newSiteId: 's-draft' };
+const FRESH_IDS = { eventId: 'e-fresh', newSiteId: 's-fresh' };
 
 function run(state: DiveFormState, ...actions: DiveFormAction[]): DiveFormState {
   return actions.reduce(diveFormReducer, state);
 }
 
 const start = (overrides: Partial<DiveFormValues> = {}) =>
-  run(initDiveFormState(validValues(overrides)), { type: 'draftChecked', draft: null });
+  run(initDiveFormState(validValues(overrides), IDS), { type: 'draftChecked', draft: null });
 
 describe('time link', () => {
   it('recomputes the duration when the exit changes', () => {
@@ -160,32 +163,37 @@ describe('modes and draft', () => {
     const state = run(
       start({ weightKg: '45' }),
       { type: 'blur', field: 'weightKg', context },
-      { type: 'reset', values: validValues({ notes: 'repartir' }) },
+      { type: 'reset', values: validValues({ notes: 'repartir' }), ids: FRESH_IDS },
     );
     expect(state.errors).toEqual({});
     expect(state.values.notes).toBe('repartir');
     expect(state.initial).toBe(state.values);
+    expect(state.ids).toBe(FRESH_IDS);
   });
 
-  it('restores a draft over the starting values', () => {
-    const draft = { values: validValues({ notes: 'brouillon' }), savedAt: 42 };
-    const state = run(initDiveFormState(validValues()), { type: 'draftChecked', draft });
+  it('restores a draft over the starting values, with the ids it was sent with', () => {
+    const draft = { values: validValues({ notes: 'brouillon' }), ids: DRAFT_IDS, savedAt: 42 };
+    const state = run(initDiveFormState(validValues(), IDS), { type: 'draftChecked', draft });
     expect(state.values.notes).toBe('brouillon');
     expect(state.initial.notes).toBe('');
+    expect(state.ids).toBe(DRAFT_IDS);
     expect(state.draft).toEqual({ status: 'ready', savedAt: 42, restored: true });
-    const discarded = run(state, { type: 'draftDiscarded' });
+    // Another dive from now on: the ids of the discarded one would replace it (409 then PUT).
+    const discarded = run(state, { type: 'draftDiscarded', ids: FRESH_IDS });
     expect(discarded.values.notes).toBe('');
+    expect(discarded.ids).toBe(FRESH_IDS);
     expect(discarded.draft).toEqual({ status: 'ready', savedAt: null, restored: false });
   });
 
   it('keeps what was typed while the draft was being looked for', () => {
-    const draft = { values: validValues({ notes: 'brouillon' }), savedAt: 42 };
+    const draft = { values: validValues({ notes: 'brouillon' }), ids: DRAFT_IDS, savedAt: 42 };
     const state = run(
-      initDiveFormState(validValues()),
+      initDiveFormState(validValues(), IDS),
       { type: 'change', field: 'notes', value: 'saisi', context },
       { type: 'draftChecked', draft },
     );
     expect(state.values.notes).toBe('saisi');
+    expect(state.ids).toBe(IDS);
     expect(state.draft).toEqual({ status: 'ready', savedAt: null, restored: false });
   });
 
@@ -197,11 +205,11 @@ describe('modes and draft', () => {
 
   it('records when the draft was saved', () => {
     expect(run(start(), { type: 'draftSaved', savedAt: 7 }).draft).toMatchObject({ savedAt: 7 });
-    expect(run(initDiveFormState(validValues()), { type: 'draftSaved', savedAt: 7 }).draft).toEqual(
-      {
-        status: 'checking',
-      },
-    );
+    expect(
+      run(initDiveFormState(validValues(), IDS), { type: 'draftSaved', savedAt: 7 }).draft,
+    ).toEqual({
+      status: 'checking',
+    });
   });
 });
 
@@ -210,7 +218,7 @@ describe('submit', () => {
     const values = validValues({ weightKg: '45', site: { id: null, name: '' }, maxDepthM: '45' });
     const state = run(
       start(),
-      { type: 'reset', values },
+      { type: 'reset', values, ids: FRESH_IDS },
       {
         type: 'submitValidated',
         issues: validateDiveForm(values, context),
@@ -242,7 +250,7 @@ describe('submit', () => {
     const values = validValues({ weightKg: '45', tankVolumeL: '99' });
     const invalid = run(
       start(),
-      { type: 'reset', values },
+      { type: 'reset', values, ids: FRESH_IDS },
       {
         type: 'submitValidated',
         issues: validateDiveForm(values, context),

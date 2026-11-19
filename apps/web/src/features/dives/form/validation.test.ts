@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { formatCharacterCount } from '@/shared/lib/format';
 import { CONTEXT, validValues } from '../mocks/diveFormFixture';
 import type { DiveFormField, DiveFormValues } from './model';
-import { BOUNDS, validateDiveForm, validateField, type ValidationContext } from './validation';
+import {
+  BOUNDS,
+  ONE_DECIMAL_MESSAGE,
+  validateDiveForm,
+  validateField,
+  type ValidationContext,
+} from './validation';
 
 function issue(
   field: DiveFormField,
@@ -166,7 +172,7 @@ describe('Équipement & gaz', () => {
     checkBounds('tankVolumeL', { valid: ['', '1', '30'], invalid: ['0', '30,5'] });
     checkBounds('startPressureBar', { valid: ['', '1', '300'], invalid: ['0', '301', '200,5'] });
     checkBounds('weightKg', { valid: ['', '0', '30'], invalid: ['30,5'] });
-    checkBounds('suitThicknessMm', { valid: ['', '0', '15'], invalid: ['16'] });
+    checkBounds('suitThicknessMm', { valid: ['', '0,5', '15'], invalid: ['0', '16'] });
   });
 
   it('wants the end pressure below the start one', () => {
@@ -246,5 +252,110 @@ describe('validateDiveForm', () => {
     expect(errors.map(({ field }) => field)).toEqual(['site', 'exitTime', 'weightKg']);
     expect(errors.every(({ level }) => level === 'error')).toBe(true);
     expect(warnings.map(({ field }) => field)).toEqual(['maxDepthM']);
+  });
+});
+
+// The API refuses what its `CHECK`s refuse (`dive_participations`, `dive_events`, `buddies`,
+// `dive_sites`, `dive_observations`), with its own message: the form must refuse it first. Each row
+// is a limit: the last value accepted and the first refused, at most as lenient as the API.
+describe('bounds, never more lenient than the API', () => {
+  const stop = { safetyStop: true, safetyStopDurationMin: '3', safetyStopDepthM: '5' };
+  const long = { durationMin: '300', exitTime: '15:05', maxDepthM: '100' };
+  const nitrox = { gas: 'NITROX' as const };
+
+  it.each<[DiveFormField, string[], string[], Partial<DiveFormValues>?]>([
+    // numeric(4,1), > 0 and <= 350
+    ['maxDepthM', ['1', '17,5', '100'], ['0', '100,1', '17,55'], {}],
+    // smallint, > 0 and <= 1440
+    ['durationMin', ['1', '300'], ['0', '301', '44,5'], { exitTime: '' }],
+    // smallint, > 0 and <= 60, < duration
+    ['safetyStopDurationMin', ['1', '15'], ['0', '16', '3,5'], { ...stop, ...long }],
+    // numeric(3,1), > 0 and <= 20, <= max depth
+    ['safetyStopDepthM', ['3', '4,5', '6'], ['2,9', '6,1', '4,55'], stop],
+    // numeric(4,1), > 0 and <= 100 (sent as OTHER)
+    ['o2Percent', ['22', '32,5', '40'], ['21,9', '40,1', '32,55'], nitrox],
+    // numeric(3,1), > 0 and <= 30
+    ['tankVolumeL', ['1', '12,5', '30'], ['0', '30,1', '12,25'], {}],
+    // smallint, > 0 and <= 350
+    ['startPressureBar', ['1', '300'], ['0', '301', '200,5'], {}],
+    // smallint, 0 to 350, <= start
+    ['endPressureBar', ['0', '199'], ['-1', '200', '50,5'], { startPressureBar: '200' }],
+    // numeric(3,1), > 0 and <= 15
+    ['suitThicknessMm', ['0,5', '7', '15'], ['0', '0,4', '15,1', '6,55'], {}],
+    // numeric(3,1), 0 to 40
+    ['weightKg', ['0', '4,5', '30'], ['-1', '30,1', '4,25'], {}],
+    // numeric(3,1), -40 to 60
+    ['airTemperatureC', ['-40', '24,5', '60'], ['-40,1', '60,1', '24,55'], {}],
+    // numeric(3,1), -5 to 45
+    ['surfaceTemperatureC', ['-2', '18,5', '35'], ['-2,1', '35,1', '18,55'], {}],
+    [
+      'bottomTemperatureC',
+      ['-2', '14,5', '35'],
+      ['-2,1', '35,1', '14,55'],
+      {
+        surfaceTemperatureC: '35',
+      },
+    ],
+    // smallint, 0 to 100
+    ['visibilityM', ['0', '15', '100'], ['-1', '101', '15,5'], {}],
+  ])('%s', (field, valid, invalid, extra = {}) => {
+    checkBounds(field, { valid, invalid }, extra);
+  });
+
+  it('says to keep one decimal when only the precision is wrong', () => {
+    for (const [field, value] of [
+      ['maxDepthM', '17,55'],
+      ['safetyStopDepthM', '4,55'],
+      ['tankVolumeL', '12,25'],
+      ['suitThicknessMm', '6,55'],
+      ['weightKg', '4,25'],
+      ['airTemperatureC', '24,55'],
+      ['surfaceTemperatureC', '18,55'],
+      ['bottomTemperatureC', '14,55'],
+    ] as const) {
+      expect(errorOf(field, { ...stop, [field]: value }), field).toBe(ONE_DECIMAL_MESSAGE);
+    }
+    expect(errorOf('o2Percent', { ...nitrox, o2Percent: '32,55' })).toBe(ONE_DECIMAL_MESSAGE);
+    // A trailing zero is no extra decimal: 12,50 is sent as 12.5.
+    expect(errorOf('tankVolumeL', { tankVolumeL: '12,50' })).toBeNull();
+  });
+
+  it('wants whole minutes, metres and bar where the column is an integer', () => {
+    expect(errorOf('visibilityM', { visibilityM: '15,5' })).toBe(
+      'Indique une visibilité en mètres entiers, entre 0 et 100 m.',
+    );
+    expect(errorOf('safetyStopDurationMin', { ...stop, safetyStopDurationMin: '3,5' })).toBe(
+      'Indique une durée de palier en minutes entières, entre 1 et 15 min, ou désactive le palier.',
+    );
+  });
+
+  it('wants a suit thicker than nothing', () => {
+    expect(errorOf('suitThicknessMm', { suitThicknessMm: '0' })).toBe(
+      'Indique une épaisseur entre 0,5 et 15 mm.',
+    );
+  });
+
+  it('keeps the texts within their columns', () => {
+    expect(BOUNDS.siteNameLength).toBeLessThanOrEqual(120);
+    expect(BOUNDS.memberNameLength).toBeLessThanOrEqual(100);
+    expect(BOUNDS.diveCenterLength).toBeLessThanOrEqual(120);
+    expect(BOUNDS.notesLength).toBeLessThanOrEqual(5000);
+    expect(BOUNDS.speciesLength).toBeLessThanOrEqual(80);
+    expect(BOUNDS.speciesCount).toBeLessThanOrEqual(50);
+  });
+
+  it('keeps the dive team to 50 divers, the diver included', () => {
+    const member = (index: number) => ({
+      key: `k${index}`,
+      id: null,
+      firstName: 'Lucas',
+      lastName: `Bernard ${index}`,
+      level: '',
+    });
+    const team = (count: number) => Array.from({ length: count }, (_, index) => member(index));
+    expect(errorOf('team', { team: team(49) })).toBeNull();
+    expect(errorOf('team', { team: team(50) })).toBe(
+      'Retire des plongeurs : la palanquée compte 50 plongeurs au plus, toi compris.',
+    );
   });
 });

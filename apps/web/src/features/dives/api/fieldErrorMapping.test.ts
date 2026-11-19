@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DIVE_FORM_FIELDS } from '../form/model';
+import { ONE_DECIMAL_MESSAGE } from '../form/validation';
 import { toDiveFormFieldErrors } from './fieldErrorMapping';
 
 const fieldOf = (path: string, codes: string[] = ['min']) =>
@@ -87,5 +88,53 @@ describe('toDiveFormFieldErrors', () => {
       toDiveFormFieldErrors({ 'event.id': ['uuid'], baseUpdatedAt: ['date-time'] }),
     ).toBeNull();
     expect(toDiveFormFieldErrors({})).toBeNull();
+  });
+
+  it('names the rule of the codes the form checks too', () => {
+    for (const path of [
+      'participation.maxDepthM',
+      'participation.tankVolumeL',
+      'participation.suitThicknessMm',
+      'participation.weightKg',
+      'participation.o2Percent',
+      'participation.safetyStopDepthM',
+      'participation.waterTemperatureC',
+      'participation.surfaceWaterTemperatureC',
+      'event.airTemperatureC',
+    ]) {
+      expect(Object.values(toDiveFormFieldErrors({ [path]: ['precision'] }) ?? {}), path).toEqual([
+        ONE_DECIMAL_MESSAGE,
+      ]);
+    }
+    expect(toDiveFormFieldErrors({ 'participation.visibilityM': ['integer'] })).toEqual({
+      visibilityM: 'Indique une visibilité en mètres entiers, entre 0 et 100 m.',
+    });
+    expect(toDiveFormFieldErrors({ 'participation.safetyStopDurationMin': ['integer'] })).toEqual({
+      safetyStopDurationMin:
+        'Indique une durée de palier en minutes entières, entre 1 et 15 min, ou désactive le palier.',
+    });
+    expect(toDiveFormFieldErrors({ 'participation.startPressureBar': ['integer'] })).toEqual({
+      startPressureBar: 'Indique une pression de début en bar entiers, entre 1 et 300 bar.',
+    });
+    expect(toDiveFormFieldErrors({ 'participation.suitThicknessMm': ['min'] })).toEqual({
+      suitThicknessMm: 'Indique une épaisseur entre 0,5 et 15 mm.',
+    });
+  });
+
+  it('says what to check when the date and the offset disagree', () => {
+    const message =
+      'L’heure d’immersion ne correspond pas au fuseau de l’appareil. Vérifie la date et l’heure, puis réessaie.';
+    expect(toDiveFormFieldErrors({ 'event.startedAt': ['matches-offset'] })).toEqual({
+      date: message,
+    });
+    expect(toDiveFormFieldErrors({ 'event.utcOffsetMinutes': ['matches-offset'] })).toEqual({
+      date: message,
+    });
+  });
+
+  it('caps the dive team like the form', () => {
+    expect(toDiveFormFieldErrors({ buddies: ['too-many'] })).toEqual({
+      team: 'Retire des plongeurs : la palanquée compte 50 plongeurs au plus, toi compris.',
+    });
   });
 });

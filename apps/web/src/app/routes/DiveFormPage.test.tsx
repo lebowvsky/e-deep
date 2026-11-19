@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { dashboardKeys } from '@/features/dashboard/api/queryKeys';
 import { divesKeys } from '@/features/dives/api/queryKeys';
 import { mockFilledDiveDetail } from '@/features/dives/mocks/diveDetailResponse';
 import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
@@ -257,6 +258,39 @@ describe('DiveFormPage — edit', () => {
     // The log is read again once saved: the API numbers the dives.
     const writeIndex = api.requests.findIndex(({ method }) => method === 'PUT');
     expect(api.requests.slice(writeIndex).some(({ path }) => path === 'dives')).toBe(true);
+  });
+
+  it('marks the dashboard stale once saved: its stats and last dive include the dive', async () => {
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
+    queryClient.setQueryData(dashboardKeys.all, { cached: true });
+    const router = createMemoryRouter(
+      [
+        { path: '/dives/:diveId/edit', element: <DiveFormPage /> },
+        { path: '*', element: null },
+      ],
+      { initialEntries: ['/dives/d127/edit'] },
+    );
+    render(
+      <ApiClientContext value={createFakeDiveApi().client}>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </QueryClientProvider>
+      </ApiClientContext>,
+    );
+
+    await title('Modifier la plongée #127');
+    expect(queryClient.getQueryState(dashboardKeys.all)?.isInvalidated).toBe(false);
+    await user.click(
+      screen.getAllByRole('button', { name: 'Enregistrer les modifications' })[0] ?? document.body,
+    );
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dives/d127'));
+    expect(queryClient.getQueryState(dashboardKeys.all)?.isInvalidated).toBe(true);
   });
 
   it('announces the number the dive got once moved to another date', async () => {

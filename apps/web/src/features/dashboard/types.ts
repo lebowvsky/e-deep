@@ -2,6 +2,7 @@
 // `api/dashboardApi.ts` maps it to these types, which the components consume.
 import type { Federation, GasMix, UserLevel } from '@e-deep/shared';
 import type { DiveMember } from '@/shared/model/dive';
+import type { GeoPoint } from '@/shared/model/geo';
 
 export type { UserLevel };
 
@@ -14,19 +15,13 @@ export interface User {
   avatarUrl?: string;
 }
 
-/** WGS84 position of a site, in degrees. */
-export interface SitePosition {
-  latitude: number;
-  longitude: number;
-}
-
 export interface DiveSite {
   id: string;
   name: string;
   /** `null` when not entered (site created by its name). */
   region: string | null;
   /** `null` when not entered: the site has no marker on the map. */
-  position: SitePosition | null;
+  position: GeoPoint | null;
   diveCount: number;
   maxDepthM: number;
 }

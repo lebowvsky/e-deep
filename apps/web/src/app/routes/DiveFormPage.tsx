@@ -1,5 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { dashboardKeys } from '@/features/dashboard/api/queryKeys';
 import { mockUser } from '@/features/dashboard/mocks/dashboard';
 import { DivesError } from '@/features/dives/components/DivesError';
 import { DiveNotFound } from '@/features/dives/components/detail/DiveNotFound';
@@ -242,6 +244,7 @@ function SuggestedDiveForm({ suggestionId, ...props }: SharedFormProps & { sugge
 function PageDiveForm({ today, ...props }: SharedFormProps & Pick<DiveFormProps, 'prefill'>) {
   const navigate = useNavigate();
   const { notify } = useToast();
+  const queryClient = useQueryClient();
   const saveDive = useSaveDive();
   // Read once per form: the memoised actions of the form depend on it.
   const [context] = useState(() => ({ today, diverLevel: DIVER.level }));
@@ -254,6 +257,9 @@ function PageDiveForm({ today, ...props }: SharedFormProps & Pick<DiveFormProps,
       saveDive={saveDive}
       draftStore={draftStore}
       onSaved={(id, number) => {
+        // The dashboard sums up the log (stats, last dive, sites): another feature, so marked
+        // stale here rather than by the dive write. Not awaited: the dashboard is not the next page.
+        void queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
         // The number the dive got (D26): another one than shown if the log moved meanwhile.
         notify(`Plongée #${number} enregistrée`);
         // The saved dive replaces the form in the history: « Retour » does not reopen it.

@@ -21,11 +21,17 @@ import {
   TIMES_OF_DAY,
   WEATHERS,
 } from '../lib/unions';
+import type { DiveFormIds } from './convert';
 import type { DiveFormValues } from './model';
 import type { DiveFormMode } from './prefill';
 
 export interface DiveDraft {
   values: DiveFormValues;
+  /**
+   * Ids the dive is sent with: a draft restored after a save that timed out (yet stored by the API)
+   * must send the same ones, or the retry would create a second dive and a second site.
+   */
+  ids: DiveFormIds;
   /** Epoch milliseconds of the save. */
   savedAt: number;
 }
@@ -38,10 +44,10 @@ export interface DraftStore {
 
 const KEY_PREFIX = 'e-deep:dive-draft:';
 /**
- * Bumped when `DiveFormValues` changes shape: older drafts are then ignored. 2: the logbook number
- * left the values (computed, D26).
+ * Bumped when the draft changes shape: older drafts are then ignored. 2: the logbook number left
+ * the values (computed, D26). 3: the ids of the dive and of a new site are kept with the values.
  */
-const DRAFT_VERSION = 2;
+const DRAFT_VERSION = 3;
 
 /**
  * A draft abandoned for longer is deleted (health data, ARCHITECTURE §9): 30 days covers a trip
@@ -147,6 +153,10 @@ type UncheckedField = Exclude<
 const everyFieldChecked: UncheckedField extends never ? true : UncheckedField = true;
 void everyFieldChecked;
 
+function isDiveFormIds(value: unknown): value is DiveFormIds {
+  return isRecord(value) && isString(value.eventId) && isString(value.newSiteId);
+}
+
 export function isDiveFormValues(value: unknown): value is DiveFormValues {
   return (
     isRecord(value) &&
@@ -179,8 +189,10 @@ function parseJson(text: string): unknown {
 function parseDraft(text: string): DiveDraft | null {
   const data = parseJson(text);
   if (!isRecord(data) || data.version !== DRAFT_VERSION) return null;
-  const { savedAt, values } = data;
-  return isNumber(savedAt) && isDiveFormValues(values) ? { savedAt, values } : null;
+  const { savedAt, values, ids } = data;
+  return isNumber(savedAt) && isDiveFormValues(values) && isDiveFormIds(ids)
+    ? { savedAt, values, ids }
+    : null;
 }
 
 /**

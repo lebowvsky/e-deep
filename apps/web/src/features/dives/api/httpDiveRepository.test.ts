@@ -101,6 +101,41 @@ describe('createHttpDiveRepository', () => {
     ]);
   });
 
+  // A creation that timed out yet was stored, then sent again once changed: same id, other content.
+  it('replaces the dive with a PUT when its POST is a 409 identifier-conflict', async () => {
+    const post = vi.fn().mockRejectedValue(httpError(409, { code: 'identifier-conflict' }));
+    const put = vi.fn().mockResolvedValue(SAVED);
+    const { saveDive, invalidate } = setup({ post, put });
+    const input = created();
+
+    await expect(saveDive(input)).resolves.toEqual({ ok: true, id: 'new-event', number: 128 });
+    expect(put).toHaveBeenCalledWith(
+      'dives/new-event',
+      toDiveWriteRequest(input),
+      isDiveWriteResponse,
+    );
+    expect(invalidate).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects with the error of the PUT when the id is not a dive of the diver (404)', async () => {
+    const notFound = httpError(404, { code: 'not-found' });
+    const post = vi.fn().mockRejectedValue(httpError(409, { code: 'identifier-conflict' }));
+    const put = vi.fn().mockRejectedValue(notFound);
+    const { saveDive, invalidate } = setup({ post, put });
+
+    await expect(saveDive(created())).rejects.toBe(notFound);
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
+  it('does not replay another 409 of a creation', async () => {
+    const conflict = httpError(409, { code: 'stale-write' });
+    const put = vi.fn();
+    const { saveDive } = setup({ post: vi.fn().mockRejectedValue(conflict), put });
+
+    await expect(saveDive(created())).rejects.toBe(conflict);
+    expect(put).not.toHaveBeenCalled();
+  });
+
   it('replaces an edited dive with a PUT on its id, with the updatedAt it was read with', async () => {
     const put = vi.fn().mockResolvedValue({ ...SAVED, id: 'd127', number: 127 });
     const { saveDive } = setup({ put });

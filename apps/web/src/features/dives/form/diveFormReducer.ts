@@ -1,6 +1,7 @@
 // Dive form — state machine of the form. Pure: the hook supplies the validation context and the
 // keys of new rows in the actions, so that the reducer stays testable alone.
 import { parseNumberInput } from '@/shared/lib/numberInput';
+import type { DiveFormIds } from './convert';
 import {
   DIVE_FORM_FIELDS,
   isDirtyValues,
@@ -39,6 +40,8 @@ export interface DiveFormState {
   values: DiveFormValues;
   /** What the form opened with: `isDirty` compares against it. */
   initial: DiveFormValues;
+  /** Ids a new dive is sent with: kept by the draft, new for another dive (reset, discard). */
+  ids: DiveFormIds;
   touched: Partial<Record<DiveFormField, true>>;
   /** Messages on screen: shown after a blur or a submit, then updated live. */
   errors: FieldMessages;
@@ -86,24 +89,31 @@ export type DiveFormAction =
     }
   /** « Reprendre »: some values replaced by the user, the form stays dirty. */
   | { type: 'merge'; values: Partial<DiveFormValues>; context: ValidationContext }
-  /** Opening a mode, or « Repartir de zéro »: new starting point, messages cleared. */
-  | { type: 'reset'; values: DiveFormValues }
-  | { type: 'draftChecked'; draft: { values: DiveFormValues; savedAt: number } | null }
+  /** « Repartir de zéro »: new starting point and another dive (`ids`), messages cleared. */
+  | { type: 'reset'; values: DiveFormValues; ids: DiveFormIds }
+  | {
+      type: 'draftChecked';
+      draft: { values: DiveFormValues; ids: DiveFormIds; savedAt: number } | null;
+    }
   | { type: 'draftSaved'; savedAt: number }
   /** The stored draft was deleted (values back to their start): no mention any more. */
   | { type: 'draftCleared' }
-  /** « Effacer » of the restored draft: back to the starting values. */
-  | { type: 'draftDiscarded' }
+  /**
+   * « Effacer » of the restored draft: back to the starting values, with new `ids` — those of the
+   * draft may name a dive the API stored, that a save would then replace.
+   */
+  | { type: 'draftDiscarded'; ids: DiveFormIds }
   /** Submit: the full validation, run by the hook (blocked when it has errors). */
   | { type: 'submitValidated'; issues: DiveFormIssues }
   | { type: 'submitRejected'; fieldErrors: FieldMessages }
   | { type: 'submitFailed' }
   | { type: 'submitSucceeded'; id: string };
 
-export function initDiveFormState(values: DiveFormValues): DiveFormState {
+export function initDiveFormState(values: DiveFormValues, ids: DiveFormIds): DiveFormState {
   return {
     values,
     initial: values,
+    ids,
     touched: {},
     errors: {},
     warnings: {},
@@ -342,7 +352,7 @@ export function diveFormReducer(state: DiveFormState, action: DiveFormAction): D
       return updateValues(state, { ...state.values, ...action.values }, action.context);
     case 'reset':
       return {
-        ...initDiveFormState(action.values),
+        ...initDiveFormState(action.values, action.ids),
         draft: state.draft.status === 'ready' ? { ...state.draft, restored: false } : state.draft,
       };
     case 'draftChecked':
@@ -353,6 +363,7 @@ export function diveFormReducer(state: DiveFormState, action: DiveFormAction): D
         : {
             ...state,
             values: action.draft.values,
+            ids: action.draft.ids,
             draft: { status: 'ready', savedAt: action.draft.savedAt, restored: true },
           };
     case 'draftSaved':
@@ -365,7 +376,7 @@ export function diveFormReducer(state: DiveFormState, action: DiveFormAction): D
         : state;
     case 'draftDiscarded':
       return {
-        ...initDiveFormState(state.initial),
+        ...initDiveFormState(state.initial, action.ids),
         draft: { status: 'ready', savedAt: null, restored: false },
       };
     case 'submitValidated': {

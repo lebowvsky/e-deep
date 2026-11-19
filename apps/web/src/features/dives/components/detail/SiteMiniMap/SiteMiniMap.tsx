@@ -1,6 +1,6 @@
 import { MapBackdrop } from '@/shared/ui/MapBackdrop';
 import { formatCoordinates, spokenCoordinates } from '../../../lib/geo';
-import type { GeoPoint } from '../../../types';
+import type { GeoPoint } from '@/shared/model/geo';
 import styles from './SiteMiniMap.module.scss';
 
 export interface SiteMiniMapProps {
