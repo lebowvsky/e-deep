@@ -1,5 +1,9 @@
 # Sites — plan (phase 0) et état de la phase 1
 
+> **Mise à jour du 2026-11-19 — API des sites** (D31, D32 d'`ARCHITECTURE.md` ;
+> `docs/data-model/evolution-sites.md`) : les sites sont lus et écrits par `/api/sites`. Les
+> sections 2 et 6 ci-dessous décrivent l'état **front seul** d'origine ; l'état courant est au § 11.
+
 Implémentation de `apps/web/design/prompts/sites-prompt.md`. La spec qui fait foi est
 `apps/web/design/pages/sites.md`. Ce document consigne les choix de la phase 0 et ce que la phase 1
 a livré.
@@ -247,3 +251,37 @@ vers la fiche, filtre `?site=` de « Mes plongées ».
 Voir `ARCHITECTURE.md` § 11, « Issus des sites » : écritures en mémoire, API sites à créer, fusion
 non répercutée côté API, `?state=` non géré sur `/map` et `/sites/:id`, placeholders carte du
 dashboard et du détail à remplacer par `MapView`, géocodage en V2, tuiles sans SLA.
+
+## 11. API des sites (2026-11-19)
+
+Mission `docs/data-model/api-sites-prompt.md`. Modèle : `docs/data-model/evolution-sites.md`.
+
+### Sources des données
+
+| Donnée                                      | Source                                                                           |
+| ------------------------------------------- | -------------------------------------------------------------------------------- |
+| sites (position, type, profondeurs, accès…) | `GET /api/sites` (clé `sitesKeys`)                                               |
+| plongées et statistiques                    | `GET /dives` (même cache que « Mes plongées ») ; `entryType`, `diveCenter` (D32) |
+| région                                      | `placeLabel(locality, region)` ; valeurs brutes gardées dans `Site.storedPlace`  |
+| zone                                        | déduite (`deriveZone`), jamais stockée                                           |
+| écritures                                   | `createHttpSitesRepository` (`POST`, `PUT`, `merge`, `DELETE /api/sites`)        |
+
+- **Port `SitesRepository`** : `list`, `create(NewSite)`, `update(site, changes)`, `merge(sourceId,
+targetId)`, `remove(id)` → `'deleted' | 'in-use'`. Le dépôt mémoire et le faux serveur
+  (`shared/sites/mocks/`) ne servent qu'aux tests.
+- **Fusion** : faite par le serveur (plongées réaffectées, cible complétée) ; le front relit sites,
+  carnet et dashboard. L'overlay local (`SitesOverlay`, alias de fusion, positions par
+  `GET /dashboard`) est supprimé.
+- **Suppression** : `409 site-in-use` → `{ status: 'refused' }`, le dialogue propose la fusion.
+- **Création express** : `POST /api/sites` (`createdVia: 'quick'`) avant de sélectionner le site.
+- **Libellé de région** (D-32) : inchangé → valeurs brutes renvoyées ; modifié → découpé au premier
+  « · » ; `area` renvoyée telle quelle.
+- **Un site du carnet absent de `GET /api/sites`** (instant entre deux relectures après une
+  fusion) : ses plongées ne comptent pour aucun site, elles restent dans « Mes plongées ».
+- **`?state=loading|empty|error`** sur `/map` et `/sites/:id` (sans mocks ; `ready` lit l'API).
+- **Cartes** : le dashboard (`SiteMap`) et le détail d'une plongée (`SiteMiniMap` de
+  `features/dives`) utilisent `MapView` en lecture seule (`readOnly`, `viewport`, `topCover`) ;
+  `projectToMap` et `MapBackdrop` sont supprimés. La mini-carte de la fiche site passe aussi en
+  lecture seule (« Ouvrir sur la carte » mène à la carte interactive).
+
+Dette : `ARCHITECTURE.md` § 11, « Issus de l'API des sites ».
