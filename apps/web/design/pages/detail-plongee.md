@@ -38,7 +38,7 @@ Relire une plongée de son carnet, la feuilleter (précédente / suivante) et ac
      - Deux cartes côte à côte : **Équipement & gaz** (gaz + % O₂, bloc, pressions début → fin + bar consommés, combinaison, lest) et **Conditions** (type, météo + air, mer, courant, eau surface → fond, structure).
      - **Notes & observations** (texte libre + étiquettes d'espèces).
    - **Colonne latérale :**
-     - **Site** : mini-carte (même placeholder stylé que le dashboard en V1), coordonnées, « Tes plongées ici », « Ta prof. max ici », lien « Toutes mes plongées ici → » (`/dives?site=<id>`).
+     - **Site** : mini-carte (même composant que la fiche site, cf. `sites.md`), coordonnées, « Tes plongées ici », « Ta prof. max ici ». Le **nom du site est un lien vers la fiche** `/sites/:id`. Le lien « Toutes mes plongées ici → » mène à `/dives?site=<id>`. Un site sans position affiche « Position à préciser » + « Placer sur la carte » (`/map?panel=place&id=<id>`) à la place de la mini-carte.
      - **Palanquée** : tous les membres, toi en premier (avatar neutre, « · toi »), puis niveau et « N plongées ensemble ».
      - Mention : « Site, date et palanquée sont partagés entre les plongeurs. Tes mesures, ton équipement et tes notes n'appartiennent qu'à toi. », puis les dates de création et de modification.
 
