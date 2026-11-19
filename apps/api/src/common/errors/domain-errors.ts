@@ -91,3 +91,12 @@ export class TooManyObservationsError extends DomainError {
     this.name = TooManyObservationsError.name;
   }
 }
+
+/** A site cannot be merged into itself (RG-35). */
+export class MergeIntoSelfError extends DomainError {
+  readonly code = 'merge-into-self';
+  constructor() {
+    super('Cannot merge a site into itself');
+    this.name = MergeIntoSelfError.name;
+  }
+}

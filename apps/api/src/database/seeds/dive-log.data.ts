@@ -11,9 +11,20 @@
  * values of the detail mockup; older dives have none. Every site has an area except the Kléber
  * wreck, whose single dive (2024-09-10, with Yann, who has no level) has no new field at all, to
  * render a partial detail.
+ *
+ * Site details (D-27): type and depths of the sites mocks (`apps/web/src/shared/sites/mocks/`) on
+ * most sites, access notes on the Revellata; the Kléber wreck has none. « Revellata — Grotte aux
+ * Corbs » was created from the dive form: no position (`quick`), no dive.
  */
 import type { GasMix } from '../../modules/dives/gas-mix';
-import type { LevelCode, SeedBuddy, SeedDive, SeedDiveDetail, SeedSite } from './dev-seed.types';
+import type {
+  LevelCode,
+  SeedBuddy,
+  SeedDive,
+  SeedDiveDetail,
+  SeedSite,
+  SeedSiteDetails,
+} from './dev-seed.types';
 
 const MEDITERRANEAN = 'Méditerranée';
 const ATLANTIC = 'Atlantique';
@@ -55,6 +66,50 @@ const SITES = {
 } as const;
 
 type SiteKey = keyof typeof SITES;
+
+const SITE_DETAILS: Partial<Record<SiteKey, SeedSiteDetails>> = {
+  revellata: {
+    type: 'tombant',
+    depthMinM: 15,
+    depthMaxM: 60,
+    accessNotes:
+      'Mouillage au pied du phare. Tombant plein nord, courant possible en pointe : rester côté abrité. Gorgones rouges dès 30 m.',
+  },
+  bibliotheque: { type: 'tombant', depthMinM: 18, depthMaxM: 32 },
+  b17: { type: 'epave', depthMinM: 24, depthMaxM: 28 },
+  puntaBianca: { type: 'sec', depthMinM: 12, depthMaxM: 22 },
+  scandola: { type: 'tombant', depthMinM: 10, depthMaxM: 25 },
+  moyades: { type: 'sec', depthMinM: 20, depthMaxM: 38 },
+  liban: { type: 'epave', depthMinM: 25, depthMaxM: 36 },
+  chaouen: { type: 'epave', depthMinM: 18, depthMaxM: 35 },
+  imperial: { type: 'tombant', depthMinM: 20, depthMaxM: 39 },
+  secCroix: { type: 'sec', depthMinM: 18, depthMaxM: 34 },
+  gabiniere: { type: 'tombant', depthMinM: 20, depthMaxM: 39 },
+  donator: { type: 'epave', depthMinM: 30, depthMaxM: 39 },
+  // Type only: a site whose depths were never entered.
+  sarranier: { type: 'sec' },
+  vaisseau: { type: 'tombant', depthMinM: 12, depthMaxM: 28 },
+  fourmigue: { type: 'sec', depthMinM: 8, depthMaxM: 20 },
+  capRoux: { type: 'tombant', depthMinM: 12, depthMaxM: 28 },
+  lionDeMer: { type: 'sec', depthMinM: 8, depthMaxM: 20 },
+  amoco: { type: 'epave', depthMinM: 18, depthMaxM: 28 },
+  pierresNoires: { type: 'sec', depthMinM: 12, depthMaxM: 25 },
+  basseJaune: { type: 'sec', depthMinM: 10, depthMaxM: 22 },
+  toulinguet: { type: 'tombant', depthMinM: 10, depthMaxM: 24 },
+  septIles: { type: 'herbier', depthMinM: 8, depthMaxM: 20 },
+};
+
+/** Created from the dive form by its name, region and type: never placed, never dived. */
+const GROTTE_AUX_CORBS: SeedSite = {
+  key: 'grotteAuxCorbs',
+  name: 'Revellata — Grotte aux Corbs',
+  locality: 'Calvi',
+  region: 'Corse',
+  area: null,
+  latitude: null,
+  longitude: null,
+  type: 'grotte',
+};
 
 /** The 14 buddies, keyed by their initials as in the mocks (`roster.ts`: LB = b1 … IC = b14). */
 const BUDDIES = {
@@ -469,10 +524,14 @@ const DETAILS: Readonly<Record<string, SeedDiveDetail>> = {
   },
 };
 
-export const DIVE_LOG_SITES: readonly SeedSite[] = Object.entries(SITES).map(([key, value]) => ({
-  key,
-  ...value,
-}));
+export const DIVE_LOG_SITES: readonly SeedSite[] = [
+  ...(Object.entries(SITES) as [SiteKey, (typeof SITES)[SiteKey]][]).map(([key, value]) => ({
+    key,
+    ...value,
+    ...SITE_DETAILS[key],
+  })),
+  GROTTE_AUX_CORBS,
+];
 
 export const DIVE_LOG_BUDDIES: readonly SeedBuddy[] = (
   Object.entries(BUDDIES) as [BuddyKey, (typeof BUDDIES)[BuddyKey]][]

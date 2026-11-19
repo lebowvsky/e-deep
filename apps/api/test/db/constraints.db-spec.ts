@@ -477,8 +477,8 @@ describe('dive log schema constraints', () => {
       const diver = await fixtures.diver();
       const siteId = randomUUID();
       await dataSource.query(
-        `INSERT INTO dive_sites (id, owner_id, name, region, latitude, longitude, updated_at)
-         VALUES ($1, $2, 'Site', 'Région', 43, 5, '2000-01-01T00:00:00Z')`,
+        `INSERT INTO dive_sites (id, owner_id, name, region, latitude, longitude, created_via, updated_at)
+         VALUES ($1, $2, 'Site', 'Région', 43, 5, 'full', '2000-01-01T00:00:00Z')`,
         [siteId, diver.id],
       );
       const inserted = await updatedAtOf(dataSource, 'dive_sites', siteId);
@@ -585,6 +585,113 @@ describe('dive log schema constraints', () => {
       await dataSource.manager.countBy(DiveObservation, { participationId: participation.id }),
     ).toBe(0);
     expect(await dataSource.manager.existsBy(Buddy, { id: buddy.id })).toBe(true);
+  });
+
+  describe('site details and merge (AddDiveSiteDetails)', () => {
+    it.each([
+      ['type', 'recif', 'ck_dive_sites__type'],
+      ['type', 'Tombant', 'ck_dive_sites__type'],
+      ['depthMinM', -0.1, 'ck_dive_sites__depth_min_m'],
+      ['depthMinM', 350.1, 'ck_dive_sites__depth_min_m'],
+      ['depthMaxM', 0, 'ck_dive_sites__depth_max_m'],
+      ['depthMaxM', 350.1, 'ck_dive_sites__depth_max_m'],
+      ['accessNotes', '  ', 'ck_dive_sites__access_notes'],
+      ['accessNotes', 'a'.repeat(2001), 'ck_dive_sites__access_notes'],
+      ['createdVia', 'map', 'ck_dive_sites__created_via'],
+    ] as const)('refuses a site with %s = %j', async (property, value, constraint) => {
+      const diver = await fixtures.diver();
+      await expect(fixtures.site(diver.id, { [property]: value })).rejects.toEqual(
+        violating(constraint),
+      );
+    });
+
+    it('refuses a minimum depth above the maximum (RG-32)', async () => {
+      const diver = await fixtures.diver();
+      await expect(fixtures.site(diver.id, { depthMinM: 30, depthMaxM: 20 })).rejects.toEqual(
+        violating('ck_dive_sites__depth_range'),
+      );
+    });
+
+    it('accepts the bounds, equal depths, and NULL everywhere but the origin', async () => {
+      const diver = await fixtures.diver();
+      await expect(
+        fixtures.site(diver.id, {
+          type: 'herbier',
+          depthMinM: 0,
+          depthMaxM: 350,
+          accessNotes: 'a'.repeat(2000),
+          createdVia: 'quick',
+        }),
+      ).resolves.toMatchObject({ depthMinM: 0, depthMaxM: 350, createdVia: 'quick' });
+      await expect(
+        fixtures.site(diver.id, { depthMinM: 20.5, depthMaxM: 20.5 }),
+      ).resolves.toMatchObject({
+        depthMinM: 20.5,
+        depthMaxM: 20.5,
+      });
+      await expect(fixtures.site(diver.id)).resolves.toMatchObject({
+        type: null,
+        depthMinM: null,
+        depthMaxM: null,
+        accessNotes: null,
+        mergedIntoId: null,
+      });
+    });
+
+    it('requires an origin, without default (D-28)', async () => {
+      const diver = await fixtures.diver();
+      await expect(
+        dataSource.query("INSERT INTO dive_sites (id, owner_id, name) VALUES ($1, $2, 'Sec')", [
+          randomUUID(),
+          diver.id,
+        ]),
+      ).rejects.toThrow(/created_via/);
+    });
+
+    it('gives a merge target to a tombstone only, never itself (D-30)', async () => {
+      const diver = await fixtures.diver();
+      const target = await fixtures.site(diver.id);
+      const deletedAt = new Date();
+
+      await expect(fixtures.site(diver.id, { mergedIntoId: target.id })).rejects.toEqual(
+        violating('ck_dive_sites__merged_into_id_tombstone'),
+      );
+      const selfId = randomUUID();
+      await expect(
+        fixtures.site(diver.id, { id: selfId, deletedAt, mergedIntoId: selfId }),
+      ).rejects.toEqual(violating('ck_dive_sites__merged_into_id_not_self'));
+      await expect(
+        fixtures.site(diver.id, { deletedAt, mergedIntoId: target.id }),
+      ).resolves.toMatchObject({ mergedIntoId: target.id });
+    });
+
+    it('refuses a merge target of another diver or unknown (composite FK)', async () => {
+      const diver = await fixtures.diver();
+      const other = await fixtures.diver();
+      const othersSite = await fixtures.site(other.id);
+      const deletedAt = new Date();
+
+      for (const mergedIntoId of [othersSite.id, randomUUID()]) {
+        await expect(fixtures.site(diver.id, { deletedAt, mergedIntoId })).rejects.toEqual(
+          violating('fk_dive_sites__owner_id_merged_into_id'),
+        );
+      }
+    });
+
+    it('refuses to delete a target still referenced, accepts deleting both together (NO ACTION)', async () => {
+      const diver = await fixtures.diver();
+      const target = await fixtures.site(diver.id, { deletedAt: new Date() });
+      const source = await fixtures.site(diver.id, {
+        deletedAt: new Date(),
+        mergedIntoId: target.id,
+      });
+
+      await expect(dataSource.manager.delete(DiveSite, { id: target.id })).rejects.toEqual(
+        violating('fk_dive_sites__owner_id_merged_into_id'),
+      );
+      await dataSource.manager.delete(DiveSite, [target.id, source.id]);
+      expect(await dataSource.manager.count(DiveSite)).toBe(0);
+    });
   });
 
   it('refuses to physically delete a site still used by an event (RESTRICT)', async () => {

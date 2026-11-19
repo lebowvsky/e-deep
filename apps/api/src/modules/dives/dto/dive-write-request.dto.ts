@@ -8,8 +8,8 @@ import { DiveWriteEventDto } from './dive-write-event.dto';
 import { DiveWriteObservationDto } from './dive-write-observation.dto';
 import { DiveWriteParticipationDto } from './dive-write-participation.dto';
 import { DiveWriteSiteDto } from './dive-write-site.dto';
-import { UniqueBy } from './validators/cross-field-rules';
-import { IsIsoDateTime, Nullable, Required } from './validators/field-rules';
+import { UniqueBy } from '../../../common/validation/cross-field-rules';
+import { IsIsoDateTime, Nullable, Required } from '../../../common/validation/field-rules';
 
 /**
  * Body of `POST /api/dives` and `PUT /api/dives/:id`. Every field is required, `null` only where

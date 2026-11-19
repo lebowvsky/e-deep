@@ -14,18 +14,11 @@ import {
 import type { Response } from 'express';
 import { CurrentDiverGuard, CurrentDiverId } from '../../common/auth/current-diver.guard';
 import { validationFailed } from '../../common/validation/field-errors';
+import { routeIdPipe } from '../../common/validation/route-id-pipe';
 import { DiveLogService } from './dive-log.service';
 import { DiveWriteService } from './dive-write.service';
 import { DiveWriteRequestDto } from './dto/dive-write-request.dto';
 import { requestConsistencyErrors } from './dto/validators/request-consistency';
-
-/**
- * A route id that is not a UUID answers the validation `400` of the write contract (D-26). The `GET`
- * keeps the default body of `ParseUUIDPipe`, which the front relies on.
- */
-function routeIdPipe(): ParseUUIDPipe {
-  return new ParseUUIDPipe({ exceptionFactory: () => validationFailed({ id: ['uuid'] }) });
-}
 
 /** Dive log of the current diver. The owner always comes from the guard, never from the request. */
 @Controller('dives')

@@ -1,6 +1,6 @@
 import type { DiveWriteSite } from '@e-deep/shared';
 import { IsBoolean, IsUUID } from 'class-validator';
-import { IsText, Required } from './validators/field-rules';
+import { IsText, Required } from '../../../common/validation/field-rules';
 
 /** `ck_dive_sites__name`. */
 const NAME_LENGTH = { min: 1, max: 120 } as const;

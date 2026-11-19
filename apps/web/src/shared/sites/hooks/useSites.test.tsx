@@ -24,6 +24,8 @@ const LOG: DiveLogResponse = {
       gasMix: 'AIR',
       notes: null,
       buddies: [],
+      entryType: null,
+      diveCenter: null,
     },
     {
       id: 'd1',
@@ -37,6 +39,8 @@ const LOG: DiveLogResponse = {
       gasMix: 'AIR',
       notes: null,
       buddies: [],
+      entryType: null,
+      diveCenter: null,
     },
   ],
 };

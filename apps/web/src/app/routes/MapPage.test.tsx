@@ -62,6 +62,8 @@ function dive(id: string, number: number, site: Site, depthMaxM: number): DiveSu
     gasMix: 'AIR',
     notes: null,
     buddies: [],
+    entryType: null,
+    diveCenter: null,
   };
 }
 

@@ -27,6 +27,8 @@ function summary(
     gasMix: 'AIR',
     notes: null,
     buddies: [],
+    entryType: null,
+    diveCenter: null,
     ...overrides,
   };
 }

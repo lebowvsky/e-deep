@@ -97,6 +97,8 @@ describe('DiveLogService', () => {
         gasMix: 'AIR',
         notes: null,
         buddies: [{ id: lucas.id, firstName: 'Lucas', lastName: lucas.lastName }],
+        entryType: null,
+        diveCenter: null,
       });
       // A dive without buddy, and one whose only buddy is tombstoned.
       expect(dives[1]?.buddies).toStrictEqual([]);
@@ -321,20 +323,27 @@ describe('DiveLogService', () => {
       expect(afterParticipation.updatedAt > afterEvent.updatedAt).toBe(true);
     });
 
-    it('keeps the list free of the detail fields (D-25)', async () => {
+    it('keeps the list free of the detail fields but the entry type and the dive centre (D-25, D32)', async () => {
       const diver = await fixtures.diver();
       const { event, participation } = await fixtures.dive(diver.id);
       await fixtures.observation(participation.id, 0, 'Murène');
-      await dataSource.manager.update(DiveEvent, { id: event.id }, { entryType: 'SHORE' });
+      await dataSource.manager.update(
+        DiveEvent,
+        { id: event.id },
+        { entryType: 'SHORE', diveCenter: 'Calvi Plongée', weather: 'SUNNY' },
+      );
 
       const { dives } = await diveLog.findAll(diver.id);
 
+      expect(dives[0]).toMatchObject({ entryType: 'SHORE', diveCenter: 'Calvi Plongée' });
       expect(Object.keys(dives[0] ?? {}).sort()).toStrictEqual(
         [
           'buddies',
           'date',
           'depthMaxM',
+          'diveCenter',
           'durationMin',
+          'entryType',
           'gasMix',
           'id',
           'notes',

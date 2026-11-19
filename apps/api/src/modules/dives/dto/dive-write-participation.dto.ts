@@ -7,8 +7,14 @@ import {
   CrossFieldRule,
   LessThanField,
   PairedWith,
-} from './validators/cross-field-rules';
-import { IsInteger, IsNumeric, IsText, Nullable, Required } from './validators/field-rules';
+} from '../../../common/validation/cross-field-rules';
+import {
+  IsInteger,
+  IsNumeric,
+  IsText,
+  Nullable,
+  Required,
+} from '../../../common/validation/field-rules';
 
 // Bounds of the `dive_participations` CHECKs (H-10, H-17): "> 0" bounds use `IsPositive`,
 // "BETWEEN" bounds `Min`/`Max`. Every `numeric` column of the table has one decimal.

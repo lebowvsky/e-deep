@@ -33,6 +33,8 @@ function summary(overrides: Partial<DiveSummary> = {}): DiveSummary {
       { id: 'b1', firstName: 'Lucas', lastName: 'Bernard' },
       { id: 'b2', firstName: 'émilie', lastName: 'durand' },
     ],
+    entryType: null,
+    diveCenter: null,
     ...overrides,
   };
 }

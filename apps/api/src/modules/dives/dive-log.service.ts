@@ -33,7 +33,7 @@ const NUMBERED_LIVE_DIVES = `
   numbered AS (
     SELECT e.id, p.id AS participation_id,
            (row_number() OVER (ORDER BY e.started_at, e.id))::int AS number,
-           e.creator_id, e.site_id, e.started_at, e.utc_offset_minutes,
+           e.creator_id, e.site_id, e.started_at, e.utc_offset_minutes, e.entry_type, e.dive_center,
            p.max_depth_m, p.duration_min, p.water_temperature_c, p.visibility_m, p.gas_mix,
            p.has_decompression, p.stops_ok, p.notes
       FROM dive_participations p
@@ -43,8 +43,9 @@ const NUMBERED_LIVE_DIVES = `
 
 /**
  * The site is joined through the event's composite FK (owner = the event's creator), without a
- * `deleted_at` filter: a site used by a live event cannot be tombstoned, and a live dive restores
- * its site (D-12 b). The dashboard joins sites on `s.owner_id = $1` (the diver) instead: same result
+ * `deleted_at` filter: a site used by a live event cannot be tombstoned, a live dive restores its
+ * site (D-12 b), and a merge moves the events to its target (D-29), so the name follows a merge
+ * without anything to do here. The dashboard joins sites on `s.owner_id = $1` (the diver) instead: same result
  * in the MVP, where the creator is the only participant, but they diverge with shared dives (D-08).
  */
 const SITE_JOIN = 'JOIN dive_sites s ON s.owner_id = n.creator_id AND s.id = n.site_id';
@@ -52,6 +53,7 @@ const SITE_JOIN = 'JOIN dive_sites s ON s.owner_id = n.creator_id AND s.id = n.s
 const SUMMARY_COLUMNS = `
   n.id, n.participation_id, n.number, n.started_at, n.utc_offset_minutes,
   n.max_depth_m, n.duration_min, n.water_temperature_c, n.gas_mix, n.notes,
+  n.entry_type, n.dive_center,
   s.id AS site_id, s.name AS site_name, s.locality AS site_locality, s.region AS site_region`;
 
 /**
@@ -68,8 +70,7 @@ const DETAIL_COLUMNS = `${SUMMARY_COLUMNS},
   n.visibility_m, n.has_decompression, n.stops_ok,
   s.latitude AS site_latitude, s.longitude AS site_longitude, s.area AS site_area,
   l.agency AS level_agency, l.code AS level_code, l.label AS level_label,
-  de.entry_type, de.time_of_day, de.weather, de.air_temperature_c, de.sea_state,
-  de.current_strength, de.dive_center,
+  de.time_of_day, de.weather, de.air_temperature_c, de.sea_state, de.current_strength,
   dp.surface_water_temperature_c, dp.safety_stop_duration_min, dp.safety_stop_depth_m,
   dp.is_repetitive, dp.o2_percent, dp.tank_volume_l, dp.tank_material, dp.start_pressure_bar,
   dp.end_pressure_bar, dp.suit_type, dp.suit_thickness_mm, dp.weight_kg,

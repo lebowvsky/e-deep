@@ -40,3 +40,12 @@ export type {
   DiveWriteSite,
 } from './dive-write.js';
 export type { DependencyStatus, HealthResponse, HealthStatus } from './health.js';
+export type {
+  SiteCreateRequest,
+  SiteListResponse,
+  SiteMergeRequest,
+  SiteOrigin,
+  SiteResponse,
+  SiteType,
+  SiteWriteRequest,
+} from './sites.js';

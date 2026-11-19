@@ -6,6 +6,7 @@ import {
   IdentifierConflictError,
   InactiveCertificationLevelError,
   InvalidReferenceError,
+  MergeIntoSelfError,
   SiteInUseError,
   TooManyObservationsError,
   UnsupportedContractValueError,
@@ -22,12 +23,13 @@ describe('toDomainErrorResponse', () => {
     [new FullSyncRequiredError(), 409],
     [new InvalidReferenceError(), 422],
     [new InactiveCertificationLevelError(), 422],
+    [new MergeIntoSelfError(), 422],
     [new UnsupportedContractValueError(), 500],
   ])('answers %s with %i and its code only (D-26)', (error, statusCode) => {
     expect(toDomainErrorResponse(error)).toEqual({ statusCode, code: error.code });
   });
 
   it('maps every code', () => {
-    expect(Object.keys(DOMAIN_ERROR_STATUS)).toHaveLength(9);
+    expect(Object.keys(DOMAIN_ERROR_STATUS)).toHaveLength(10);
   });
 });

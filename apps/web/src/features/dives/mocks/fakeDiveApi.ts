@@ -94,6 +94,8 @@ function toSummary(detail: DiveDetail): DiveSummary {
     gasMix: detail.gasMix,
     notes: detail.notes,
     buddies: detail.buddies.map(({ id, firstName, lastName }) => ({ id, firstName, lastName })),
+    entryType: detail.entryType,
+    diveCenter: detail.diveCenter,
   };
 }
 

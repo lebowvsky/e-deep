@@ -30,6 +30,8 @@ function dive(id: string, number: number, site: Site, depthMaxM: number): DiveSu
     gasMix: 'AIR',
     notes: null,
     buddies: [{ id: 'b1', firstName: 'Lucas', lastName: 'Bernard' }],
+    entryType: null,
+    diveCenter: null,
   };
 }
 

@@ -14,7 +14,7 @@ import {
   TIMES_OF_DAY,
   WEATHERS,
 } from '../dive-detail-lists';
-import { MatchesOffsetOf } from './validators/cross-field-rules';
+import { MatchesOffsetOf } from '../../../common/validation/cross-field-rules';
 import {
   IsInteger,
   IsIsoDateTime,
@@ -22,7 +22,7 @@ import {
   IsText,
   Nullable,
   Required,
-} from './validators/field-rules';
+} from '../../../common/validation/field-rules';
 
 /** Bounds of the `dive_events` CHECKs. */
 const UTC_OFFSET_MINUTES = { min: -720, max: 840 } as const;

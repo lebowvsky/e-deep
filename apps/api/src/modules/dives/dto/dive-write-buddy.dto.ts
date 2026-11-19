@@ -1,6 +1,6 @@
 import type { DiveWriteBuddy } from '@e-deep/shared';
 import { IsBoolean, IsUUID } from 'class-validator';
-import { IsText, Nullable, Required } from './validators/field-rules';
+import { IsText, Nullable, Required } from '../../../common/validation/field-rules';
 
 /** `ck_buddies__first_name` / `__last_name`, `ck_certification_levels__code`. */
 const NAME_LENGTH = { min: 1, max: 100 } as const;

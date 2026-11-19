@@ -15,6 +15,7 @@ export const DOMAIN_ERROR_STATUS = {
   'full-sync-required': HttpStatus.CONFLICT,
   'invalid-reference': HttpStatus.UNPROCESSABLE_ENTITY,
   'inactive-certification-level': HttpStatus.UNPROCESSABLE_ENTITY,
+  'merge-into-self': HttpStatus.UNPROCESSABLE_ENTITY,
   // The server failed to map one of its own values: a bug, not a client error.
   'unsupported-contract-value': HttpStatus.INTERNAL_SERVER_ERROR,
 } as const satisfies Record<DomainErrorCode, HttpStatus>;

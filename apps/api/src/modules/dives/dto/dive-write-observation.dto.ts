@@ -1,6 +1,6 @@
 import type { DiveWriteObservation } from '@e-deep/shared';
 import { Max, Min } from 'class-validator';
-import { IsInteger, IsText, Nullable, Required } from './validators/field-rules';
+import { IsInteger, IsText, Nullable, Required } from '../../../common/validation/field-rules';
 
 /** Bounds of the `dive_observations` CHECKs (H-17). */
 const LABEL_LENGTH = { min: 1, max: 80 } as const;
