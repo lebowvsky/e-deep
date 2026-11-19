@@ -123,7 +123,6 @@ describe('divePreview', () => {
           name: 'Pointe de la Revellata',
           place: 'Calvi · Corse',
           diveCount: 12,
-          isSaved: true,
         },
       ],
       128,

@@ -1,17 +1,24 @@
 // A fake of the dive endpoints, for the tests that go through the form: `GET /dives`,
-// `GET /dives/:id`, `POST /dives` and `PUT /dives/:id` over the mocked log. A written dive is
-// kept and served by the next reads, numbered as the API numbers it (D26).
+// `GET /dives/:id`, `POST /dives` and `PUT /dives/:id` over the mocked log, and of the site
+// endpoints (`/sites`, `createFakeSitesApi`) over the sites of that log. A written dive or site is
+// kept and served by the next reads, the dives numbered as the API numbers them (D26) and joined
+// to their site as it is now (renamed, merged).
 import type {
   CertificationLevelRef,
   DiveDetail,
   DiveSummary,
   DiveWriteRequest,
   DiveWriteResponse,
+  SiteResponse,
 } from '@e-deep/shared';
 import { ApiError, type ApiClient, type TypeGuard } from '@/shared/lib/apiClient';
 import { isRecord } from '@/shared/lib/guards';
+import type { Site } from '@/shared/model/site';
+import { createFakeSitesApi } from '@/shared/sites/mocks/fakeSitesApi';
+import { toDiveSiteRef } from '@/shared/sites/mocks/siteRecords';
+import { mockSites } from '@/shared/sites/mocks/sites';
 import { toCertificationLevelRef } from '../lib/levels';
-import { mockDiveDetail, mockFilledDiveDetail } from './diveDetailResponse';
+import { mockFilledDiveDetail } from './diveDetailResponse';
 import { mockDiveLogResponse } from './diveLogResponse';
 
 const LOG_PATH = 'dives';
@@ -126,7 +133,7 @@ function isDiveWriteRequest(value: unknown): value is DiveWriteRequest {
 
 /** A request as the fake received it, for the assertions. */
 export interface FakeDiveApiRequest {
-  method: 'GET' | 'POST' | 'PUT';
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   path: string;
   body?: unknown;
 }
@@ -137,34 +144,80 @@ export interface FakeDiveApi {
 }
 
 const notFound = () => new ApiError('http', 'The API answered with HTTP 404.', { status: 404 });
+const invalidReference = () =>
+  new ApiError('http', 'The API answered with HTTP 422.', {
+    status: 422,
+    code: 'invalid-reference',
+  });
+
+/** The site of a dive's detail, from its record. */
+const toDetailSite = (record: SiteResponse): DiveDetail['site'] => ({
+  ...toDiveSiteRef(record),
+  latitude: record.latitude,
+  longitude: record.longitude,
+  area: record.area,
+});
+
+const LOGGED_SITES = mockSites.filter(({ id }) =>
+  mockDiveLogResponse.dives.some((dive) => dive.site.id === id),
+);
 
 /**
  * The mocked log, each dive served with `detailOf` (filled by default), plus what is written.
- * `now` stamps the writes.
+ * `sites`: the user's sites (by default those of the mocked log). `now` stamps the writes.
  */
 export function createFakeDiveApi({
   detailOf = mockFilledDiveDetail,
+  sites = LOGGED_SITES,
   now = () => new Date(),
-}: { detailOf?: (id: string) => DiveDetail; now?: () => Date } = {}): FakeDiveApi {
+}: {
+  detailOf?: (id: string) => DiveDetail;
+  sites?: readonly Site[];
+  now?: () => Date;
+} = {}): FakeDiveApi {
   const requests: FakeDiveApiRequest[] = [];
   const written = new Map<string, DiveDetail>();
   let log: DiveSummary[] = mockDiveLogResponse.dives;
+  const sitesApi = createFakeSitesApi({
+    sites,
+    now,
+    dives: {
+      uses: (siteId) => log.some((dive) => dive.site.id === siteId),
+      move(fromId, toId) {
+        log = log.map((dive) =>
+          dive.site.id === fromId ? { ...dive, site: { ...dive.site, id: toId } } : dive,
+        );
+      },
+    },
+  });
+
+  /** The dive joined to its site as it is now (renamed, completed, merged). */
+  const joined = (dive: DiveSummary): DiveSummary => {
+    const record = sitesApi.records.get(dive.site.id);
+    return record ? { ...dive, site: toDiveSiteRef(record) } : dive;
+  };
 
   const detailById = (id: string): DiveDetail | null => {
     const summary = log.find((dive) => dive.id === id);
     if (!summary) return null;
     const detail = written.get(id) ?? detailOf(id);
-    return { ...detail, number: summary.number };
+    const record = sitesApi.records.get(summary.site.id);
+    return {
+      ...detail,
+      number: summary.number,
+      ...(record ? { site: toDetailSite(record) } : {}),
+    };
   };
 
-  /** A site of the log keeps what the API knows of it; a new one has only its name (D-23). */
+  /**
+   * The site of the dive: one of the user's sites (a merged one leads to its target, RG-36), or
+   * a new one created by its name (`isNew`, D-28); an unknown site is refused.
+   */
   const siteOf = ({ site }: DiveWriteRequest): DiveDetail['site'] => {
-    const known = [...written.values()].find((detail) => detail.site.id === site.id)?.site;
-    if (known) return { ...known, name: site.isNew ? site.name : known.name };
-    const loggedDive = log.find((dive) => dive.site.id === site.id);
-    if (loggedDive && !site.isNew) return mockDiveDetail(loggedDive.id).site;
-    const empty = { locality: null, region: null, latitude: null, longitude: null, area: null };
-    return { id: site.id, name: site.name, ...empty };
+    const id = sitesApi.resolve(site.id);
+    const record = site.isNew ? sitesApi.createByName(id, site.name) : sitesApi.records.get(id);
+    if (!record) throw invalidReference();
+    return toDetailSite(record);
   };
 
   const write = (body: unknown): DiveWriteResponse => {
@@ -189,10 +242,20 @@ export function createFakeDiveApi({
       : Promise.reject(new ApiError('invalid-response', 'Unexpected response shape.'));
   }
 
+  /** `respond()`, or its failure, as the client would reject it. */
+  function attempt<T>(respond: () => unknown, guard: TypeGuard<T>): Promise<T> {
+    try {
+      return answer(respond(), guard);
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error('Fake API failure'));
+    }
+  }
+
   const client: ApiClient = {
     get(path, guard) {
       requests.push({ method: 'GET', path });
-      if (path === LOG_PATH) return answer({ dives: log }, guard);
+      if (sitesApi.handles(path)) return attempt(() => sitesApi.get(path), guard);
+      if (path === LOG_PATH) return answer({ dives: log.map(joined) }, guard);
       const detail = path.startsWith(DETAIL_PREFIX)
         ? detailById(decodeURIComponent(path.slice(DETAIL_PREFIX.length)))
         : null;
@@ -200,14 +263,26 @@ export function createFakeDiveApi({
     },
     post(path, body, guard) {
       requests.push({ method: 'POST', path, body });
-      return path === LOG_PATH ? answer(write(body), guard) : Promise.reject(notFound());
+      if (sitesApi.handles(path)) return attempt(() => sitesApi.post(path, body), guard);
+      return path === LOG_PATH ? attempt(() => write(body), guard) : Promise.reject(notFound());
     },
     put(path, body, guard) {
       requests.push({ method: 'PUT', path, body });
+      if (sitesApi.handles(path)) return attempt(() => sitesApi.put(path, body), guard);
       const id = decodeURIComponent(path.slice(DETAIL_PREFIX.length));
       return path.startsWith(DETAIL_PREFIX) && detailById(id) !== null
-        ? answer(write(body), guard)
+        ? attempt(() => write(body), guard)
         : Promise.reject(notFound());
+    },
+    delete(path) {
+      requests.push({ method: 'DELETE', path });
+      if (!sitesApi.handles(path)) return Promise.reject(notFound());
+      try {
+        sitesApi.delete(path);
+        return Promise.resolve();
+      } catch (error) {
+        return Promise.reject(error instanceof Error ? error : new Error('Fake API failure'));
+      }
     },
   };
   return { client, requests };

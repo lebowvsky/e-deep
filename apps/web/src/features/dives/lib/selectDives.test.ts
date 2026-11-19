@@ -78,16 +78,6 @@ describe('selectDives — filters', () => {
     expect(numbers({ site: 'unknown' })).toEqual([]);
   });
 
-  it('keeps the dives of a site merged on this device under the target', () => {
-    // Les Moyades (s06) merged into the Amoco Cadiz (s18).
-    const aliases = new Map([['s06', 's18']]);
-    const query = { ...DEFAULT_QUERY, site: 's18' };
-    expect(selectDives(dives, query, now, aliases).items.map(({ number }) => number)).toEqual([
-      2, 1,
-    ]);
-    expect(selectDives(dives, { ...query, site: 's06' }, now, aliases).total).toBe(0);
-  });
-
   it('filters by region, depth range (inclusive), gas family and dive team', () => {
     expect(numbers({ regions: ['corse'] })).toEqual([5, 4, 3]);
     expect(numbers({ regions: ['corse', 'marseille'] })).toEqual([5, 4, 3, 2]);

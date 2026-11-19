@@ -86,8 +86,8 @@ export const EssentialSection = memo(
       [sites],
     );
     const chosen = site.id === null ? undefined : sites.find(({ id }) => id === site.id);
-    // Typed by name, or created on this device: the API creates it when the dive is saved.
-    const isNewSite = site.name.trim() !== '' && (site.id === null || chosen?.isSaved === false);
+    // Typed by name, or none of my sites (restored draft): the API creates it when the dive is saved.
+    const isNewSite = site.name.trim() !== '' && (site.id === null || chosen === undefined);
 
     const openQuickCreate = (query: string) => {
       setQuickCreateKey((key) => key + 1);

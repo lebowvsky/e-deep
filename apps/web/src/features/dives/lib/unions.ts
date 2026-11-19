@@ -2,7 +2,6 @@
 // and the choices of the form read them here (domain values, not HTTP).
 import type {
   CurrentStrength,
-  EntryType,
   SeaState,
   SuitType,
   TankMaterial,
@@ -11,8 +10,9 @@ import type {
 } from '@e-deep/shared';
 
 // Every value of each union: a value the front does not know breaks the contract (D-14, deployed
-// front first). The gas mixes live in `@/shared/model/gasMix` (the dive log and the dashboard read them).
-export const ENTRY_TYPES = ['BOAT', 'SHORE'] as const satisfies readonly EntryType[];
+// front first). The gas mixes and the entry types live in `@/shared/model/` (the dive log and the
+// dashboard read them).
+export { ENTRY_TYPES } from '@/shared/model/entryType';
 export const TIMES_OF_DAY = ['DAY', 'NIGHT'] as const satisfies readonly TimeOfDay[];
 export const WEATHERS = [
   'SUNNY',

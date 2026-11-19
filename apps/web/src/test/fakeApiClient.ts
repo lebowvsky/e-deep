@@ -7,5 +7,11 @@ import type { ApiClient } from '@/shared/lib/apiClient';
 export function fakeApiClient(methods: Partial<ApiClient>): ApiClient {
   const unexpected = (method: string) => (path: string) =>
     Promise.reject(new Error(`Unexpected ${method} ${path}`));
-  return { get: unexpected('GET'), post: unexpected('POST'), put: unexpected('PUT'), ...methods };
+  return {
+    get: unexpected('GET'),
+    post: unexpected('POST'),
+    put: unexpected('PUT'),
+    delete: unexpected('DELETE'),
+    ...methods,
+  };
 }

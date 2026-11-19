@@ -1,6 +1,11 @@
 // Dive sites: shared by the dive pages (site field of the form, detail) and the sites pages (map,
 // site page). Sites are private: the user only ever sees their own.
-import type { EntryType } from '@e-deep/shared';
+import type {
+  EntryType,
+  SiteOrigin as SiteOriginContract,
+  SiteResponse,
+  SiteType as SiteTypeContract,
+} from '@e-deep/shared';
 import type { DiveMember } from './dive';
 import type { GeoPoint } from './geo';
 
@@ -8,16 +13,31 @@ import type { GeoPoint } from './geo';
 export const SITE_ZONES = ['mediterranee', 'atlantique', 'manche', 'autre'] as const;
 export type SiteZone = (typeof SITE_ZONES)[number];
 
-export const SITE_TYPES = ['tombant', 'epave', 'sec', 'grotte', 'herbier', 'autre'] as const;
+/** Every site type of the contract (RG-31): the guard of `/sites` rejects any other one. */
+export const SITE_TYPES = [
+  'tombant',
+  'epave',
+  'sec',
+  'grotte',
+  'herbier',
+  'autre',
+] as const satisfies readonly SiteTypeContract[];
 export type SiteType = (typeof SITE_TYPES)[number];
 
 /** `quick`: created from the dive form (name, region, type); `full`: from the map panel. */
-export type SiteOrigin = 'quick' | 'full';
+export const SITE_ORIGINS = ['quick', 'full'] as const satisfies readonly SiteOriginContract[];
+export type SiteOrigin = (typeof SITE_ORIGINS)[number];
+
+/**
+ * The place as the API stores it (D-32), never shown: the screens only know the label
+ * (`Site.region`, « Calvi · Corse »). Sent back as is while that label is unchanged.
+ */
+export type StoredPlace = Pick<SiteResponse, 'locality' | 'region' | 'area'>;
 
 export interface Site {
   id: string;
   name: string;
-  /** Free text, « Calvi · Corse »; `null` when not entered. */
+  /** Label of the place, « Calvi · Corse » (locality · region); `null` when not entered. */
   region: string | null;
   zone: SiteZone;
   type: SiteType | null;
@@ -28,10 +48,12 @@ export interface Site {
   position: GeoPoint | null;
   /** « Accès & conseils » */
   accessNotes: string | null;
+  /** Immutable (RG-34). */
   createdVia: SiteOrigin;
-  /** ISO 8601 instants; `null` for a site read from the API, which does not serve them yet. */
-  createdAt: string | null;
-  updatedAt: string | null;
+  /** ISO 8601 instants (UTC), set by the API. */
+  createdAt: string;
+  updatedAt: string;
+  storedPlace: StoredPlace;
 }
 
 /** What the user enters for a site (creation or edition): everything but the bookkeeping. */

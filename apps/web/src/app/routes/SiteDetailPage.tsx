@@ -10,12 +10,12 @@ import { SiteDivesList } from '@/features/sites/components/SiteDivesList';
 import { SiteInfoCard } from '@/features/sites/components/SiteInfoCard';
 import { SiteKpis } from '@/features/sites/components/SiteKpis';
 import { SiteMiniMap } from '@/features/sites/components/SiteMiniMap';
+import { useSitesPage } from '@/features/sites/hooks/useSitesPage';
 import { newDiveHrefOf, siteHrefOf } from '@/features/sites/lib/labels';
 import { pageTitle } from '@/shared/config/app';
 import { formatInitials } from '@/shared/lib/format';
 import type { SiteEntry } from '@/shared/model/site';
 import { useSiteCommands } from '@/shared/sites/hooks/useSiteCommands';
-import { useSites } from '@/shared/sites/hooks/useSites';
 import { Button, ButtonLink } from '@/shared/ui/Button';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useToast } from '@/shared/ui/Toast';
@@ -27,7 +27,7 @@ const SELF_INITIALS = formatInitials(mockUser.firstName, mockUser.lastName);
 /** `/sites/:siteId`: one of the user's sites, its figures, its dives, what to know to go there. */
 export function SiteDetailPage() {
   const { siteId = '' } = useParams();
-  const state = useSites();
+  const state = useSitesPage();
   // The site being merged or deleted from this page: still shown while the page leaves, rather
   // than « this site does not exist » for the render before the navigation.
   const [leaving, setLeaving] = useState<SiteEntry | null>(null);

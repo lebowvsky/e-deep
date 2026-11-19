@@ -11,7 +11,7 @@ import { createFakeDiveApi } from '@/features/dives/mocks/fakeDiveApi';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { ApiClientContext } from '@/shared/lib/apiClientContext';
 import { isRecord } from '@/shared/lib/guards';
-import { createMemorySitesRepository } from '@/shared/sites/repository/sitesRepository';
+import { createHttpSitesRepository } from '@/shared/sites/api/httpSitesRepository';
 import { SitesRepositoryContext } from '@/shared/sites/repository/sitesRepositoryContext';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { fakeApiClient } from '@/test/fakeApiClient';
@@ -35,7 +35,7 @@ function renderAt(
     { initialEntries: [path] },
   );
   render(
-    <TestProviders client={api}>
+    <TestProviders client={api} sitesRepository={createHttpSitesRepository(api)}>
       <ToastProvider>
         <RouterProvider router={router} />
       </ToastProvider>
@@ -133,6 +133,7 @@ describe('DiveFormPage — new dive', () => {
   });
 
   it('keeps the form when the log changes under it (no suggestion appearing midway)', async () => {
+    const api = createFakeDiveApi().client;
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: Infinity } },
     });
@@ -140,8 +141,8 @@ describe('DiveFormPage — new dive', () => {
       initialEntries: ['/dives/new'],
     });
     render(
-      <ApiClientContext value={createFakeDiveApi().client}>
-        <SitesRepositoryContext value={createMemorySitesRepository()}>
+      <ApiClientContext value={api}>
+        <SitesRepositoryContext value={createHttpSitesRepository(api)}>
           <QueryClientProvider client={queryClient}>
             <ToastProvider>
               <RouterProvider router={router} />
@@ -202,7 +203,7 @@ describe('DiveFormPage — sites', () => {
     expect(siteField().value).toBe('');
   });
 
-  it('sends a site created on the fly as new, with its own id, so that the API creates it', async () => {
+  it('creates a site on the fly through the API, then saves the dive on it', async () => {
     const user = userEvent.setup();
     const api = createFakeDiveApi();
     const router = renderAt('/dives/new', {}, api.client);
@@ -212,9 +213,16 @@ describe('DiveFormPage — sites', () => {
     await user.keyboard('{Enter}');
     await user.click(screen.getByRole('button', { name: 'Créer et sélectionner' }));
     await waitFor(() => expect(document.activeElement).toBe(field(/^Date/)));
-    expect(screen.getByText('Nouveau site : il sera créé à l’enregistrement.')).toBeTruthy();
-    // The site is one of mine now: its region shows at the end of the field.
+    // Saved already: one of my sites, its region at the end of the field.
+    expect(screen.queryByText('Nouveau site : il sera créé à l’enregistrement.')).toBeNull();
     expect(siteField().parentElement?.textContent).toContain('Calvi · Corse');
+    const [created] = api.requests.filter(({ method }) => method === 'POST');
+    expect(created).toMatchObject({
+      path: 'sites',
+      body: { name: 'Grotte aux Corbs', locality: 'Calvi', region: 'Corse', createdVia: 'quick' },
+    });
+    const siteId = isRecord(created?.body) ? created.body.id : undefined;
+    expect(siteId).toEqual(expect.any(String));
 
     fireEvent.change(field(/^Immersion/), { target: { value: '10:05' } });
     fireEvent.change(field(/^Sortie/), { target: { value: '10:49' } });
@@ -224,12 +232,33 @@ describe('DiveFormPage — sites', () => {
     );
     await waitFor(() => expect(router.state.location.pathname).not.toBe('/dives/new'));
 
-    const [post] = api.requests.filter(({ method }) => method === 'POST');
-    const body: unknown = post?.body;
-    expect(body).toMatchObject({ site: { name: 'Grotte aux Corbs', isNew: true } });
-    const siteId = isRecord(body) && isRecord(body.site) ? body.site.id : undefined;
-    expect(siteId).toEqual(expect.any(String));
-    expect(body).toMatchObject({ event: { siteId } });
+    const post = api.requests.find(({ method, path }) => method === 'POST' && path === 'dives');
+    expect(post?.body).toMatchObject({
+      site: { id: siteId, name: 'Grotte aux Corbs', isNew: false },
+      event: { siteId },
+    });
+  });
+
+  it('keeps the quick creation panel open with a message when the API refuses it', async () => {
+    const user = userEvent.setup();
+    const api = createFakeDiveApi();
+    const refusing: ApiClient = {
+      ...api.client,
+      post: (path, body, guard) =>
+        path === 'sites'
+          ? Promise.reject(new ApiError('network', 'down'))
+          : api.client.post(path, body, guard),
+    };
+    renderAt('/dives/new', {}, refusing);
+    await title('Nouvelle plongée');
+
+    await user.type(siteField(), 'Grotte aux Corbs');
+    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Créer et sélectionner' }));
+
+    const panel = screen.getByRole('dialog', { name: 'Nouveau site' });
+    expect(await within(panel).findByText('Le site n’a pas pu être créé. Réessaie.')).toBeTruthy();
+    expect(siteField().value).toBe('Grotte aux Corbs');
   });
 });
 
@@ -313,6 +342,7 @@ describe('DiveFormPage — edit', () => {
 
   it('marks the dashboard stale once saved: its stats and last dive include the dive', async () => {
     const user = userEvent.setup();
+    const api = createFakeDiveApi().client;
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: Infinity } },
     });
@@ -325,8 +355,8 @@ describe('DiveFormPage — edit', () => {
       { initialEntries: ['/dives/d127/edit'] },
     );
     render(
-      <ApiClientContext value={createFakeDiveApi().client}>
-        <SitesRepositoryContext value={createMemorySitesRepository()}>
+      <ApiClientContext value={api}>
+        <SitesRepositoryContext value={createHttpSitesRepository(api)}>
           <QueryClientProvider client={queryClient}>
             <ToastProvider>
               <RouterProvider router={router} />

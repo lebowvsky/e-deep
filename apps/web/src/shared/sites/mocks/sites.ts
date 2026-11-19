@@ -4,6 +4,7 @@
 // Tests and `?state=` (dev) only: never imported by the application code.
 import type { GeoPoint } from '@/shared/model/geo';
 import type { Site, SiteType, SiteZone } from '@/shared/model/site';
+import { splitPlaceLabel } from '../api/siteContract';
 
 const CREATED_AT = '2019-06-15T08:00:00.000Z';
 
@@ -28,6 +29,7 @@ const site = (
   createdVia: 'full',
   createdAt: CREATED_AT,
   updatedAt: CREATED_AT,
+  storedPlace: { ...splitPlaceLabel(region), area: null },
 });
 
 const at = (latitude: number, longitude: number): GeoPoint => ({ latitude, longitude });

@@ -16,8 +16,8 @@ import {
   isBoolean,
   isDateString,
   isNullable,
+  isNullableOneOf,
   isNumber,
-  isOneOf,
   isPositionPair,
   isRecord,
   isString,
@@ -45,11 +45,6 @@ import type {
 } from '../types';
 
 // ── Guards (the contract is checked at the boundary, `invalid-response` otherwise) ─────────────
-
-/** One of `options`, or `null`. */
-function isNullableOneOf<const T extends string>(options: readonly T[]) {
-  return (value: unknown): value is T | null => value === null || isOneOf(value, options);
-}
 
 export function isCertificationLevelRef(value: unknown): value is CertificationLevelRef {
   return isRecord(value) && isString(value.agency) && isString(value.code) && isString(value.label);

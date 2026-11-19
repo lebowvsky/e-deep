@@ -7,11 +7,13 @@ import {
   isArrayOf,
   isDateString,
   isNullable,
+  isNullableOneOf,
   isNumber,
   isOneOf,
   isRecord,
   isString,
 } from '@/shared/lib/guards';
+import { ENTRY_TYPES } from '@/shared/model/entryType';
 import { GAS_MIXES } from '@/shared/model/gasMix';
 
 function isSiteRef(value: unknown): value is DiveSiteRef {
@@ -43,7 +45,9 @@ export function isDiveSummary(value: unknown): value is DiveSummary {
     isNullable(isNumber)(value.temperatureC) &&
     isOneOf(value.gasMix, GAS_MIXES) &&
     isNullable(isString)(value.notes) &&
-    isArrayOf(isBuddyRef)(value.buddies)
+    isArrayOf(isBuddyRef)(value.buddies) &&
+    isNullableOneOf(ENTRY_TYPES)(value.entryType) &&
+    isNullable(isString)(value.diveCenter)
   );
 }
 
@@ -60,10 +64,16 @@ export function fetchDiveLog(
 }
 
 /**
- * Cache key of the log. It sits under the dive pages' root key (`divesKeys.all`), so that
- * invalidating the dives also refreshes what the sites read from the log.
+ * Root cache key of the dives (`divesKeys.all`): log and details. The writes on the sites
+ * invalidate it (a site renamed or merged changes the site of its dives).
  */
-export const DIVE_LOG_QUERY_KEY = ['dives', 'log'] as const;
+export const DIVES_QUERY_KEY = ['dives'] as const;
+
+/**
+ * Cache key of the log, under the root key, so that invalidating the dives also refreshes what
+ * the sites read from the log.
+ */
+export const DIVE_LOG_QUERY_KEY = [...DIVES_QUERY_KEY, 'log'] as const;
 
 /** The one way to query the log: every reader shares the cache entry and its contract check. */
 export function diveLogQueryOptions(client: ApiClient) {

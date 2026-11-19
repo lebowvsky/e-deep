@@ -1,14 +1,11 @@
-import type { DashboardSite, DiveLogResponse, DiveSummary } from '@e-deep/shared';
+import type { DiveLogResponse, DiveSummary } from '@e-deep/shared';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Site } from '@/shared/model/site';
 import { MOCK_SITES } from '@/shared/sites/mocks/sites';
-import {
-  createMemorySitesRepository,
-  type SitesRepository,
-} from '@/shared/sites/repository/sitesRepository';
+import { createMemorySitesRepository } from '@/shared/sites/mocks/memorySitesRepository';
 import type { MapViewProps } from '@/shared/ui/MapView';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { fakeApiClient } from '@/test/fakeApiClient';
@@ -77,29 +74,16 @@ const LOG: DiveLogResponse = {
   ],
 };
 
-const DASHBOARD_SITES: DashboardSite[] = SITES.map((site) => ({
-  id: site.id,
-  name: site.name,
-  region: site.region,
-  latitude: site.position?.latitude ?? null,
-  longitude: site.position?.longitude ?? null,
-  diveCount: 1,
-  maxDepthM: 30,
-}));
-
-/** The API sites, with their types kept locally, and the quick site without position. */
-async function repositoryWithTypes(): Promise<SitesRepository> {
-  const repository = createMemorySitesRepository();
-  for (const site of [...SITES, MOCK_SITES.grotteAuxCorbs]) await repository.save(site);
-  return repository;
-}
-
-async function renderAt(path: string) {
+function renderPage(path: string) {
   const get = vi
     .fn()
     .mockImplementation((apiPath: string) =>
-      Promise.resolve(apiPath === 'dives' ? LOG : { sites: DASHBOARD_SITES }),
+      apiPath === 'dives' ? Promise.resolve(LOG) : Promise.reject(new Error(apiPath)),
     );
+  // The sites of the log, and the quick site without position nor dive.
+  const sitesRepository = createMemorySitesRepository({
+    sites: [...SITES, MOCK_SITES.grotteAuxCorbs],
+  });
   const router = createMemoryRouter(
     [
       { path: '/map', element: <MapPage /> },
@@ -108,12 +92,17 @@ async function renderAt(path: string) {
     { initialEntries: [path] },
   );
   render(
-    <TestProviders client={fakeApiClient({ get })} sitesRepository={await repositoryWithTypes()}>
+    <TestProviders client={fakeApiClient({ get })} sitesRepository={sitesRepository}>
       <ToastProvider>
         <RouterProvider router={router} />
       </ToastProvider>
     </TestProviders>,
   );
+  return { router, get };
+}
+
+async function renderAt(path: string) {
+  const { router } = renderPage(path);
   await screen.findByTestId('map');
   return router;
 }
@@ -232,6 +221,38 @@ describe('MapPage — list and map', () => {
     expect(router.state.location.search).toBe('?zone=mediterranee');
     expect(document.activeElement).toBe(radios[1]);
     expect(radios[1]?.getAttribute('aria-checked')).toBe('true');
+  });
+});
+
+describe('MapPage — states forced by ?state= (development)', () => {
+  it('shows the loading state without reading the API', async () => {
+    const { get } = renderPage('/map?state=loading');
+
+    expect(await screen.findByText('Chargement de tes sites…')).toBeTruthy();
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('shows the empty state', async () => {
+    renderPage('/map?state=empty');
+
+    expect(await screen.findByText('Aucun site pour l’instant')).toBeTruthy();
+    expect(screen.getByText('Carte · 0 site · 0 région')).toBeTruthy();
+  });
+
+  it('shows the error state', async () => {
+    renderPage('/map?state=error');
+
+    expect(
+      within(await screen.findByRole('alert')).getByText('Tes sites n’ont pas pu être chargés.'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeTruthy();
+  });
+
+  it('reads the API for ?state=ready', async () => {
+    await renderAt('/map?state=ready');
+
+    expect(rows()).toHaveLength(4);
   });
 });
 

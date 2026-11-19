@@ -2,16 +2,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import type { ApiClient } from '@/shared/lib/apiClient';
 import { ApiClientContext } from '@/shared/lib/apiClientContext';
-import {
-  createMemorySitesRepository,
-  type SitesRepository,
-} from '@/shared/sites/repository/sitesRepository';
+import { createMemorySitesRepository } from '@/shared/sites/mocks/memorySitesRepository';
+import type { SitesRepository } from '@/shared/sites/repository/sitesRepository';
 import { SitesRepositoryContext } from '@/shared/sites/repository/sitesRepositoryContext';
 
 export interface TestProvidersProps {
   /** Fake API client (`{ get: vi.fn()… }`): tests never reach the network. */
   client: ApiClient;
-  /** Local writes on the sites; an empty in-memory repository per render by default. */
+  /** The sites (`/api/sites`); an empty in-memory repository per render by default. */
   sitesRepository?: SitesRepository;
   children: ReactNode;
 }
@@ -21,7 +19,7 @@ export interface TestProvidersProps {
  * render (no state leaks between tests) and no retry, so a failure shows at once.
  */
 export function TestProviders({ client, sitesRepository, children }: TestProvidersProps) {
-  const [defaultSitesRepository] = useState(createMemorySitesRepository);
+  const [defaultSitesRepository] = useState(() => createMemorySitesRepository());
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } }),
   );

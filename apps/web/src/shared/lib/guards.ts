@@ -31,6 +31,11 @@ export function isNullable<T>(guard: (value: unknown) => value is T) {
   return (value: unknown): value is T | null => value === null || guard(value);
 }
 
+/** One of `options`, or `null`. */
+export function isNullableOneOf<const T extends string>(options: readonly T[]) {
+  return (value: unknown): value is T | null => value === null || isOneOf(value, options);
+}
+
 /** An array whose every item passes `guard`. */
 export function isArrayOf<T>(guard: (value: unknown) => value is T) {
   return (value: unknown): value is T[] => Array.isArray(value) && value.every(guard);
