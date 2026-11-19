@@ -54,7 +54,8 @@
     box-shadow: 0 0 0 calc(#{$layout-site-marker-halo} / 2) $color-accent-soft;
   }
 
-  .picking & {
+  // Shown only (placing a site, read-only map): clicks go through to the map.
+  &[data-inert] {
     pointer-events: none;
   }
 }

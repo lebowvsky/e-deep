@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { DataSource } from 'typeorm';
 import { Fixtures } from './support/fixtures';
 import { selectRows } from './support/sql';
@@ -25,6 +26,15 @@ const CONSTRAINTS = [
   'ck_dive_sites__longitude',
   'ck_dive_sites__area',
   'ck_dive_sites__position',
+  'ck_dive_sites__type',
+  'ck_dive_sites__depth_min_m',
+  'ck_dive_sites__depth_max_m',
+  'ck_dive_sites__depth_range',
+  'ck_dive_sites__access_notes',
+  'ck_dive_sites__created_via',
+  'ck_dive_sites__merged_into_id_tombstone',
+  'ck_dive_sites__merged_into_id_not_self',
+  'fk_dive_sites__owner_id_merged_into_id',
   'pk_buddies',
   'fk_buddies__owner_id',
   'fk_buddies__linked_diver_id',
@@ -82,6 +92,8 @@ const CONSTRAINTS = [
 
 const INDEXES: Record<string, string> = {
   idx_dive_sites__owner_id_updated_at_id: '(owner_id, updated_at, id)',
+  idx_dive_sites__owner_id_merged_into_id:
+    '(owner_id, merged_into_id) WHERE (merged_into_id IS NOT NULL)',
   idx_buddies__owner_id_updated_at_id: '(owner_id, updated_at, id)',
   idx_buddies__linked_diver_id: '(linked_diver_id) WHERE (linked_diver_id IS NOT NULL)',
   uq_buddies__owner_id_linked_diver_id:
@@ -132,12 +144,27 @@ const DETAIL_COLUMNS: Record<string, string> = {
 };
 
 const COMPOSITE_FOREIGN_KEYS: Record<string, string> = {
+  fk_dive_sites__owner_id_merged_into_id:
+    'FOREIGN KEY (owner_id, merged_into_id) REFERENCES dive_sites(owner_id, id)',
   fk_dive_events__creator_id_site_id:
     'FOREIGN KEY (creator_id, site_id) REFERENCES dive_sites(owner_id, id) ON DELETE RESTRICT',
   fk_dive_buddies__owner_id_participation_id:
     'FOREIGN KEY (owner_id, participation_id) REFERENCES dive_participations(diver_id, id) ON DELETE CASCADE',
   fk_dive_buddies__owner_id_buddy_id:
     'FOREIGN KEY (owner_id, buddy_id) REFERENCES buddies(owner_id, id) ON DELETE CASCADE',
+};
+
+/**
+ * Columns added by `AddDiveSiteDetails` (D-27 to D-30): type, nullability, default. Only
+ * `created_via` is required, without default (backfilled by the migration).
+ */
+const SITE_DETAIL_COLUMNS: Record<string, [string, boolean, null]> = {
+  type: ['text', true, null],
+  depth_min_m: ['numeric(4,1)', true, null],
+  depth_max_m: ['numeric(4,1)', true, null],
+  access_notes: ['text', true, null],
+  created_via: ['text', false, null],
+  merged_into_id: ['uuid', true, null],
 };
 
 /** Columns made nullable by `AllowDiveSiteWithoutPosition` (D-23). */
@@ -299,10 +326,70 @@ describe('dive log schema migrations', () => {
     });
   });
 
+  async function siteDetailColumns(): Promise<Record<string, [string, boolean, string | null]>> {
+    const rows = await selectRows<{
+      name: string;
+      type: string;
+      nullable: boolean;
+      default: string | null;
+    }>(
+      dataSource,
+      `SELECT a.attname AS name, format_type(a.atttypid, a.atttypmod) AS type,
+              NOT a.attnotnull AS nullable, pg_get_expr(d.adbin, d.adrelid) AS default
+         FROM pg_attribute a
+         LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+        WHERE a.attrelid = 'dive_sites'::regclass AND a.attname = ANY($1) AND NOT a.attisdropped`,
+      [Object.keys(SITE_DETAIL_COLUMNS)],
+    );
+    return Object.fromEntries(rows.map((row) => [row.name, [row.type, row.nullable, row.default]]));
+  }
+
+  it('adds the site details nullable without default, and a required origin (D-27, D-28)', async () => {
+    expect(await siteDetailColumns()).toEqual(SITE_DETAIL_COLUMNS);
+  });
+
+  it('reverts AddDiveSiteDetails, then backfills created_via from the position when migrating again', async () => {
+    const fixtures = new Fixtures(dataSource);
+    const diver = await fixtures.diver();
+
+    await dataSource.undoLastMigration({ transaction: 'all' });
+    expect(await siteDetailColumns()).toEqual({});
+    expect(
+      await names(
+        "SELECT conname AS name FROM pg_constraint WHERE conname LIKE 'ck_dive_sites__%' OR conname LIKE 'fk_dive_sites__%'",
+      ),
+    ).toEqual(
+      CONSTRAINTS.filter((name) => /^(ck|fk)_dive_sites__/.test(name))
+        .filter((name) => !/type|depth|access_notes|created_via|merged_into_id/.test(name))
+        .sort(),
+    );
+
+    const [placed, quick] = [randomUUID(), randomUUID()];
+    await dataSource.query(
+      `INSERT INTO dive_sites (id, owner_id, name, region, latitude, longitude)
+       VALUES ($1, $3, 'Placé', 'Var', 43, 6), ($2, $3, 'Express', NULL, NULL, NULL)`,
+      [placed, quick, diver.id],
+    );
+    await dataSource.runMigrations({ transaction: 'each' });
+
+    expect(await siteDetailColumns()).toEqual(SITE_DETAIL_COLUMNS);
+    const rows = await selectRows<{ id: string; created_via: string }>(
+      dataSource,
+      'SELECT id, created_via FROM dive_sites',
+    );
+    expect(Object.fromEntries(rows.map((row) => [row.id, row.created_via]))).toEqual({
+      [placed]: 'full',
+      [quick]: 'quick',
+    });
+    await resetDatabase(dataSource);
+  });
+
   it('reverts AllowDiveSiteWithoutPosition only once every site has a region and a position', async () => {
     const fixtures = new Fixtures(dataSource);
     const diver = await fixtures.diver();
     const site = await fixtures.site(diver.id, { region: null, latitude: null, longitude: null });
+    // AddDiveSiteDetails comes after it: reverted first.
+    await dataSource.undoLastMigration({ transaction: 'all' });
 
     await expect(dataSource.undoLastMigration({ transaction: 'all' })).rejects.toThrow(
       'some dive sites have no region or no position',
@@ -338,8 +425,9 @@ describe('dive log schema migrations', () => {
     });
   });
 
-  it('reverts AddDiveDetailFields (after the later migration), keeping the shared trigger function, then migrates again', async () => {
-    // AllowDiveSiteWithoutPosition comes after it: reverted first.
+  it('reverts AddDiveDetailFields (after the later migrations), keeping the shared trigger function, then migrates again', async () => {
+    // AddDiveSiteDetails and AllowDiveSiteWithoutPosition come after it: reverted first.
+    await dataSource.undoLastMigration({ transaction: 'all' });
     await dataSource.undoLastMigration({ transaction: 'all' });
     await dataSource.undoLastMigration({ transaction: 'all' });
 

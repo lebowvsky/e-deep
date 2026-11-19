@@ -87,6 +87,29 @@ describe('createApiClient — writes', () => {
     expect(new Headers(init.headers).has('Content-Type')).toBe(false);
   });
 
+  it('sends a DELETE without body and resolves on an empty 204', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(new Response(null, { status: 204 })));
+
+    await expect(client.delete('sites/s1')).resolves.toBeUndefined();
+    expect(fetchMock.mock.calls[0]?.[0]).toEqual(new URL('http://api.test/api/sites/s1'));
+    const init = initOf(fetchMock);
+    expect(init.method).toBe('DELETE');
+    expect(init.body).toBeUndefined();
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('reads the code of a refused DELETE', async () => {
+    stubFetch(() =>
+      Promise.resolve(Response.json({ statusCode: 409, code: 'site-in-use' }, { status: 409 })),
+    );
+
+    await expect(client.delete('sites/s1')).rejects.toMatchObject({
+      kind: 'http',
+      status: 409,
+      code: 'site-in-use',
+    });
+  });
+
   it('reads the field errors of a 400', async () => {
     const fieldErrors = { 'participation.maxDepthM': ['max'], 'observations.3.label': ['length'] };
     stubFetch(() =>

@@ -17,7 +17,11 @@ export interface DiveBuddyRef {
   lastName: string;
 }
 
-/** A dive of the diver's log, as shown in the list. */
+/**
+ * A dive of the diver's log, as shown in the list. Light on purpose (D25): the detail fields are in
+ * `DiveDetail`, except the entry type and the dive centre, which the site page needs to show the
+ * usual ones over the whole log (D32).
+ */
 export interface DiveSummary {
   /** Id of the dive event. */
   id: string;
@@ -33,6 +37,10 @@ export interface DiveSummary {
   gasMix: GasMix;
   notes: string | null;
   buddies: DiveBuddyRef[];
+  /** `null` when not entered. */
+  entryType: EntryType | null;
+  /** Dive centre (free text), `null` when not entered. */
+  diveCenter: string | null;
 }
 
 /** How the divers entered the water (shared by the dive team). */
@@ -84,14 +92,13 @@ export interface DiveDetail extends DiveSummary {
   /** Level of the diver at the time of the dive (snapshot, D-09). */
   diverLevel: CertificationLevelRef;
 
-  // Event: type and conditions, edited by the creator only (D-13, D-18)
-  entryType: EntryType | null;
+  // Event: type and conditions, edited by the creator only (D-13, D-18); `entryType` and
+  // `diveCenter` come with the summary (D32)
   timeOfDay: TimeOfDay | null;
   weather: Weather | null;
   airTemperatureC: number | null;
   seaState: SeaState | null;
   currentStrength: CurrentStrength | null;
-  diveCenter: string | null;
 
   // Participation: dive profile (D-16, D-17)
   /** Water temperature at the surface; `temperatureC` is the bottom one. */

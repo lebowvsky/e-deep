@@ -5,6 +5,7 @@ import { SitePanel } from '@/features/sites/components/SitePanel';
 import { SiteSheet } from '@/features/sites/components/SiteSheet';
 import { SitesMap } from '@/features/sites/components/SitesMap';
 import { useMapQuery } from '@/features/sites/hooks/useMapQuery';
+import { useSitesPage } from '@/features/sites/hooks/useSitesPage';
 import { focusAfterClose, formatSiteCount } from '@/features/sites/lib/labels';
 import { panelKey, type MapPanel } from '@/features/sites/lib/mapQuery';
 import {
@@ -19,7 +20,7 @@ import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import type { GeoPoint } from '@/shared/model/geo';
 import type { Site, SiteDraft, SiteEntry, SiteZone } from '@/shared/model/site';
 import { useSiteCommands } from '@/shared/sites/hooks/useSiteCommands';
-import { useSites, type SitesState } from '@/shared/sites/hooks/useSites';
+import type { SitesState } from '@/shared/sites/hooks/useSites';
 import { Button } from '@/shared/ui/Button';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useToast } from '@/shared/ui/Toast';
@@ -59,7 +60,7 @@ function announcement(state: SitesState): string {
 
 /** « Mes sites » (`/map`): the map and the list of the user's sites, the panel to add or edit. */
 export function MapPage() {
-  const state = useSites();
+  const state = useSitesPage();
   const [query, updateQuery] = useMapQuery();
   const entries = state.status === 'ready' ? state.entries : null;
   const panel = entries ? openPanel(query.panel, entries) : null;

@@ -101,6 +101,8 @@ const SUMMARY: DiveSummary = {
   gasMix: 'NITROX32',
   notes: null,
   buddies: [{ id: 'buddy-1', firstName: 'Lucas', lastName: 'Moreau' }],
+  entryType: 'BOAT',
+  diveCenter: 'Ras Diving',
 };
 
 /** Raw queries of `DiveLogService` (through the transaction manager). */

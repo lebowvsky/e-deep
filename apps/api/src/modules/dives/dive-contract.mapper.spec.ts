@@ -25,6 +25,8 @@ const SUMMARY_ROW: DiveSummaryRow = {
   site_name: 'Le Donator',
   site_locality: null,
   site_region: 'Var',
+  entry_type: 'SHORE',
+  dive_center: 'Porquerolles Plongée',
 };
 
 /** A dive entered before the detail fields existed: every new column is `NULL`. */
@@ -40,12 +42,12 @@ const DETAIL_ROW: DiveDetailRow = {
   level_code: 'N2',
   level_label: 'Niveau 2',
   entry_type: null,
+  dive_center: null,
   time_of_day: null,
   weather: null,
   air_temperature_c: null,
   sea_state: null,
   current_strength: null,
-  dive_center: null,
   surface_water_temperature_c: null,
   safety_stop_duration_min: null,
   safety_stop_depth_m: null,
@@ -130,15 +132,25 @@ describe('toDiveSummary', () => {
       gasMix: 'OTHER',
       notes: 'Épave',
       buddies: [BUDDY],
+      entryType: 'SHORE',
+      diveCenter: 'Porquerolles Plongée',
     });
   });
 
-  it('keeps a missing temperature as null and a set locality as is', () => {
+  it('keeps missing values as null and a set locality as is', () => {
     const summary = toDiveSummary(
-      { ...SUMMARY_ROW, water_temperature_c: null, site_locality: 'Porquerolles' },
+      {
+        ...SUMMARY_ROW,
+        water_temperature_c: null,
+        entry_type: null,
+        dive_center: null,
+        site_locality: 'Porquerolles',
+      },
       [],
     );
     expect(summary.temperatureC).toBeNull();
+    expect(summary.entryType).toBeNull();
+    expect(summary.diveCenter).toBeNull();
     expect(summary.site.locality).toBe('Porquerolles');
     expect(summary.buddies).toStrictEqual([]);
   });
@@ -147,7 +159,7 @@ describe('toDiveSummary', () => {
 describe('toDiveDetail', () => {
   it('keeps every detail field of an older dive as null, observations empty', () => {
     expect(toDiveDetail(DETAIL_ROW, [], [])).toStrictEqual({
-      ...toDiveSummary(SUMMARY_ROW, []),
+      ...toDiveSummary(DETAIL_ROW, []),
       site: {
         id: 'site-1',
         name: 'Le Donator',

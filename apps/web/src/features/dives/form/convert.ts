@@ -100,10 +100,11 @@ const num = (value: string): number | null => parseNumberInput(value);
 
 /**
  * Validated values → input of `saveDive`. `ids` are those of the new dive and of a site typed by
- * name; a buddy typed by name takes the key of their row (D22). `isSavedSite`: the site is in the
- * diver's log on the API; a site created on this device only (quick creation, D30) is sent as new,
- * with its own id, so that the API creates it. `null` when a required value cannot be read:
- * validate first.
+ * name; a buddy typed by name takes the key of their row (D22). `isSavedSite`: the site is one of
+ * the diver's sites on the API (the quick creation saves it first, `POST /api/sites`). Any other
+ * id, kept by a restored draft whose site was deleted or merged since, is sent as new with its
+ * id: the API creates it by its name, or redirects a merged one to its target (RG-36). `null`
+ * when a required value cannot be read: validate first.
  */
 export function toSaveDiveInput(
   values: DiveFormValues,

@@ -112,6 +112,8 @@ describe('DiveWriteService', () => {
         area: null,
         latitude: null,
         longitude: null,
+        type: null,
+        createdVia: 'quick',
       });
       expect(await dataSource.manager.findOneByOrFail(Buddy, { id: buddy.id })).toMatchObject({
         ownerId: diver.id,

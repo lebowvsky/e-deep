@@ -8,7 +8,7 @@ import type { DiveFormValues } from '../../../form/model';
 import { duplicateDiveValues, editDiveValues, editTarget } from '../../../form/prefill';
 import { CONTEXT, filledDive, formSourcesOf, validValues } from '../../../mocks/diveFormFixture';
 import { mockDives } from '../../../mocks/dives';
-import { MOCK_SITES } from '@/shared/sites/mocks/sites';
+import { mockSites } from '@/shared/sites/mocks/sites';
 import { LOCKED_EVENT_HINT } from '../fieldBinding';
 import { DiveForm, type DiveFormProps } from './DiveForm';
 
@@ -388,28 +388,38 @@ describe('DiveForm — quick site creation', () => {
   });
 });
 
-describe('DiveForm — site merged on this device', () => {
-  it('sends a site of the API log as known, even once merged locally', async () => {
+describe('DiveForm — site of a restored draft gone since', () => {
+  it('sends a site that is none of my sites as new, with its id', async () => {
     const user = userEvent.setup();
     const saveDive = vi.fn<SaveDive>(() => Promise.resolve({ ok: true, id: 'd128', number: 128 }));
-    // La Pointe de la Revellata (s01) merged into La Bibliothèque (s02) here: not in the choices.
-    const sources = formSourcesOf(mockDives, {
-      saved: new Map([['s02', MOCK_SITES.bibliotheque]]),
-      removed: new Set(['s01']),
-      mergedInto: new Map([['s01', 's02']]),
-    });
-    expect(sources.sites.some(({ id }) => id === 's01')).toBe(false);
+    // La Pointe de la Revellata (s01), kept by the draft, merged or deleted from another device.
+    const sources = formSourcesOf(
+      mockDives,
+      mockSites.filter(({ id }) => id !== 's01'),
+    );
     renderNew({ saveDive, sources });
+
+    expect(screen.getByText('Nouveau site : il sera créé à l’enregistrement.')).toBeTruthy();
+    await user.click(saveButton());
+
+    await waitFor(() => expect(saveDive).toHaveBeenCalledOnce());
+    // The API creates it by its name, or sends a merged one to its target (RG-36).
+    expect(saveDive.mock.calls[0]?.[0].contacts.site).toEqual({
+      id: 's01',
+      name: 'Pointe de la Revellata',
+      isNew: true,
+    });
+  });
+
+  it('sends one of my sites as known', async () => {
+    const user = userEvent.setup();
+    const saveDive = vi.fn<SaveDive>(() => Promise.resolve({ ok: true, id: 'd128', number: 128 }));
+    renderNew({ saveDive });
 
     await user.click(saveButton());
 
     await waitFor(() => expect(saveDive).toHaveBeenCalledOnce());
-    // Still a site of the API: never « new » (the API would refuse or duplicate it).
-    expect(saveDive.mock.calls[0]?.[0].contacts.site).toEqual({
-      id: 's01',
-      name: 'Pointe de la Revellata',
-      isNew: false,
-    });
+    expect(saveDive.mock.calls[0]?.[0].contacts.site).toMatchObject({ id: 's01', isNew: false });
   });
 });
 

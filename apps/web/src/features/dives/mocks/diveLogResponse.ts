@@ -28,6 +28,8 @@ function toDiveSummary(dive: LoggedDive): DiveSummary {
     buddies: dive.team
       .filter((member) => !member.isSelf)
       .map(({ id, firstName, lastName }) => ({ id, firstName, lastName })),
+    entryType: null,
+    diveCenter: null,
   };
 }
 

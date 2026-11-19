@@ -167,6 +167,60 @@ describe('DiversService, CertificationLevelsService and PurgeService', () => {
       expect(await dataSource.manager.existsBy(DiveSite, { id: site.id })).toBe(true);
     });
 
+    it('purges a merged site and its deleted target together (D-30)', async () => {
+      const diver = await fixtures.diver();
+      const target = await fixtures.site(diver.id, { deletedAt: new Date() });
+      const source = await fixtures.site(diver.id, {
+        deletedAt: new Date(),
+        mergedIntoId: target.id,
+      });
+      await fixtures.ageTombstone('dive_sites', target.id, 91);
+      await fixtures.ageTombstone('dive_sites', source.id, 91);
+
+      const report = await purge.purge();
+
+      expect(report.sites).toBe(2);
+      expect(await dataSource.manager.count(DiveSite)).toBe(0);
+    });
+
+    it('keeps a target still pointed to by a merged site that is not purgeable yet', async () => {
+      const diver = await fixtures.diver();
+      const target = await fixtures.site(diver.id, { deletedAt: new Date() });
+      const recent = await fixtures.site(diver.id, {
+        deletedAt: new Date(),
+        mergedIntoId: target.id,
+      });
+      const withEvent = await fixtures.site(diver.id, {
+        deletedAt: new Date(),
+        mergedIntoId: target.id,
+      });
+      // A tombstoned event still on a merged site (written before the merge reached it).
+      await fixtures.event(diver.id, withEvent.id, { deletedAt: new Date() });
+      await fixtures.ageTombstone('dive_sites', target.id, 91);
+      await fixtures.ageTombstone('dive_sites', withEvent.id, 91);
+
+      const report = await purge.purge();
+
+      expect(report.sites).toBe(0);
+      for (const site of [target, recent, withEvent]) {
+        expect(await dataSource.manager.existsBy(DiveSite, { id: site.id })).toBe(true);
+      }
+    });
+
+    it('purges a merged site whose live target stays', async () => {
+      const diver = await fixtures.diver();
+      const target = await fixtures.site(diver.id);
+      const source = await fixtures.site(diver.id, {
+        deletedAt: new Date(),
+        mergedIntoId: target.id,
+      });
+      await fixtures.ageTombstone('dive_sites', source.id, 91);
+
+      expect((await purge.purge()).sites).toBe(1);
+      expect(await dataSource.manager.existsBy(DiveSite, { id: target.id })).toBe(true);
+      expect(await dataSource.manager.existsBy(DiveSite, { id: source.id })).toBe(false);
+    });
+
     it('keeps recent tombstones and never purges certification levels', async () => {
       const diver = await fixtures.diver();
       const retired = await fixtures.addLevel({ isActive: false });

@@ -56,12 +56,9 @@ export const color = {
   chartBar: 'rgba(154, 186, 224, 0.22)', // non-peak bars
   gridline: 'rgba(154, 186, 224, 0.08)',
 
-  // Map placeholder — stylised coastlines, strongest to faintest
+  // Map (MapLibre style) — coastlines, then borders and roads
   coast: 'rgba(154, 186, 224, 0.14)',
   coastDim: 'rgba(154, 186, 224, 0.09)',
-  coastFaint: 'rgba(154, 186, 224, 0.07)',
-  coastMuted: 'rgba(154, 186, 224, 0.08)', // empty map
-  coastGhost: 'rgba(154, 186, 224, 0.05)',
   skeletonDot: 'rgba(154, 186, 224, 0.12)', // marker placeholders while loading
 
   // Dive log (dives-list.jsx)
@@ -168,7 +165,6 @@ export const shadow = {
   dotRing: '0 0 0 2px #060C18', // notification dot cut out of the page background
   ringSurface: '0 0 0 2px #122544', // overlapping avatars on a surface1 card
   marker: 'inset 0 0 0 1px rgba(79, 214, 201, 0.35), 0 4px 12px rgba(0, 0, 0, 0.4)',
-  markerActive: '0 0 0 3px rgba(79, 214, 201, 0.2), 0 6px 18px rgba(79, 214, 201, 0.35)',
   popover: 'inset 0 0 0 1px rgba(154, 186, 224, 0.18), 0 12px 32px rgba(0, 0, 0, 0.5)',
   peak: '0 0 16px rgba(79, 214, 201, 0.3)',
   ringSurface2: '0 0 0 2px #1B3156', // overlapping avatars on a hovered row (surface2)
@@ -183,9 +179,6 @@ export const gradient = {
   pageDesktop:
     'radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%)',
   mapEmpty: 'radial-gradient(900px 400px at 50% 60%, rgba(27, 49, 86, 0.35), transparent 70%)',
-  mapMobile: 'radial-gradient(300px 200px at 50% 55%, rgba(36, 64, 109, 0.5), transparent 70%)',
-  mapDesktop:
-    'radial-gradient(800px 400px at 55% 60%, rgba(36, 64, 109, 0.4), transparent 70%), radial-gradient(500px 300px at 20% 30%, rgba(79, 214, 201, 0.05), transparent 70%)',
 } as const;
 
 export const motion = {
@@ -200,10 +193,8 @@ export const motion = {
 // Content dimmed while a refresh is in flight.
 export const opacity = {
   busy: 0.6,
-  mapGrid: 0.6,
   mapGridEmpty: 0.4,
   spark: 0.7,
-  pulse: 0.35,
   ghost: 0.5, // ghost logbook lines of the empty dive log
   disabled: 0.45, // missing previous / next dive tile (dive-detail.jsx)
 } as const;
@@ -249,20 +240,15 @@ export const layout = {
   sparkHeight: 30,
   mapHeight: 440,
   mapHeightSm: 280,
+  mapHeaderScrim: 120, // dashboard map: veil under its header, over the tiles
+  mapHeaderScrimSm: 64,
   mapGrid: 60,
   mapGridSm: 40,
-  markerXs: 22,
-  markerSm: 26,
   markerMd: 28,
-  markerLg: 36,
-  markerPulse: 20, // pulse ring = marker + 20px
-  markerHitArea: 32, // markers can sit close together: smaller than 44 to limit overlaps
   popoverWidth: 200,
-  popoverOffset: 30, // gap between the popover and the marker centre
   popoverTail: 12,
   filterHeight: 30,
   scaleBar: 60,
-  scaleBarSm: 40,
   chartHeight: 120,
   chartHeightSm: 80,
   barMaxWidth: 24,

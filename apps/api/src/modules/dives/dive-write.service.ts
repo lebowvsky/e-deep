@@ -14,7 +14,7 @@ import { Buddy } from '../buddies/buddy.entity';
 import { BuddiesService } from '../buddies/buddies.service';
 import { CertificationLevel } from '../certification-levels/certification-level.entity';
 import { DiveSite } from '../dive-sites/dive-site.entity';
-import { DiveSitesService } from '../dive-sites/dive-sites.service';
+import { DiveSitesService, resolveMergedSiteIn } from '../dive-sites/dive-sites.service';
 import { diveNotFound, DiveLogService } from './dive-log.service';
 import { isSameDiveWrite, toDiveWrite } from './dive-write.mapper';
 import type { Dive, DiveWrite } from './dive.types';
@@ -64,13 +64,15 @@ export class DiveWriteService {
     return this.dataSource.transaction(async (manager): Promise<DiveCreation> => {
       // Two creations of the same new id: the second waits, then sees the first as `own`.
       await lockIdForTransaction(manager, request.event.id);
+      const siteId = await resolveSiteFirst(manager, diverId, request);
       const lookup = await this.dives.findDiveForWriteIn(manager, diverId, request.event.id);
       if (lookup.status === 'foreign') {
         throw new IdentifierConflictError();
       }
       if (lookup.status === 'own') {
         const { dive } = lookup;
-        if (!isLive(dive) || !isSameDiveWrite(toDiveWrite(request, dive.participation), dive)) {
+        const write = withSite(toDiveWrite(request, dive.participation), siteId);
+        if (!isLive(dive) || !isSameDiveWrite(write, dive)) {
           throw new IdentifierConflictError();
         }
         return {
@@ -82,7 +84,7 @@ export class DiveWriteService {
       await this.writeDive(
         manager,
         diverId,
-        toDiveWrite(request, { id: randomUUID(), certificationLevelId: null }),
+        withSite(toDiveWrite(request, { id: randomUUID(), certificationLevelId: null }), siteId),
       );
       return {
         outcome: 'created',
@@ -100,13 +102,14 @@ export class DiveWriteService {
    */
   replace(diverId: string, id: string, request: DiveWriteRequest): Promise<DiveWriteResponse> {
     return this.dataSource.transaction(async (manager) => {
+      const siteId = await resolveSiteFirst(manager, diverId, request);
       const lookup = await this.dives.findDiveForWriteIn(manager, diverId, id);
       if (lookup.status !== 'own' || !isLive(lookup.dive)) {
         throw diveNotFound();
       }
       const { participation } = lookup.dive;
       await this.writeContacts(manager, diverId, request);
-      await this.writeDive(manager, diverId, toDiveWrite(request, participation));
+      await this.writeDive(manager, diverId, withSite(toDiveWrite(request, participation), siteId));
       return this.diveLog.numberOfIn(manager, diverId, id);
     });
   }
@@ -131,8 +134,9 @@ export class DiveWriteService {
   }
 
   /**
-   * A site known by its name only (D-23). Already the diver's (a retried creation, or a site
-   * enriched since): left as is.
+   * A site known by its name only (D-23), created from the dive form (`quick`, RG-34). Already the
+   * diver's (a retried creation, a site enriched since, or merged since: the dive is then
+   * redirected to its target, RG-36): left as is.
    *
    * @throws {InvalidReferenceError} when the id is another diver's site.
    */
@@ -157,6 +161,11 @@ export class DiveWriteService {
         area: null,
         latitude: null,
         longitude: null,
+        type: null,
+        depthMinM: null,
+        depthMaxM: null,
+        accessNotes: null,
+        createdVia: 'quick',
         baseUpdatedAt: null,
         deletedAt: null,
       },
@@ -257,6 +266,23 @@ export class DiveWriteService {
       throw diveNotFound();
     }
   }
+}
+
+/**
+ * The site the dive will reference: a merged site is replaced by its target (RG-36). Resolved
+ * first, under a share lock, so that sites are locked before the event, in the order of a merge
+ * (sites, then their events): a dive written during a merge cannot deadlock with it.
+ */
+function resolveSiteFirst(
+  manager: EntityManager,
+  diverId: string,
+  request: DiveWriteRequest,
+): Promise<string> {
+  return resolveMergedSiteIn(manager, diverId, request.event.siteId);
+}
+
+function withSite(write: DiveWrite, siteId: string): DiveWrite {
+  return { ...write, event: { ...write.event, siteId } };
 }
 
 function isLive({ event, participation }: Dive): boolean {

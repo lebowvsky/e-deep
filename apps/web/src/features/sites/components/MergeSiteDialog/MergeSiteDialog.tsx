@@ -11,7 +11,7 @@ export interface MergeSiteDialogProps {
   source: SiteEntry;
   /** The user's sites: the targets to choose from (the source left out). */
   entries: readonly SiteEntry[];
-  /** Writes the merge (`mergeSites`): the completed target. */
+  /** Writes the merge (`mergeSites`, on the API): the completed target. */
   merge: (source: Site, target: Site) => Promise<Site>;
   onMerged: (target: Site) => void;
   onCancel: () => void;

@@ -16,11 +16,6 @@ export interface DiveFormSiteOption {
   /** « Calvi · Corse »; `null` when neither the locality nor the region was entered. */
   place: string | null;
   diveCount: number;
-  /**
-   * In the log on the API. `false` for a site created on this device (quick creation): saving the
-   * dive creates it (`toSaveDiveInput`).
-   */
-  isSaved: boolean;
 }
 
 export interface DiveFormDiverOption {
@@ -53,15 +48,12 @@ export const FREQUENT_DIVERS = 4;
 
 /**
  * `log`: the dive log, latest first. `sites`: the user's sites as `buildSiteCatalogue` gives them
- * (the log under the local changes: sites created here, edited, merged, deleted), most dived
- * first. The local changes are applied there, once for the whole app.
+ * (`GET /api/sites` with their dives), most dived first.
  */
 export function buildDiveFormSources(
   log: readonly LoggedDive[],
   sites: readonly SiteEntry[],
 ): DiveFormSources {
-  // In the API log: the others were created on this device (sent as new when the dive is saved).
-  const loggedSiteIds = new Set(log.map((dive) => dive.site.id));
   let maxNumber = 0;
   let latest: LoggedDive | null = null;
   for (const dive of log) {
@@ -73,9 +65,8 @@ export function buildDiveFormSources(
     name: site.name,
     place: site.region,
     diveCount: stats.diveCount,
-    isSaved: loggedSiteIds.has(site.id),
   }));
-  // The site of the latest dive, once merges are applied: the entry that holds that dive.
+  // The site of the latest dive: the entry that holds that dive.
   const latestId = latest?.id;
   const latestSite = sites.find(({ dives }) => dives.some(({ id }) => id === latestId))?.site;
   const divers = computeFacets(log).members;

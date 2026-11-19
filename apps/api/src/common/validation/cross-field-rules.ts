@@ -1,9 +1,9 @@
 import { ValidateBy, type ValidationArguments } from 'class-validator';
 import { isoOffsetMinutes } from './field-rules';
 
-// Rules that compare a field with its siblings (RG-23, RG-24, RG-25) or the items of a list. They
-// only judge a well-typed value: a missing or mistyped sibling reports its own error. Each
-// constraint is named after its contract code (D-26).
+// Rules that compare a field with its siblings (RG-23 to RG-25, D-23, RG-32) or the items of a
+// list. They only judge a well-typed value: a missing or mistyped sibling reports its own error.
+// Each constraint is named after its contract code (D-26).
 
 /** The field must satisfy `isSatisfied` given the object it belongs to. */
 export function CrossFieldRule<T extends object>(

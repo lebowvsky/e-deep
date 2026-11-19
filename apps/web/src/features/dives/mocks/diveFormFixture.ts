@@ -6,8 +6,9 @@ import type { DiveDetailView } from '../types';
 import { emptyDiveFormValues, type DiveFormValues } from '../form/model';
 import type { ValidationContext } from '../form/validation';
 import { buildDiveFormSources, type DiveFormSources } from '../form/sources';
+import type { Site } from '@/shared/model/site';
 import { buildSiteCatalogue } from '@/shared/sites/lib/siteCatalogue';
-import { EMPTY_SITES_OVERLAY, type SitesOverlay } from '@/shared/sites/repository/sitesRepository';
+import { mockSites } from '@/shared/sites/mocks/sites';
 import type { LoggedDive } from '../types';
 import { toDiveLogResponse } from './diveLogResponse';
 
@@ -35,11 +36,14 @@ export function filledDive(): DiveDetailView {
   return toDiveDetailView(mockFilledDiveDetail('d127'), SELF);
 }
 
-/** The sources of the form for `log`, under `overlay` (no local change by default). */
+/**
+ * The sources of the form for `log`, with `sites` as the user's sites: by default those of the
+ * mocked log that `log` dived (s01 → s23, same ids).
+ */
 export function formSourcesOf(
   log: readonly LoggedDive[],
-  overlay: SitesOverlay = EMPTY_SITES_OVERLAY,
+  sites: readonly Site[] = mockSites.filter(({ id }) => log.some((dive) => dive.site.id === id)),
 ): DiveFormSources {
   const { dives } = toDiveLogResponse(log);
-  return buildDiveFormSources(log, buildSiteCatalogue({ dives, positions: new Map(), overlay }));
+  return buildDiveFormSources(log, buildSiteCatalogue({ sites, dives }));
 }

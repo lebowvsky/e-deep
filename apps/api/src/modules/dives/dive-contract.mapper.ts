@@ -55,6 +55,8 @@ export interface DiveSummaryRow {
   site_name: string;
   site_locality: string | null;
   site_region: string | null;
+  entry_type: EntryType | null;
+  dive_center: string | null;
 }
 
 /**
@@ -71,13 +73,11 @@ export interface DiveDetailRow extends DiveSummaryRow {
   level_agency: string;
   level_code: string;
   level_label: string;
-  entry_type: EntryType | null;
   time_of_day: TimeOfDay | null;
   weather: Weather | null;
   air_temperature_c: string | null;
   sea_state: SeaState | null;
   current_strength: CurrentStrength | null;
-  dive_center: string | null;
   surface_water_temperature_c: string | null;
   safety_stop_duration_min: number | null;
   safety_stop_depth_m: string | null;
@@ -135,6 +135,8 @@ export function toDiveSummary(row: DiveSummaryRow, buddies: DiveBuddyRef[]): Div
     gasMix: row.gas_mix,
     notes: row.notes,
     buddies,
+    entryType: row.entry_type,
+    diveCenter: row.dive_center,
   };
 }
 
@@ -157,13 +159,11 @@ export function toDiveDetail(
     hadDecompression: row.has_decompression,
     stopsOk: row.stops_ok,
     diverLevel: { agency: row.level_agency, code: row.level_code, label: row.level_label },
-    entryType: row.entry_type,
     timeOfDay: row.time_of_day,
     weather: row.weather,
     airTemperatureC: fromNullableNumeric(row.air_temperature_c),
     seaState: row.sea_state,
     currentStrength: row.current_strength,
-    diveCenter: row.dive_center,
     surfaceTemperatureC: fromNullableNumeric(row.surface_water_temperature_c),
     safetyStopDurationMin: row.safety_stop_duration_min,
     safetyStopDepthM: fromNullableNumeric(row.safety_stop_depth_m),

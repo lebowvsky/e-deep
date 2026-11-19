@@ -46,7 +46,6 @@ export function formatRegionCount(count: number): string {
 
 /** Where the site page links: the map with the site selected. */
 export const mapHrefOf = (id: string) => `/map?site=${encodeURIComponent(id)}`;
-export const siteHrefOf = (id: string) => `/sites/${encodeURIComponent(id)}`;
 export const editHrefOf = (id: string) => `/map?panel=edit&id=${encodeURIComponent(id)}`;
 export const placeHrefOf = (id: string) => `/map?panel=place&id=${encodeURIComponent(id)}`;
 export const newDiveHrefOf = (id: string) => `/dives/new?site=${encodeURIComponent(id)}`;

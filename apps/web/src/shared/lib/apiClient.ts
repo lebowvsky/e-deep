@@ -48,6 +48,8 @@ export interface ApiClient {
   post<T>(path: string, body: unknown, guard: TypeGuard<T>, options?: RequestOptions): Promise<T>;
   /** Sends `body` as JSON. */
   put<T>(path: string, body: unknown, guard: TypeGuard<T>, options?: RequestOptions): Promise<T>;
+  /** Expects an empty answer (`204`): any body is ignored. */
+  delete(path: string, options?: RequestOptions): Promise<void>;
 }
 
 export interface ApiClientConfig {
@@ -58,7 +60,7 @@ export interface ApiClientConfig {
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
-type Method = 'GET' | 'POST' | 'PUT';
+type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 /** What an error body may tell (D-26); anything else in it is ignored. */
 interface ApiErrorBody {
@@ -98,10 +100,14 @@ export function createApiClient({
   // A trailing slash makes `new URL('health', base)` append instead of replacing the last segment.
   const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
 
-  async function request<T>(
+  /**
+   * Sends the request and settles the failures (timeout, network, HTTP status); `read` turns the
+   * successful response into the result, before the timer stops.
+   */
+  async function send<T>(
     method: Method,
     path: string,
-    guard: TypeGuard<T>,
+    read: (response: Response, url: URL) => Promise<T>,
     { body, signal: callerSignal }: RequestOptions & { body?: unknown } = {},
   ): Promise<T> {
     const url = new URL(path.replace(/^\/+/, ''), base);
@@ -144,6 +150,16 @@ export function createApiClient({
         });
       }
 
+      return await read(response, url);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** The JSON body of a successful response, checked by `guard`. */
+  const readBody =
+    <T>(guard: TypeGuard<T>) =>
+    async (response: Response, url: URL): Promise<T> => {
       let data: unknown;
       try {
         data = await response.json();
@@ -157,14 +173,14 @@ export function createApiClient({
         throw new ApiError('invalid-response', `Unexpected response shape for ${url.pathname}.`);
       }
       return data;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
+    };
+
+  const ignoreBody = () => Promise.resolve();
 
   return {
-    get: (path, guard, options) => request('GET', path, guard, options),
-    post: (path, body, guard, options) => request('POST', path, guard, { ...options, body }),
-    put: (path, body, guard, options) => request('PUT', path, guard, { ...options, body }),
+    get: (path, guard, options) => send('GET', path, readBody(guard), options),
+    post: (path, body, guard, options) => send('POST', path, readBody(guard), { ...options, body }),
+    put: (path, body, guard, options) => send('PUT', path, readBody(guard), { ...options, body }),
+    delete: (path, options) => send('DELETE', path, ignoreBody, options),
   };
 }

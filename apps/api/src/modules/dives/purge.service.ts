@@ -55,11 +55,19 @@ export class PurgeService {
       );
       // 3. Buddies (their dive team lines were already removed when tombstoned).
       const buddies = await deleteTombstones(Buddy);
-      // 4. Sites without any event, tombstoned ones included (FK RESTRICT).
+      // 4. Sites without any event, tombstoned ones included (FK RESTRICT), and not the target of
+      //    a merged site that stays (D-30). A merged site and its target are deleted by the same
+      //    statement, which the `NO ACTION` FK accepts (checked at the end of the statement).
       const sites = await deleteTombstones(
         DiveSite,
         `NOT EXISTS (SELECT 1 FROM dive_events e
-                      WHERE e.creator_id = dive_sites.owner_id AND e.site_id = dive_sites.id)`,
+                      WHERE e.creator_id = dive_sites.owner_id AND e.site_id = dive_sites.id)
+         AND NOT EXISTS (
+           SELECT 1 FROM dive_sites merged
+            WHERE merged.owner_id = dive_sites.owner_id AND merged.merged_into_id = dive_sites.id
+              AND NOT (merged.deleted_at < :cutoff AND NOT EXISTS (
+                SELECT 1 FROM dive_events me
+                 WHERE me.creator_id = merged.owner_id AND me.site_id = merged.id)))`,
       );
       return { participations, events, buddies, sites };
     });

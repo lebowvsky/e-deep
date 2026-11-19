@@ -1,6 +1,7 @@
 @use '@/styles/tokens' as *;
 
-// dive-detail.jsx · MiniMap: 150 (phones) / 170 high, marker 28 + dot 10, coordinates bottom left.
+// dive-detail.jsx · MiniMap: 150 (phones) / 170 high, marker 28 + dot 10. The coordinates sit at
+// the top (as on the site page): the scale and the attribution of the map hold the bottom.
 .map {
   position: relative;
   display: flex;
@@ -14,17 +15,24 @@
   }
 }
 
+// No position (site created by its name): no map, a dim well.
+.empty {
+  background: $gradient-map-empty, $color-surface-0;
+}
+
 .marker {
   position: absolute;
   top: 50%;
   left: 50%;
+  z-index: 2;
   display: flex;
-  width: $layout-marker-md;
-  height: $layout-marker-md;
   align-items: center;
   justify-content: center;
-  border-radius: $radius-pill;
+  width: $layout-marker-md;
+  height: $layout-marker-md;
+  pointer-events: none;
   background: $color-accent-soft;
+  border-radius: $radius-pill;
   box-shadow: $shadow-marker;
   transform: translate(-50%, -50%);
 }
@@ -32,22 +40,25 @@
 .dot {
   width: $layout-site-marker-dot;
   height: $layout-site-marker-dot;
-  border-radius: $radius-pill;
   background: $color-accent;
+  border-radius: $radius-pill;
 }
 
 .coordinates {
   @include type($type-meta, $font: $font-mono, $tabular: true);
 
   position: absolute;
-  bottom: $space-3;
+  top: $space-3;
   left: $space-3;
+  z-index: 2;
+  padding: $space-1 $space-2;
   margin: 0;
-  color: $color-text-low;
+  color: $color-text-med;
+  background: $color-map-overlay-strong;
+  border-radius: $radius-sm;
 }
 
-// No position (site created by its name): the FactList « missing » reading, where the
-// coordinates would be.
+// The FactList « missing » reading, where the coordinates would be.
 .missing {
   @include type($type-caption);
 
@@ -55,8 +66,8 @@
   bottom: $space-3;
   left: $space-3;
   display: inline-flex;
-  align-items: baseline;
   gap: $space-2;
+  align-items: baseline;
   margin: 0;
   font-weight: 400;
   color: $color-text-low;

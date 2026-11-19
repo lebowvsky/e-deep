@@ -122,7 +122,8 @@ export type ApiDomainErrorCode =
   | 'buddy-link-conflict'
   | 'unsupported-contract-value'
   | 'duplicate-observation'
-  | 'too-many-observations';
+  | 'too-many-observations'
+  | 'merge-into-self';
 
 /** Business error (D-26): `400`, `409`, `422` or `500` depending on the code. */
 export interface ApiDomainErrorResponse {

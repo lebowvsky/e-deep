@@ -1,4 +1,5 @@
 /** Shapes of the development seed data (`dev-seed.data.ts`, `dive-log.data.ts`). */
+import type { SiteType } from '@e-deep/shared';
 import type {
   DiveEventConditionsWrite,
   DiveObservationWrite,
@@ -8,15 +9,27 @@ import type { GasMix } from '../../modules/dives/gas-mix';
 
 export type LevelCode = 'N1' | 'N2' | 'N3' | 'N4';
 
-export interface SeedSite {
+/** Details of a site (D-27), each one optional: `null` when omitted. */
+export interface SeedSiteDetails {
+  readonly type?: SiteType;
+  readonly depthMinM?: number;
+  readonly depthMaxM?: number;
+  readonly accessNotes?: string;
+}
+
+export interface SeedSite extends SeedSiteDetails {
   readonly key: string;
   readonly name: string;
   readonly locality: string | null;
   readonly region: string;
   /** Sea or area (D-20), `null` when not entered. */
   readonly area: string | null;
-  readonly latitude: number;
-  readonly longitude: number;
+  /**
+   * Both set or both `null`. A site without position was created by its name from the dive form
+   * (`quick`), the others from the map (`full`), as the migration backfills them.
+   */
+  readonly latitude: number | null;
+  readonly longitude: number | null;
 }
 
 export interface SeedBuddy {

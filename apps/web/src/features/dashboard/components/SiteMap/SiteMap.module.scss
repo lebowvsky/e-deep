@@ -47,6 +47,23 @@
 
     height: $layout-map-height;
   }
+
+  // Veil under the header: its text stays readable over the place names of the tiles.
+  &::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 2;
+    height: $layout-map-header-scrim-sm;
+    pointer-events: none;
+    content: '';
+    background: linear-gradient($color-map-overlay-strong, transparent);
+
+    @include from($bp-tablet) {
+      height: $layout-map-header-scrim;
+    }
+  }
 }
 
 // Header overlay: overline + title + period filters (tablet+), « Agrandir » (phone).
@@ -60,6 +77,13 @@
   gap: $space-3;
   align-items: center;
   justify-content: space-between;
+  // Over the map: only its controls catch the pointer, the markers below stay clickable.
+  pointer-events: none;
+
+  a,
+  button {
+    pointer-events: auto;
+  }
 
   @include from($bp-tablet) {
     top: $space-5;
@@ -140,93 +164,10 @@
   }
 }
 
-// Markers: positioned from the projection through --x / --y.
-.markers {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.markerItem {
-  position: absolute;
-  top: var(--y);
-  left: var(--x);
-  z-index: 2;
-  transform: translate(-50%, -50%);
-
-  &:has(.active) {
-    z-index: 4;
-  }
-}
-
-.marker {
-  @include focus-ring;
-  @include hit-area($layout-marker-hit-area);
-  @include type($type-unit-xs, $font: $font-mono, $tabular: true);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: $layout-marker-xs;
-  height: $layout-marker-xs;
-  font-weight: 600;
-  color: $color-text-high;
-  cursor: pointer;
-  background: $color-surface-2;
-  border-radius: $radius-pill;
-  box-shadow: $shadow-marker;
-
-  @include from($bp-tablet) {
-    @include type($type-chip, $font: $font-mono, $tabular: true);
-
-    width: $layout-marker-sm;
-    height: $layout-marker-sm;
-    font-weight: 600;
-  }
-}
-
-.big {
-  width: $layout-marker-md;
-  height: $layout-marker-md;
-
-  @include from($bp-tablet) {
-    @include type($type-unit-sm, $font: $font-mono, $tabular: true);
-
-    width: $layout-marker-lg;
-    height: $layout-marker-lg;
-    font-weight: 600;
-  }
-}
-
-.active {
-  width: $layout-marker-md;
-  height: $layout-marker-md;
-  color: $color-accent-ink;
-  background: $color-accent;
-  box-shadow: $shadow-marker-active;
-
-  // Pulse ring (tablet+), 20px wider than the marker.
-  @include from($bp-tablet) {
-    &::before {
-      position: absolute;
-      inset: calc(#{$layout-marker-pulse} / -2);
-      content: '';
-      border: 1px solid $color-accent;
-      border-radius: $radius-pill;
-      opacity: $opacity-pulse;
-    }
-  }
-}
-
-// Popover of the selected site (tablet+). Its tail points at the marker; near an edge it opens
-// towards the centre (`data-align`) so it never leaves the card.
+// Preview of the selected site (tablet+), placed above its marker by the map; its tail points
+// at the marker.
 .popover {
-  --tail-inset: #{$space-5};
-
-  position: absolute;
-  top: var(--y);
-  left: var(--x);
-  z-index: 5;
+  position: relative;
   display: none;
   flex-direction: column;
   gap: $space-1;
@@ -235,7 +176,6 @@
   background: $color-surface-2;
   border-radius: $radius-md;
   box-shadow: $shadow-popover;
-  transform: translate(-50%, calc(-100% - #{$layout-popover-offset}));
 
   &::after {
     position: absolute;
@@ -249,29 +189,6 @@
     transform: rotate(45deg);
   }
 
-  &[data-align='start'] {
-    transform: translate(
-      calc(-1 * (var(--tail-inset) + #{$layout-popover-tail} / 2)),
-      calc(-100% - #{$layout-popover-offset})
-    );
-
-    &::after {
-      left: var(--tail-inset);
-    }
-  }
-
-  &[data-align='end'] {
-    transform: translate(
-      calc(-100% + var(--tail-inset) + #{$layout-popover-tail} / 2),
-      calc(-100% - #{$layout-popover-offset})
-    );
-
-    &::after {
-      right: var(--tail-inset);
-      left: auto;
-    }
-  }
-
   @include from($bp-tablet) {
     display: flex;
   }
@@ -282,9 +199,17 @@
 }
 
 .popoverName {
+  @include focus-ring;
   @include type($type-brand-sm);
 
   color: $color-text-high;
+  text-decoration: none;
+  border-radius: $radius-xs;
+
+  &:hover {
+    color: $color-accent;
+    text-decoration: underline;
+  }
 }
 
 .popoverStats {
@@ -312,31 +237,4 @@
   @include type($type-meta, $font: $font-mono, $uppercase: true);
 
   color: $color-text-low;
-}
-
-.scale {
-  @include type($type-meta, $font: $font-mono);
-
-  position: absolute;
-  bottom: $space-3;
-  left: $layout-tile-pad;
-  display: flex;
-  gap: $space-2;
-  align-items: center;
-  color: $color-text-low;
-
-  @include from($bp-tablet) {
-    bottom: $space-5;
-    left: $space-6;
-  }
-}
-
-.scaleBar {
-  width: $layout-scale-bar-sm;
-  height: $layout-hairline;
-  background: $color-text-low;
-
-  @include from($bp-tablet) {
-    width: $layout-scale-bar;
-  }
 }

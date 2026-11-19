@@ -17,6 +17,7 @@ import type { PullPage, SyncCursor, SyncWriteResult } from '../../common/sync/sy
 import { Buddy, BUDDY_LINK_UNIQUE_INDEX } from '../buddies/buddy.entity';
 import { CertificationLevel } from '../certification-levels/certification-level.entity';
 import { DiveSite } from '../dive-sites/dive-site.entity';
+import { resolveMergedSiteIn } from '../dive-sites/dive-sites.service';
 import { Diver } from '../divers/diver.entity';
 import { DiveBuddy } from './dive-buddy.entity';
 import { DiveEvent } from './dive-event.entity';
@@ -58,6 +59,7 @@ export class DivesService {
    * - A stale restore of the event or of the participation (D-12 a) rejects the whole dive.
    * - A tombstoned participation of the same `(event, diver)` is restored under its existing id,
    *   never recreated: `current.participation.id` may then differ from the id sent.
+   * - A site merged into another is replaced by its target (RG-36), before anything else.
    * - A live dive restores its tombstoned site and buddies (D-12 b), unless a restored buddy's
    *   linked account is already linked to another live contact (`BuddyLinkConflictError`).
    * - The dive team is replaced by `buddyIds` (a set: case and order do not matter), the
@@ -85,7 +87,11 @@ export class DivesService {
   ): Promise<SyncWriteResult<Dive>> {
     assertWithinPurgeHorizon(lastPulledAt, new Date(), this.settings.purgeHorizonDays);
     const observations = normalizeObservations(write.observations);
-    const { event, participation } = write;
+    const { participation } = write;
+    const event = {
+      ...write.event,
+      siteId: await resolveMergedSiteIn(manager, diverId, write.event.siteId),
+    };
     // Canonical order: rows are restored and team lines inserted in the same order by every write.
     const buddyIds = canonicalUuids(write.buddyIds);
 

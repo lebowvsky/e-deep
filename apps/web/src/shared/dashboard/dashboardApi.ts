@@ -1,6 +1,5 @@
-// The dashboard (`GET /dashboard`): read by the dashboard page and, for the positions of the
-// sites, by the map. One contract check, one cache entry (`DASHBOARD_QUERY_KEY`), invalidated
-// with the dashboard.
+// The dashboard (`GET /dashboard`): read by the dashboard page. Its cache key is shared: the
+// writes on the sites mark it stale (`useSiteCommands`), without importing the dashboard feature.
 import { queryOptions } from '@tanstack/react-query';
 import type {
   DashboardBuddy,

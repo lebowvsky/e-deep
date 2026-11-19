@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeDiveApi, type FakeDiveApi } from '@/features/dives/mocks/fakeDiveApi';
 import { ApiClientContext } from '@/shared/lib/apiClientContext';
-import { createMemorySitesRepository } from '@/shared/sites/repository/sitesRepository';
+import { createHttpSitesRepository } from '@/shared/sites/api/httpSitesRepository';
 import { SitesRepositoryContext } from '@/shared/sites/repository/sitesRepositoryContext';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { DiveDetailPage } from './DiveDetailPage';
@@ -28,7 +28,7 @@ function renderApp(api: FakeDiveApi) {
   });
   render(
     <ApiClientContext value={api.client}>
-      <SitesRepositoryContext value={createMemorySitesRepository()}>
+      <SitesRepositoryContext value={createHttpSitesRepository(api.client)}>
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
             <RouterProvider router={router} />

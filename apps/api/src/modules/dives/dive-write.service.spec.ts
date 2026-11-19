@@ -19,6 +19,8 @@ import type { DivesService } from './dives.service';
 const DIVER_ID = '01900000-0000-7000-8000-000000000001';
 const OTHER_DIVER_ID = '01900000-0000-7000-8000-000000000002';
 const BUDDY_ID = '01900000-0000-7000-8000-0000000000b1';
+const MERGED_SITE_ID = '01900000-0000-7000-8000-0000000000c1';
+const TARGET_SITE_ID = '01900000-0000-7000-8000-0000000000c2';
 const N3_ID = 'level-n3';
 const SAVED: DiveWriteResponse = { id: 'dive', number: 12, updatedAt: '2026-11-18T10:00:00.000Z' };
 
@@ -109,7 +111,7 @@ function buddy(values: Partial<DiveWriteBuddy> = {}): DiveWriteBuddy {
 
 describe('DiveWriteService', () => {
   describe('create', () => {
-    it('creates the new site and buddies, then the dive, and answers its number', async () => {
+    it('creates the new site (quick) and buddies, then the dive, and answers its number', async () => {
       const { service, manager, dives, sites, buddies, diveLog } = setup({ status: 'absent' });
       const request = diveWriteRequest({
         site: { name: 'Tombant des Américains', isNew: true },
@@ -130,6 +132,11 @@ describe('DiveWriteService', () => {
           area: null,
           latitude: null,
           longitude: null,
+          type: null,
+          depthMinM: null,
+          depthMaxM: null,
+          accessNotes: null,
+          createdVia: 'quick',
           baseUpdatedAt: null,
           deletedAt: null,
         },
@@ -240,6 +247,38 @@ describe('DiveWriteService', () => {
       expect(diveLog.numberOfIn).toHaveBeenCalledWith(manager, DIVER_ID, request.event.id);
       expect(sites.upsertIn).not.toHaveBeenCalled();
       expect(buddies.upsertIn).not.toHaveBeenCalled();
+      expect(dives.upsertDiveIn).not.toHaveBeenCalled();
+    });
+
+    it('writes a dive on a merged site to its target (RG-36), without recreating the site', async () => {
+      const request = diveWriteRequest({ site: { id: MERGED_SITE_ID, isNew: true } });
+      const { service, dives, sites } = setup(
+        { status: 'absent' },
+        { sites: [{ id: MERGED_SITE_ID, ownerId: DIVER_ID, mergedIntoId: TARGET_SITE_ID }] },
+      );
+
+      await service.create(DIVER_ID, request);
+
+      expect(sites.upsertIn).not.toHaveBeenCalled();
+      expect(writtenDive(dives).event.siteId).toBe(TARGET_SITE_ID);
+    });
+
+    it('answers a creation replayed after its site was merged as the same creation', async () => {
+      const request = diveWriteRequest({ site: { id: MERGED_SITE_ID } });
+      const merged = stored({
+        ...request,
+        event: { ...request.event, siteId: TARGET_SITE_ID },
+        site: { ...request.site, id: TARGET_SITE_ID },
+      });
+      const { service, dives } = setup(
+        { status: 'own', dive: merged },
+        { sites: [{ id: MERGED_SITE_ID, ownerId: DIVER_ID, mergedIntoId: TARGET_SITE_ID }] },
+      );
+
+      expect(await service.create(DIVER_ID, request)).toEqual({
+        outcome: 'replayed',
+        saved: SAVED,
+      });
       expect(dives.upsertDiveIn).not.toHaveBeenCalled();
     });
 

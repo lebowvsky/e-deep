@@ -36,7 +36,7 @@ describe('gas', () => {
 });
 
 describe('toSaveDiveInput', () => {
-  it('sends a site created on this device as new, under its own id (D30)', () => {
+  it('sends a site that is none of my sites (restored draft) as new, under its own id', () => {
     const input = toSaveDiveInput(
       validValues({ site: { id: 'local-site', name: 'Grotte aux Corbs' } }),
       { kind: 'create' },

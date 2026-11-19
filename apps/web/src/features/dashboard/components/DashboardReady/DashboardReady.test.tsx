@@ -1,11 +1,37 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { formatUtcOffset } from '@/shared/lib/format';
+import type { MapViewProps } from '@/shared/ui/MapView';
 import { mockPayload } from '../../mocks/dashboard';
 import type { DashboardPayload } from '../../types';
 import { DashboardReady } from './DashboardReady';
+
+// No WebGL in jsdom: the map is a group of marker buttons, with its preview.
+vi.mock('@/shared/ui/MapView', () => ({
+  MapView: ({ label, sites, selectedId, onSelect, viewport, readOnly, popover }: MapViewProps) => (
+    <div
+      role="group"
+      aria-label={label}
+      data-read-only={readOnly}
+      data-framed={viewport.points.length}
+    >
+      {sites.map((site) => (
+        <button
+          key={site.id}
+          type="button"
+          aria-label={site.name}
+          aria-pressed={site.id === selectedId}
+          onClick={() => onSelect?.(site.id)}
+        />
+      ))}
+      {popover}
+    </div>
+  ),
+}));
+
+const map = () => screen.getByRole('group', { name: 'Carte de tes sites de plongée' });
 
 const NOW = new Date('2025-09-22T15:00:00Z'); // 14 days after the last dive
 
@@ -41,17 +67,25 @@ describe('DashboardReady', () => {
     expect(screen.getByText('pic · sept.')).toBeTruthy();
   });
 
-  it('selects a site from the map markers', async () => {
+  it('shows a read-only map framing every placed site', () => {
+    renderReady();
+    expect(map().dataset.readOnly).toBe('true');
+    expect(map().dataset.framed).toBe(String(mockPayload.sites.length));
+  });
+
+  it('selects a site from the map markers, its preview links to the site page', async () => {
     const user = userEvent.setup();
     renderReady();
-    const markers = screen.getByRole('list', { name: 'Sites de plongée' });
-    const revellata = within(markers).getByRole('button', { name: /Pointe de la Revellata/ });
-    const portCros = within(markers).getByRole('button', { name: /Port-Cros/ });
+    const revellata = within(map()).getByRole('button', { name: /Pointe de la Revellata/ });
+    const portCros = within(map()).getByRole('button', { name: /Port-Cros/ });
     expect(revellata.getAttribute('aria-pressed')).toBe('true');
+    expect(within(map()).getByRole('link', { name: 'Pointe de la Revellata' })).toBeTruthy();
 
     await user.click(portCros);
     expect(portCros.getAttribute('aria-pressed')).toBe('true');
     expect(revellata.getAttribute('aria-pressed')).toBe('false');
+    const preview = within(map()).getByRole('link', { name: /Port-Cros/ });
+    expect(preview.getAttribute('href')).toBe('/sites/s2');
   });
 
   it('switches the (visual) map period', async () => {
@@ -91,11 +125,11 @@ describe('DashboardReady, sites created by their name (D-23)', () => {
 
   it('gives no marker to a site without position', () => {
     renderReady(withNameOnlySite);
-    const markers = screen.getByRole('list', { name: 'Sites de plongée' });
-    expect(within(markers).getAllByRole('button')).toHaveLength(mockPayload.sites.length);
-    expect(within(markers).queryByRole('button', { name: /Le Sec/ })).toBeNull();
-    // No marker is pressed: the last dive's site is not on the map.
-    expect(within(markers).queryByRole('button', { pressed: true })).toBeNull();
+    expect(within(map()).getAllByRole('button')).toHaveLength(mockPayload.sites.length);
+    expect(within(map()).queryByRole('button', { name: /Le Sec/ })).toBeNull();
+    // No marker is pressed and no preview: the last dive's site is not on the map.
+    expect(within(map()).queryByRole('button', { pressed: true })).toBeNull();
+    expect(within(map()).queryByRole('link')).toBeNull();
   });
 
   it('does without the main region and the region of the last dive', () => {

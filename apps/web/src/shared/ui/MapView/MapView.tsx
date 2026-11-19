@@ -14,6 +14,7 @@ import { cx } from '@/shared/lib/classNames';
 import { prefersReducedMotion } from '@/shared/lib/focus';
 import { isNumber, isRecord } from '@/shared/lib/guards';
 import type { GeoPoint } from '@/shared/model/geo';
+import { cameraFor, type MapViewport } from './camera';
 import { BASEMAP_STYLES, tintStyle, type MapBasemap } from './mapStyle';
 import {
   applyMarkerContent,
@@ -34,13 +35,7 @@ export interface MapSite {
   diveCount: number;
 }
 
-/** Where to look: the camera frames `points` each time `key` changes. */
-export interface MapViewport {
-  key: string;
-  points: readonly GeoPoint[];
-  /** Share of the map height covered at the bottom (a bottom sheet): framed above it. */
-  bottomCover?: number;
-}
+export type { MapViewport };
 
 /**
  * Placing a site. `click` (default): a click puts the marker, which can be dragged or moved with
@@ -64,11 +59,18 @@ export interface MapViewProps {
   /** Accessible name of the map (« Carte de tes sites de plongée »). */
   label: string;
   sites: readonly MapSite[];
-  selectedId: string | null;
+  selectedId?: string | null;
   /** Hovered in the list: its marker stands out. */
   highlightedId?: string | null;
-  onSelect: (id: string) => void;
+  /** Without it, the site markers are only shown: neither focusable nor clickable. */
+  onSelect?: (id: string) => void;
   viewport: MapViewport;
+  /**
+   * A map built into a page (dashboard, mini maps): the view is the viewport's, the diver can
+   * neither move nor zoom it (no wheel or drag hijacked from the page), clusters are only shown.
+   * Read when the map starts: give the map a new `key` to change it.
+   */
+  readOnly?: boolean;
   /** Placing mode (cross cursor); `null` to browse. The sites stay visible, not clickable. */
   pick?: MapPick | null;
   basemap?: MapBasemap;
@@ -150,10 +152,11 @@ export function MapView({
   ref,
   label,
   sites,
-  selectedId,
+  selectedId = null,
   highlightedId = null,
   onSelect,
   viewport,
+  readOnly = false,
   pick = null,
   basemap = 'labels',
   popover,
@@ -175,8 +178,11 @@ export function MapView({
   const pickLat = pickPosition?.latitude ?? null;
   const pickLng = pickPosition?.longitude ?? null;
   const selected = sites.find((site) => site.id === selectedId) ?? null;
+  const isSelectable = onSelect !== undefined;
+  const areSitesInert = isPicking || !isSelectable;
+  const areClustersInert = isPicking || readOnly;
 
-  const select = useEffectEvent((id: string) => onSelect(id));
+  const select = useEffectEvent((id: string) => onSelect?.(id));
   const reportError = useEffectEvent(() => onError?.());
   const place = useEffectEvent((position: GeoPoint) => pick?.onPick(position));
 
@@ -232,6 +238,7 @@ export function MapView({
         };
         element.addEventListener('click', (event) => {
           event.stopPropagation();
+          if (element.hasAttribute('data-inert')) return;
           const current = created.target;
           if (current.kind === 'cluster') void zoomInto(current.id, current.lngLat);
           else select(current.id);
@@ -245,7 +252,12 @@ export function MapView({
         entry.element.toggleAttribute('data-highlighted', id === highlightedId);
         entry.element.setAttribute('aria-pressed', String(id === selectedId));
       }
-      entry.element.tabIndex = isPicking ? -1 : 0;
+      // Inert: shown only, out of the keyboard and of the accessibility tree.
+      const isInert = isCluster ? areClustersInert : areSitesInert;
+      entry.element.toggleAttribute('data-inert', isInert);
+      entry.element.tabIndex = isInert ? -1 : 0;
+      if (isInert) entry.element.setAttribute('aria-hidden', 'true');
+      else entry.element.removeAttribute('aria-hidden');
     }
     for (const [key, entry] of markersRef.current) {
       if (seen.has(key)) continue;
@@ -276,32 +288,29 @@ export function MapView({
   const pickStart = useEffectEvent(() => pickPosition);
 
   /** What the map starts with; later changes go through their own effects. */
-  const startOptions = useEffectEvent(() => ({ style: BASEMAP_STYLES[basemap], label }));
+  const startOptions = useEffectEvent(() => ({
+    style: BASEMAP_STYLES[basemap],
+    label,
+    viewport,
+    readOnly,
+  }));
 
   const frame = useEffectEvent(() => {
-    const lib = libRef.current;
-    const [first, ...others] = viewport.points;
-    if (!map || !lib || !first) return;
-    const animate = !prefersReducedMotion();
-    const covered = (viewport.bottomCover ?? 0) * map.getContainer().clientHeight;
-    const padding = {
-      top: space[10],
-      right: space[10],
-      bottom: space[10] + covered,
-      left: space[10],
-    };
-    if (others.length === 0) {
+    if (!map) return;
+    const camera = cameraFor(viewport, map.getContainer().clientHeight);
+    if (!camera) return;
+    // A read-only map shows its view: it does not travel to it.
+    const animate = !readOnly && !prefersReducedMotion();
+    if (camera.kind === 'point') {
       map.flyTo({
-        center: toLngLat(first),
+        center: camera.center,
         zoom: Math.max(map.getZoom(), SITE_ZOOM),
-        padding: { top: 0, right: 0, bottom: covered, left: 0 },
+        padding: camera.padding,
         animate,
       });
       return;
     }
-    const bounds = new lib.LngLatBounds(toLngLat(first), toLngLat(first));
-    for (const point of others) bounds.extend(toLngLat(point));
-    map.fitBounds(bounds, { padding, maxZoom: CLUSTER_MAX_ZOOM, animate });
+    map.fitBounds(camera.bounds, { padding: camera.padding, maxZoom: CLUSTER_MAX_ZOOM, animate });
   });
 
   // The map itself: MapLibre and its stylesheet are loaded with the first map shown.
@@ -328,18 +337,30 @@ export function MapView({
         let isLoaded = false;
         const start = startOptions();
         styleRef.current = start.style;
+        // Straight to the viewport (no tiles of France loaded for nothing); `frame` refines it.
+        const camera = cameraFor(start.viewport, container.clientHeight);
         instance = new lib.Map({
           container,
           style: start.style,
           transformStyle: tintStyle,
           attributionControl: { compact: true },
-          center: START.center,
-          zoom: START.zoom,
+          ...(camera === null
+            ? START
+            : camera.kind === 'point'
+              ? { center: camera.center, zoom: SITE_ZOOM }
+              : {
+                  bounds: camera.bounds,
+                  fitBoundsOptions: { padding: camera.padding, maxZoom: CLUSTER_MAX_ZOOM },
+                }),
+          interactive: !start.readOnly,
           dragRotate: false,
           pitchWithRotate: false,
           touchPitch: false,
         });
-        instance.getCanvas().setAttribute('aria-label', start.label);
+        const canvas = instance.getCanvas();
+        canvas.setAttribute('aria-label', start.label);
+        // Nothing to operate on a read-only map: a picture, not a region to explore.
+        if (start.readOnly) canvas.setAttribute('role', 'img');
         instance.addControl(new lib.ScaleControl({ unit: 'metric', maxWidth: layout.scaleBar }));
         const loaded = instance;
         loaded.on('style.load', () => installSites(loaded));
@@ -411,7 +432,7 @@ export function MapView({
   // Selection, hover and mode change the look of the markers, not the data.
   useEffect(() => {
     syncMarkers();
-  }, [map, selectedId, highlightedId, isPicking]);
+  }, [map, selectedId, highlightedId, areSitesInert, areClustersInert]);
 
   useEffect(() => {
     frame();

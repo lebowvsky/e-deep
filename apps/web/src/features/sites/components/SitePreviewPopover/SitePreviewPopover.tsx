@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { formatDiveDayMonth, formatMeasure } from '@/shared/lib/format';
 import type { SiteEntry } from '@/shared/model/site';
 import { SITE_TYPE_LABELS } from '@/shared/sites/lib/labels';
+import { siteHrefOf } from '@/shared/sites/lib/siteHref';
 import { Icon } from '@/shared/ui/Icon';
 import styles from './SitePreviewPopover.module.scss';
 
@@ -53,7 +54,7 @@ export function SitePreviewPopover({ entry, onClose }: SitePreviewPopoverProps) 
           </dd>
         </div>
       </dl>
-      <Link to={`/sites/${encodeURIComponent(site.id)}`} className={styles.link}>
+      <Link to={siteHrefOf(site.id)} className={styles.link}>
         Voir la fiche <Icon name="arrowRight" size="sm" />
       </Link>
     </section>

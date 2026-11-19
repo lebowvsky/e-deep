@@ -1,44 +1,14 @@
-// The user's sites: those of the dive log (`GET /dives`) with their positions, under the local
-// changes (`SitesOverlay`), each with its dives and statistics.
-import type { DiveSiteRef, DiveSummary } from '@e-deep/shared';
+// The user's sites (`GET /api/sites`), each with its dives (`GET /dives`) and statistics.
+import type { DiveSummary } from '@e-deep/shared';
 import { avatarColorOf } from '@/shared/lib/avatarColor';
-import { formatInitials, placeLabel } from '@/shared/lib/format';
-import type { GeoPoint } from '@/shared/model/geo';
+import { formatInitials } from '@/shared/lib/format';
 import type { Site, SiteDive, SiteEntry } from '@/shared/model/site';
-import type { SitePositions } from '../api/sitePositionsApi';
-import type { SitesOverlay } from '../repository/sitesRepository';
-import { currentSiteId } from './siteAliases';
 import { byLatest, computeSiteStats } from './siteStats';
-import { deriveZone } from './zone';
 
 export interface SiteCatalogueSources {
+  sites: readonly Site[];
   /** The dive log, latest first (`GET /dives`). */
   dives: readonly DiveSummary[];
-  positions: SitePositions;
-  overlay: SitesOverlay;
-}
-
-/**
- * A site as the API knows it: name, « Calvi · Corse », position. Neither type, depths nor access
- * notes are served yet. A placed site was entered in full, a site without position was created
- * by its name from the dive form.
- */
-function toSite(ref: DiveSiteRef, position: GeoPoint | null): Site {
-  const region = placeLabel(ref.locality, ref.region);
-  return {
-    id: ref.id,
-    name: ref.name,
-    region,
-    zone: deriveZone(position, region),
-    type: null,
-    depthMinM: null,
-    depthMaxM: null,
-    position,
-    accessNotes: null,
-    createdVia: position ? 'full' : 'quick',
-    createdAt: null,
-    updatedAt: null,
-  };
 }
 
 function toSiteDive(summary: DiveSummary): SiteDive {
@@ -49,9 +19,8 @@ function toSiteDive(summary: DiveSummary): SiteDive {
     depthMaxM: summary.depthMaxM,
     durationMin: summary.durationMin,
     temperatureC: summary.temperatureC,
-    // Detail fields, absent from the log: the usual entry and dive centre stay unknown.
-    entryType: null,
-    diveCenter: null,
+    entryType: summary.entryType,
+    diveCenter: summary.diveCenter,
     buddies: summary.buddies.map((buddy) => ({
       id: buddy.id,
       firstName: buddy.firstName,
@@ -71,28 +40,22 @@ function byDiveCount(a: SiteEntry, b: SiteEntry): number {
   );
 }
 
-export function buildSiteCatalogue({
-  dives,
-  positions,
-  overlay,
-}: SiteCatalogueSources): SiteEntry[] {
-  const sites = new Map<string, Site>();
+/**
+ * Every site with its dives. A dive whose site is not among `sites` counts for none: it should
+ * not happen (the API serves every live site of the log), save for the moment between the two
+ * reads that follow a merge, when the log may still name the merged site. Shown, such a site
+ * would come back on the map for that moment, with nothing to write it back (`PUT` → 404); its
+ * dives stay in « Mes plongées ».
+ */
+export function buildSiteCatalogue({ sites, dives }: SiteCatalogueSources): SiteEntry[] {
   const divesBySite = new Map<string, SiteDive[]>();
-
   for (const summary of dives) {
-    // The log is latest first: the first summary of a site gives its current name.
-    if (!sites.has(summary.site.id)) {
-      sites.set(summary.site.id, toSite(summary.site, positions.get(summary.site.id) ?? null));
-    }
-    const siteId = currentSiteId(overlay.mergedInto, summary.site.id);
-    const siteDives = divesBySite.get(siteId);
+    const siteDives = divesBySite.get(summary.site.id);
     if (siteDives) siteDives.push(toSiteDive(summary));
-    else divesBySite.set(siteId, [toSiteDive(summary)]);
+    else divesBySite.set(summary.site.id, [toSiteDive(summary)]);
   }
-  for (const site of overlay.saved.values()) sites.set(site.id, site);
 
-  return [...sites.values()]
-    .filter((site) => !overlay.removed.has(site.id))
+  return sites
     .map((site) => {
       const siteDives = (divesBySite.get(site.id) ?? []).sort(byLatest);
       return { site, dives: siteDives, stats: computeSiteStats(siteDives) };

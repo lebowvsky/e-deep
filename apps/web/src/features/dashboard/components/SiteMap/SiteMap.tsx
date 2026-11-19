@@ -1,13 +1,11 @@
-import { useId, useState, type CSSProperties } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { cx } from '@/shared/lib/classNames';
-import { formatDiveCount } from '@/shared/lib/format';
-import type { GeoPoint } from '@/shared/model/geo';
+import { siteHrefOf } from '@/shared/sites/lib/siteHref';
+import { MapView, type MapSite } from '@/shared/ui/MapView';
 import { Overline } from '@/shared/ui/Overline';
 import { TextLink } from '@/shared/ui/TextLink';
-import { projectToMap } from '../../lib/mapProjection';
 import type { DiveSite } from '../../types';
-import { MapBackdrop } from '@/shared/ui/MapBackdrop';
 import styles from './SiteMap.module.scss';
 
 const MAP_PERIODS = ['1M', '3M', '1A', 'Tout'] as const;
@@ -25,33 +23,22 @@ export interface SiteMapProps {
   initialActiveSiteId?: string | undefined;
 }
 
-/** Sites with many dives get the larger marker (mockup: 6, 8 and 11 dives). */
-const BIG_MARKER_MIN_DIVES = 6;
-
 const FALLBACK_TITLE = 'Mes sites';
 
-/** A site with a known position: the only ones the map can place. */
-type PlottedSite = DiveSite & { position: GeoPoint };
+/** Share of the map under its header (overline, title, periods): the sites are framed below. */
+const HEADER_COVER = 0.2;
 
-const isPlotted = (site: DiveSite): site is PlottedSite => site.position !== null;
-
-/** Marker / popover anchor, as CSS custom properties read by the stylesheet. */
-const anchor = ({ position }: PlottedSite): CSSProperties => {
-  const { x, y } = projectToMap(position.latitude, position.longitude);
-  return { '--x': `${x * 100}%`, '--y': `${y * 100}%` } as CSSProperties;
-};
-
-/** Near an edge the popover opens towards the centre so it stays inside the card. */
-const popoverAlign = ({ position }: PlottedSite): 'start' | 'center' | 'end' => {
-  const { x } = projectToMap(position.latitude, position.longitude);
-  if (x < 0.2) return 'start';
-  return x > 0.8 ? 'end' : 'center';
-};
+/** The sites the map can place: those whose position was entered. */
+function toMapSites(sites: readonly DiveSite[]): MapSite[] {
+  return sites.flatMap(({ id, name, position, diveCount }) =>
+    position === null ? [] : [{ id, name, position, diveCount }],
+  );
+}
 
 /**
- * Dive-site map — SVG placeholder (no MapLibre in V1). Markers are buttons that select a site;
- * the desktop popover shows the selected one. Period filters are visual only in V1. A site whose
- * position was not entered has no marker (it still counts in `siteCount`).
+ * Dive-site map (MapLibre, read only): the view frames every placed site, a marker selects its
+ * site and the preview above it (tablet+) links to the site page. Period filters are visual only
+ * in V1. A site whose position was not entered has no marker (it still counts in `siteCount`).
  */
 export function SiteMap({
   sites,
@@ -60,11 +47,12 @@ export function SiteMap({
   mapTitle,
   initialActiveSiteId,
 }: SiteMapProps) {
-  const plotted = sites.filter(isPlotted);
-  const [activeId, setActiveId] = useState(initialActiveSiteId ?? plotted[0]?.id);
+  // Same array while the sites are the same: no new GeoJSON for the map on every render.
+  const mapSites = useMemo(() => toMapSites(sites), [sites]);
+  const [activeId, setActiveId] = useState(initialActiveSiteId ?? mapSites[0]?.id ?? null);
   const [period, setPeriod] = useState<MapPeriod>('3M');
   const titleId = useId();
-  const active = plotted.find((site) => site.id === activeId);
+  const active = sites.find((site) => site.id === activeId && site.position !== null);
 
   return (
     <section className={styles.section} aria-labelledby={titleId}>
@@ -74,7 +62,41 @@ export function SiteMap({
       </div>
 
       <div className={styles.map}>
-        <MapBackdrop />
+        <MapView
+          label="Carte de tes sites de plongée"
+          sites={mapSites}
+          selectedId={activeId}
+          onSelect={setActiveId}
+          viewport={{
+            key: mapSites.map((site) => site.id).join(),
+            points: mapSites.map((site) => site.position),
+            topCover: HEADER_COVER,
+          }}
+          readOnly
+          popoverPlacement="above"
+          popover={
+            active && (
+              <div className={styles.popover}>
+                <span className={styles.popoverLabel}>Site</span>
+                <Link to={siteHrefOf(active.id)} className={styles.popoverName}>
+                  {active.name}
+                </Link>
+                <span className={styles.popoverStats}>
+                  <span>
+                    <span className={cx(styles.popoverValue, styles.accent)}>
+                      {active.diveCount}
+                    </span>
+                    <span className={styles.popoverKey}>Plongées</span>
+                  </span>
+                  <span>
+                    <span className={styles.popoverValue}>-{active.maxDepthM}m</span>
+                    <span className={styles.popoverKey}>Prof. max</span>
+                  </span>
+                </span>
+              </div>
+            )
+          }
+        />
 
         <div className={styles.overlay}>
           <div className={styles.heading}>
@@ -102,56 +124,6 @@ export function SiteMap({
           <Link to="/map" className={styles.expand}>
             Agrandir
           </Link>
-        </div>
-
-        <ul className={styles.markers} aria-label="Sites de plongée">
-          {plotted.map((site) => {
-            const isActive = site.id === activeId;
-            return (
-              <li key={site.id} className={styles.markerItem} style={anchor(site)}>
-                <button
-                  type="button"
-                  className={cx(
-                    styles.marker,
-                    site.diveCount >= BIG_MARKER_MIN_DIVES && styles.big,
-                    isActive && styles.active,
-                  )}
-                  aria-pressed={isActive}
-                  aria-label={`${site.name}, ${formatDiveCount(site.diveCount)}, ${site.maxDepthM} mètres maximum`}
-                  onClick={() => setActiveId(site.id)}
-                >
-                  {site.diveCount}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-
-        {active && (
-          <div
-            className={styles.popover}
-            style={anchor(active)}
-            data-align={popoverAlign(active)}
-            aria-hidden="true"
-          >
-            <span className={styles.popoverLabel}>Site</span>
-            <span className={styles.popoverName}>{active.name}</span>
-            <span className={styles.popoverStats}>
-              <span>
-                <span className={cx(styles.popoverValue, styles.accent)}>{active.diveCount}</span>
-                <span className={styles.popoverKey}>Plongées</span>
-              </span>
-              <span>
-                <span className={styles.popoverValue}>-{active.maxDepthM}m</span>
-                <span className={styles.popoverKey}>Prof. max</span>
-              </span>
-            </span>
-          </div>
-        )}
-
-        <div className={styles.scale} aria-hidden="true">
-          <span className={styles.scaleBar} />
-          50 km
         </div>
       </div>
     </section>

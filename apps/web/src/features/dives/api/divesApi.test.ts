@@ -33,6 +33,8 @@ function summary(overrides: Partial<DiveSummary> = {}): DiveSummary {
       { id: 'b1', firstName: 'Lucas', lastName: 'Bernard' },
       { id: 'b2', firstName: 'émilie', lastName: 'durand' },
     ],
+    entryType: null,
+    diveCenter: null,
     ...overrides,
   };
 }
@@ -112,18 +114,30 @@ describe('isDiveSummary', () => {
     ).toBe(true);
   });
 
+  it('accepts the entry type and the dive centre (D32), set or not', () => {
+    expect(isDiveSummary(summary({ entryType: 'SHORE', diveCenter: 'Calvi Plongée' }))).toBe(true);
+    expect(isDiveSummary(summary({ entryType: null, diveCenter: null }))).toBe(true);
+  });
+
   it('accepts a site without region (created by its name, D-23)', () => {
     expect(
       isDiveSummary(summary({ site: { id: 's2', name: 'Le Sec', locality: null, region: null } })),
     ).toBe(true);
   });
 
-  it.each(['id', 'number', 'date', 'site', 'depthMaxM', 'gasMix', 'buddies'] as const)(
-    'rejects a dive without %s',
-    (key) => {
-      expect(isDiveSummary(without(key))).toBe(false);
-    },
-  );
+  it.each([
+    'id',
+    'number',
+    'date',
+    'site',
+    'depthMaxM',
+    'gasMix',
+    'buddies',
+    'entryType',
+    'diveCenter',
+  ] as const)('rejects a dive without %s', (key) => {
+    expect(isDiveSummary(without(key))).toBe(false);
+  });
 
   it.each([
     ['a string depth', withField('depthMaxM', '32')],
@@ -135,6 +149,9 @@ describe('isDiveSummary', () => {
     ['an unparsable date', withField('date', 'hier matin')],
     ['a numeric date', withField('date', 1_775_000_000_000)],
     ['a string temperature', withField('temperatureC', '17')],
+    ['an unknown entry type', withField('entryType', 'PIER')],
+    ['a lower-case entry type', withField('entryType', 'boat')],
+    ['a numeric dive centre', withField('diveCenter', 42)],
     ['a numeric locality', withSiteField('locality', 42)],
     ['an undefined locality', withSiteField('locality', undefined)],
     ['a missing region', withSiteField('region', undefined)],

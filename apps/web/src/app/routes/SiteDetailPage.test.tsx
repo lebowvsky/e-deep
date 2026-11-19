@@ -1,11 +1,11 @@
-import type { DashboardSite, DiveLogResponse, DiveSummary } from '@e-deep/shared';
+import type { DiveSummary } from '@e-deep/shared';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import type { Site } from '@/shared/model/site';
 import { MOCK_SITES } from '@/shared/sites/mocks/sites';
-import { createMemorySitesRepository } from '@/shared/sites/repository/sitesRepository';
+import { createMemorySitesRepository } from '@/shared/sites/mocks/memorySitesRepository';
 import type { MapViewProps } from '@/shared/ui/MapView';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { fakeApiClient } from '@/test/fakeApiClient';
@@ -23,47 +23,44 @@ function dive(id: string, number: number, site: Site, depthMaxM: number): DiveSu
     number,
     date: `2026-0${number}-10T10:00:00+02:00`,
     utcOffsetMinutes: 120,
-    site: { id: site.id, name: site.name, locality: null, region: site.region },
+    site: {
+      id: site.id,
+      name: site.name,
+      locality: site.storedPlace.locality,
+      region: site.storedPlace.region,
+    },
     depthMaxM,
     durationMin: 40,
     temperatureC: 14 + number,
     gasMix: 'AIR',
     notes: null,
     buddies: [{ id: 'b1', firstName: 'Lucas', lastName: 'Bernard' }],
+    entryType: null,
+    diveCenter: null,
   };
 }
 
-const LOG: DiveLogResponse = {
+/** The log the API serves: the repository moves its dives on a merge, as the API does. */
+const newLog = () => ({
   dives: [
     dive('d4', 4, MOCK_SITES.revellata, 42),
     dive('d3', 3, MOCK_SITES.bibliotheque, 28),
     dive('d2', 2, MOCK_SITES.revellata, 35),
     dive('d1', 1, MOCK_SITES.revellata, 30),
   ],
-};
+});
 
-const DASHBOARD_SITES: DashboardSite[] = [MOCK_SITES.revellata, MOCK_SITES.bibliotheque].map(
-  (site) => ({
-    id: site.id,
-    name: site.name,
-    region: site.region,
-    latitude: site.position?.latitude ?? null,
-    longitude: site.position?.longitude ?? null,
-    diveCount: 1,
-    maxDepthM: 30,
-  }),
-);
-
-async function renderAt(path: string) {
-  const repository = createMemorySitesRepository();
-  // Types, depths and access notes kept locally; the quick site has no dive nor position.
-  for (const site of [MOCK_SITES.revellata, MOCK_SITES.bibliotheque, MOCK_SITES.grotteAuxCorbs]) {
-    await repository.save(site);
-  }
+function renderAt(path: string) {
+  const log = newLog();
+  // The quick site has no dive nor position.
+  const repository = createMemorySitesRepository({
+    sites: [MOCK_SITES.revellata, MOCK_SITES.bibliotheque, MOCK_SITES.grotteAuxCorbs],
+    log,
+  });
   const get = vi
     .fn()
     .mockImplementation((apiPath: string) =>
-      Promise.resolve(apiPath === 'dives' ? LOG : { sites: DASHBOARD_SITES }),
+      apiPath === 'dives' ? Promise.resolve({ dives: log.dives }) : Promise.reject(new Error()),
     );
   const router = createMemoryRouter(
     [
@@ -80,7 +77,7 @@ async function renderAt(path: string) {
       </ToastProvider>
     </TestProviders>,
   );
-  return router;
+  return { router, get };
 }
 
 /** Whether `text` ever shows in the page, even for a single render. */
@@ -95,9 +92,35 @@ function watchText(text: string) {
 
 const menuButton = () => screen.getByRole('button', { name: 'Plus d’actions' });
 
+describe('SiteDetailPage — states forced by ?state= (development)', () => {
+  it('shows the loading state without reading the API', () => {
+    const { get } = renderAt('/sites/s01?state=loading');
+
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('shows « not found » for the empty state', async () => {
+    renderAt('/sites/s01?state=empty');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Ce site n’existe pas ou a été supprimé' }),
+    ).toBeTruthy();
+  });
+
+  it('shows the error state', async () => {
+    renderAt('/sites/s01?state=error');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Ce site n’a pas pu être chargé.' }),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeTruthy();
+  });
+});
+
 describe('SiteDetailPage', () => {
   it('shows the site, its figures, its dives and what to know', async () => {
-    await renderAt('/sites/s01');
+    renderAt('/sites/s01');
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Pointe de la Revellata' }),
@@ -128,7 +151,7 @@ describe('SiteDetailPage', () => {
   });
 
   it('says that a site is unknown or deleted', async () => {
-    await renderAt('/sites/nope');
+    renderAt('/sites/nope');
 
     expect(
       await screen.findByRole('heading', { name: 'Ce site n’existe pas ou a été supprimé' }),
@@ -139,7 +162,7 @@ describe('SiteDetailPage', () => {
   });
 
   it('offers to place a site without position', async () => {
-    await renderAt('/sites/s24');
+    renderAt('/sites/s24');
 
     await screen.findByRole('heading', { level: 1, name: 'Revellata — Grotte aux Corbs' });
     expect(screen.getByText('Position à préciser')).toBeTruthy();
@@ -150,7 +173,7 @@ describe('SiteDetailPage', () => {
 
   it('opens the « … » menu with the keyboard and closes it with Échap', async () => {
     const user = userEvent.setup();
-    await renderAt('/sites/s01');
+    renderAt('/sites/s01');
     await screen.findByRole('heading', { level: 1 });
 
     menuButton().focus();
@@ -168,7 +191,7 @@ describe('SiteDetailPage', () => {
 
   it('merges the site into another one: its dives go there, then its page', async () => {
     const user = userEvent.setup();
-    const router = await renderAt('/sites/s02');
+    const { router } = renderAt('/sites/s02');
     await screen.findByRole('heading', { level: 1, name: 'La Bibliothèque' });
 
     await user.click(menuButton());
@@ -201,7 +224,7 @@ describe('SiteDetailPage', () => {
 
   it('refuses to delete a site with dives, and offers to merge it', async () => {
     const user = userEvent.setup();
-    await renderAt('/sites/s01');
+    renderAt('/sites/s01');
     await screen.findByRole('heading', { level: 1 });
 
     await user.click(menuButton());
@@ -223,7 +246,7 @@ describe('SiteDetailPage', () => {
 
   it('deletes a site without dive, back to the map', async () => {
     const user = userEvent.setup();
-    const router = await renderAt('/sites/s24');
+    const { router } = renderAt('/sites/s24');
     await screen.findByRole('heading', { level: 1 });
 
     await user.click(menuButton());

@@ -37,6 +37,8 @@ function summaryRow(values: Partial<DiveSummaryRow> = {}): DiveSummaryRow {
     site_name: 'Ras Mohammed',
     site_locality: 'Sharm el-Sheikh',
     site_region: 'Mer Rouge',
+    entry_type: 'BOAT',
+    dive_center: 'Sharm Diving',
     ...values,
   };
 }
@@ -129,6 +131,8 @@ describe('DiveLogService', () => {
         gas_mix: 'AIR',
         notes: 'Mérous',
         site_locality: null,
+        entry_type: null,
+        dive_center: null,
       });
       const oldest = summaryRow();
       query
@@ -154,6 +158,8 @@ describe('DiveLogService', () => {
             gasMix: 'AIR',
             notes: 'Mérous',
             buddies: [],
+            entryType: null,
+            diveCenter: null,
           },
           {
             id: 'event-1',
@@ -175,6 +181,8 @@ describe('DiveLogService', () => {
               { id: 'buddy-a', firstName: 'Lucas', lastName: 'Durand' },
               { id: 'buddy-b', firstName: 'Thao', lastName: 'Durand' },
             ],
+            entryType: 'BOAT',
+            diveCenter: 'Sharm Diving',
           },
         ] satisfies DiveSummary[],
       });
@@ -195,7 +203,7 @@ describe('DiveLogService', () => {
       expect(teams?.sql).toMatch(/db\.owner_id = \$1/);
     });
 
-    it('reads none of the detail fields (D-25: weight of the list)', async () => {
+    it('reads none of the detail fields but the entry type and the dive centre (D-25, D32)', async () => {
       query.mockResolvedValueOnce([summaryRow()]).mockResolvedValueOnce([]);
 
       await service.findAll(DIVER_ID);
@@ -204,7 +212,7 @@ describe('DiveLogService', () => {
         .map((entry) => entry.sql)
         .join('\n');
       expect(sql).not.toMatch(
-        /entry_type|surface_water_temperature_c|area|certification_level|dive_observations/,
+        /time_of_day|weather|surface_water_temperature_c|area|certification_level|dive_observations/,
       );
     });
 
