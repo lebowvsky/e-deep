@@ -87,6 +87,8 @@ export interface DivesQuery {
   gases: GasFamily[];
   /** Dived with all of these members (AND), by member id. */
   with: string[];
+  /** One site (« Voir dans Mes plongées » of a site page), by id; `null`: every site. */
+  site: string | null;
   sort: DivesSort;
   /** 1-based. */
   page: number;
@@ -94,7 +96,7 @@ export interface DivesQuery {
 }
 
 /** Filters that can be removed one by one (active chips, « remove the most restrictive »). */
-export type DivesFilterKey = 'q' | 'period' | 'regions' | 'depth' | 'gases' | 'with';
+export type DivesFilterKey = 'q' | 'period' | 'regions' | 'depth' | 'gases' | 'with' | 'site';
 
 // ── Result ────────────────────────────────────────────────────────────────────────────────────
 
@@ -127,6 +129,8 @@ export interface DivesFacets {
   regions: RegionFacet[];
   /** Members other than the user, most frequent first. */
   members: { member: DiveMember; count: number }[];
+  /** Sites of the log, for the name of the site filter. */
+  sites: { id: string; name: string }[];
 }
 
 /** Whole log, independent from the filters (page header). */

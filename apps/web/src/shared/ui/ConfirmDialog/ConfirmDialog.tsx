@@ -14,6 +14,12 @@ export interface ConfirmDialogProps {
   confirmLabel: string;
   onCancel: () => void;
   onConfirm: () => void;
+  /** `danger` for an irreversible choice (merge, delete). Default `primary`. */
+  confirmVariant?: 'primary' | 'danger';
+  /** The choice cannot be made yet (a target to pick first). */
+  confirmDisabled?: boolean;
+  /** Fields between the description and the buttons (the target of a merge). */
+  children?: ReactNode;
 }
 
 /**
@@ -28,6 +34,9 @@ export function ConfirmDialog({
   confirmLabel,
   onCancel,
   onConfirm,
+  confirmVariant = 'primary',
+  confirmDisabled = false,
+  children,
 }: ConfirmDialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -69,9 +78,14 @@ export function ConfirmDialog({
             {description}
           </p>
         )}
+        {children}
         <div className={styles.actions}>
           <Button onClick={onCancel}>{cancelLabel}</Button>
-          <Button variant="primary" onClick={onConfirm}>
+          <Button
+            variant={confirmVariant}
+            onClick={confirmDisabled ? undefined : onConfirm}
+            aria-disabled={confirmDisabled || undefined}
+          >
             {confirmLabel}
           </Button>
         </div>

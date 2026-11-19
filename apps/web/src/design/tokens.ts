@@ -71,6 +71,11 @@ export const color = {
 
   // Dive detail (dive-detail.jsx)
   runStopFill: 'rgba(91, 211, 145, 0.75)', // safety stop segment of the time bar (success × 0.75)
+
+  // Sites (sites.jsx): glass over the map (surface0), « À compléter » filter ring
+  mapOverlay: 'rgba(11, 26, 46, 0.85)', // zone chips
+  mapOverlayStrong: 'rgba(11, 26, 46, 0.9)', // coordinates, placing hint, mini map links
+  warningLine: 'rgba(231, 178, 74, 0.35)',
 } as const;
 
 export const font = {
@@ -116,6 +121,12 @@ export const type = {
   runTime: { size: 22, lh: 26, w: 600, ls: -0.4 }, // mono — dive run immersion / exit (dive-detail.jsx)
   fieldValue: { size: 15, lh: 20, w: 400, ls: 0 }, // mono — numbers typed in a form field (dive-form.jsx)
   fieldHint: { size: 12, lh: 17, w: 400, ls: 0 }, // field help and messages (dive-form.jsx · Field)
+  // Sites (sites.jsx)
+  markerCount: { size: 11, lh: 14, w: 600, ls: 0 }, // mono — dive count inside a map marker
+  markerCountSm: { size: 10, lh: 12, w: 600, ls: 0 }, // mono — small markers (mockup: 9, unreadable)
+  titleSm: { size: 15, lh: 20, w: 600, ls: -0.1 }, // site name in the map preview
+  panelTitle: { size: 18, lh: 24, w: 600, ls: -0.2 }, // title of the site panel
+  metricXs: { size: 16, lh: 20, w: 600, ls: -0.2 }, // mono — figures of the map preview
 } as const;
 
 // 4px scale
@@ -329,6 +340,29 @@ export const layout = {
   formFieldMd: 140, // dive number, air temperature, weight
   formFieldLg: 160, // safety stop duration / depth
   formFieldXl: 240, // gas
+  // Sites (sites.jsx)
+  siteListWidth: 380, // list next to the map
+  sitePanelWidth: 420, // add / place / edit panel, replaces the list
+  mapPageMinHeight: 640,
+  // Room above and below the map grid on desktop: page padding (32 + 48) and the header (~120).
+  mapPageChrome: 200,
+  sitePopoverWidth: 250, // preview of a marker
+  siteMarkerMin: 18, // marker diameter for 1 dive…
+  siteMarkerMax: 40, // …capped here
+  siteMarkerStep: 2.2, // diameter added per dive
+  siteMarkerHalo: 18, // halo of the selected marker = diameter + 18
+  pickMarker: 24, // marker being placed (accent, dashed ring around it)
+  pickMarkerRing: 52,
+  blurMap: 8, // glass of the zone chips
+  menuWidth: 230, // « … » menu of the site page
+  siteMiniMapHeight: 300, // map of the site page
+  siteMiniMapHeightSm: 240,
+  siteSheetPeek: 96, // phone bottom sheet folded: its header only
+  textareaMinHeightSm: 76, // « Accès & conseils » in the site panel
+  rowHeightSm: 56, // « Tes plongées ici » rows
+  colNumberSm: 52,
+  colMeasure: 90, // depth, duration columns of « Tes plongées ici »
+  colTeamSm: 110,
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.

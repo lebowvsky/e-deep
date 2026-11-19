@@ -1,8 +1,9 @@
 import type { EntryType } from '@e-deep/shared';
 import type { ReactNode } from 'react';
+import { placeLabel } from '@/shared/lib/format';
 import { Badge } from '@/shared/ui/Badge';
 import { formatDiveLongDate, formatImmersionTime } from '../../../lib/diveTime';
-import { ENTRY_TYPE_LABELS, gasMixShort, placeLabel } from '../../../lib/labels';
+import { ENTRY_TYPE_LABELS, gasMixShort } from '../../../lib/labels';
 import type { LoggedDive } from '../../../types';
 import styles from './DiveDetailHeader.module.scss';
 

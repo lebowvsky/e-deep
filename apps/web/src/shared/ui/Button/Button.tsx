@@ -3,11 +3,14 @@ import { cx } from '@/shared/lib/classNames';
 import { Icon, type IconName } from '@/shared/ui/Icon';
 import styles from './Button.module.scss';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'md' | 'lg';
 
 export interface ButtonProps extends ComponentProps<'button'> {
-  /** `primary` = accent fill, reserved for the main CTA of a screen. Default `secondary`. */
+  /**
+   * `primary` = accent fill, reserved for the main CTA of a screen; `danger` = an irreversible
+   * action (merge, delete). Default `secondary`.
+   */
   variant?: ButtonVariant;
   /** md 40px (default) · lg 48px (single hero CTA, e.g. empty state) */
   size?: ButtonSize;

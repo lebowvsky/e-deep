@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
+import { dashboardQueryOptions } from '@/shared/dashboard/dashboardApi';
 import { useApiClient } from '@/shared/hooks/useApiClient';
-import { fetchDashboard, toDashboardState } from '../api/dashboardApi';
-import { dashboardKeys } from '../api/queryKeys';
+import { toDashboardState } from '../api/dashboardApi';
 import { mockStates } from '../mocks/dashboard';
 import type { DashboardState } from '../types';
 
@@ -24,8 +24,7 @@ export function useDashboard(): DashboardState {
   const [searchParams] = useSearchParams();
   const forced = import.meta.env.DEV ? parseForcedState(searchParams.get('state')) : null;
   const { data, isError, isFetching, refetch } = useQuery({
-    queryKey: dashboardKeys.all,
-    queryFn: ({ signal }) => fetchDashboard(client, { signal }),
+    ...dashboardQueryOptions(client),
     enabled: forced === null,
   });
 

@@ -1,0 +1,108 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · MapAddSiteDesktop — 420px surface2 card replacing the list: head, fields, actions.
+.panel {
+  @include card(2);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-4 $space-3 $space-3 $space-5;
+  border-bottom: 1px solid $color-line;
+}
+
+.title {
+  @include type($type-panel-title);
+
+  margin-top: $space-1;
+  color: $color-text-high;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: $space-4;
+  min-height: 0;
+  padding: $space-5;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+// Accent box: what to do on the map.
+.help {
+  @include type($type-body-sm);
+
+  display: flex;
+  gap: $space-3;
+  align-items: flex-start;
+  padding: $space-3;
+  margin: 0;
+  font-weight: 400;
+  color: $color-text-high;
+  background: $color-accent-soft;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-accent-line;
+}
+
+.helpIcon {
+  flex-shrink: 0;
+  color: $color-accent;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: $color-text-low;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: $layout-field-gap;
+}
+
+// Same look as a `FormField` label.
+.groupLabel {
+  @include type($type-body-sm);
+
+  color: $color-text-med;
+}
+
+.types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+}
+
+.notes textarea {
+  min-height: $layout-textarea-min-height-sm;
+}
+
+.saveError {
+  @include type($type-field-hint);
+
+  margin: 0;
+  color: $color-danger;
+}
+
+.actions {
+  display: flex;
+  gap: $space-3;
+  justify-content: flex-end;
+  padding: $space-3 $space-5;
+  border-top: 1px solid $color-line;
+}

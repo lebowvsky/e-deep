@@ -16,6 +16,14 @@ describe('parseDivesQuery', () => {
     expect(parse('')).toEqual(DEFAULT_QUERY);
   });
 
+  it('reads and writes the site of a site page link', () => {
+    const query = parse('site=s01');
+    expect(query.site).toBe('s01');
+    expect(activeFilterKeys(query)).toEqual(['site']);
+    expect(serializeDivesQuery(query).toString()).toBe('site=s01');
+    expect(withoutFilter(query, 'site').site).toBeNull();
+  });
+
   it('reads the example URL of the spec', () => {
     expect(
       parse(

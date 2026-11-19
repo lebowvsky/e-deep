@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router';
+import { Link, matchPath, useLocation } from 'react-router';
 import { cx } from '@/shared/lib/classNames';
 import { Icon } from '@/shared/ui/Icon';
 import type { NavEntry } from '../navigation';
@@ -11,16 +11,25 @@ export interface NavItemProps {
   onNavigate?: () => void;
 }
 
-/** Navigation link; React Router sets `aria-current="page"` on the active one. */
+/**
+ * Navigation link, active on its page and the pages under it (`aria-current="page"`, as React
+ * Router's `NavLink`), and on the other pages of its section (`entry.section`, a site page under
+ * « Carte »: `aria-current="location"`).
+ */
 export function NavItem({ entry, size = 'md', onNavigate }: NavItemProps) {
+  const { pathname } = useLocation();
+  const isPage = matchPath({ path: entry.to, end: false }, pathname) !== null;
+  const inSection = (entry.section ?? []).some((path) => matchPath(path, pathname) !== null);
+  const current = isPage ? 'page' : inSection ? 'location' : undefined;
   return (
-    <NavLink
+    <Link
       to={entry.to}
       onClick={onNavigate}
-      className={({ isActive }) => cx(styles.item, styles[size], isActive && styles.active)}
+      aria-current={current}
+      className={cx(styles.item, styles[size], current && styles.active)}
     >
       <Icon name={entry.icon} size={size === 'lg' ? 'xl' : 'lg'} />
       <span>{entry.label}</span>
-    </NavLink>
+    </Link>
   );
 }

@@ -75,6 +75,8 @@ e-deep/
 │   │       ├── shared/{ui,hooks,lib,config,model}  config/app.ts : APP_NAME ; model/ : types de domaine
 │   │       │                     partagés entre features (ex. DiveMember, palanquée) ; lib/ : apiClient,
 │   │       │                     guards génériques, queryClient.ts (TanStack Query), hash.ts, format
+│   │       │                     diveLog/ : lecture du carnet (`GET /dives`) commune aux plongées et aux
+│   │       │                     sites ; sites/ : données et règles des sites (dépôt, recherche, fusion)
 │   │       ├── test/             setup.ts (Testing Library), TestProviders.tsx (QueryClient neuf par rendu)
 │   │       └── styles/           global.scss, tokens/ (_index, _tokens & _vars générés, _mixins)
 │   └── admin/                    React 19 + Vite 8 + Tailwind v4 + shadcn/ui
@@ -435,6 +437,12 @@ Décision prise avec l'API d'écriture des plongées (**2026-11-18**). Détail :
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D29 | **`POST /api/dives` et `PUT /api/dives/:id`** (remplacement complet, D-22) : une transaction pour le site et les binômes créés par leur nom, le niveau D-21 des binômes et l'agrégat ; numéro D26 calculé dans la transaction ; `POST` idempotent (même contenu → 200, sérialisé par un verrou consultatif sur l'id), sinon `409 identifier-conflict` ; `PUT` d'une plongée absente, supprimée ou d'un autre → 404 ; site, binôme ou niveau inconnu ou d'un autre → même 422. **LWW strict** (D-25, choix du porteur) : pas de 409 « modifiée ailleurs ». DTO class-validator couvrant tous les `CHECK` ; erreurs `{ statusCode, code, fieldErrors? }` par chemin et par code, jamais la valeur reçue (D-26). | Le formulaire écrivait dans un dépôt en mémoire. Les services de synchronisation existants sont réutilisés sans duplication (variantes `…In(manager)`), ce qui laisse la synchronisation en lot à construire au-dessus. |
 
+Décision prise avec les sites (**2026-11-19**). Détail : `docs/sites/plan.md`.
+
+| #   | Décision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D30 | **Sites en front seul, carte MapLibre GL + CARTO Dark Matter.** Pas d'endpoint sites : les sites, leurs plongées et leurs statistiques viennent de `GET /dives`, les positions de `GET /dashboard` ; les écritures (création, modification, fusion, suppression) passent par le port `SitesRepository` (`shared/sites`), injecté par contexte (`SitesRepositoryContext`, `TestProviders`), implémenté **en mémoire** et superposé aux données de l'API. Un site créé localement part en `isNew: true` (avec son id) quand une plongée l'utilise : l'API le crée alors. Carte : `maplibre-gl` (6.19), chargé à la demande avec son worker (`setWorkerUrl`) et sa feuille de style, isolé dans `shared/ui/MapView` (repères HTML focusables, regroupement par source GeoJSON `cluster: true`, placement au clic ou repère fixe au centre sur téléphone), style vectoriel CARTO Dark Matter sans clé recoloré aux tokens (`transformStyle`), attribution « © OpenStreetMap contributors © CARTO » obligatoire. Pages : `/map` et `/sites/:siteId` (routes lazy) ; « Mes plongées » accepte `?site=:id`. Détail : `docs/sites/plan.md`. |
+
 ## 11. Points ouverts
 
 Issus de la revue de l'initialisation (2026-11-06). Ils ne sont pas bloquants.
@@ -689,3 +697,35 @@ Issus de l'API d'écriture des plongées (PR #17, 2026-11-18) :
   (`canonicalUuids`) : `['A', 'a']` donne un binôme au lieu d'une 422 (non testé).
 - Test `test:db` d'interblocage : délai porté à 30 s après un dépassement isolé de 5 s, sans
   interblocage observé (cause non identifiée).
+
+Issus des sites (création express, page Carte, fiche site, phases 0 à 5, 2026-11-19) :
+
+- **Écritures non persistées** : le dépôt des sites est en mémoire (`AppProviders`) ; créations,
+  modifications, placements, fusions et suppressions sont perdus au rechargement. Un site créé
+  en express qu'aucune plongée n'utilise disparaît ; s'il est utilisé, l'API le crée avec son nom
+  seul (région et type perdus au rechargement).
+- **API sites à créer** : `GET /sites` (type, profondeurs, accès, position, `createdVia`,
+  horodatages), écriture, fusion côté serveur (réaffectation des plongées dans une transaction)
+  et suppression refusée s'il reste des plongées. Elle remplacera `createMemorySitesRepository`
+  derrière le même port, et `GET /dashboard` comme source des positions (même requête et même
+  cache que le dashboard : `shared/dashboard/dashboardApi.ts`, `select: toSitePositions`).
+- **Fusion locale non répercutée** : l'alias source → cible ne vaut que côté front (fiche, carte,
+  filtre `?site=` de « Mes plongées ») ; le nom du site dans « Mes plongées » et le détail d'une
+  plongée reste l'ancien. Une plongée d'un site fusionné localement, modifiée puis enregistrée,
+  garde l'id de ce site côté API (jamais renvoyé comme nouveau).
+- **Mise à l'eau et structure habituelles** : calculées, mais `GET /dives` ne porte ni
+  `entryType` ni `diveCenter` : « — » tant que le carnet ne les sert pas.
+- **`?state=`** n'est géré ni sur `/map` ni sur `/sites/:id` (les mocks ne sont pas importés par le
+  code applicatif) ; les tests passent par un dépôt injecté et `vi.mock` de `MapView`.
+- **Placeholders carte** : le dashboard (`SiteMap`) et le détail d'une plongée (`SiteMiniMap` de
+  `features/dives`) gardent le décor SVG ; à remplacer par `MapView` (prop `viewport`, lecture
+  seule), ce qui supprimera `projectToMap` et `MapBackdrop`.
+- **Géocodage** : V2. La région est suggérée depuis le site placé le plus proche (< 15 km) ; la
+  zone est déduite de la position (boîtes) ou des mots de la région (côtes françaises surtout).
+  Les boîtes ne distinguent pas la terre de la mer : un site intérieur dans une boîte (lac près
+  d'Avignon, carrière près de Rouen) prend la mer de la boîte ; il faudra un trait de côte.
+- **Tuiles** : CARTO sans clé et sans SLA ; au-delà d'un usage modéré, compte CARTO ou autre
+  fournisseur (seule l'URL du style change). Hors ligne, la carte affiche « La carte n'a pas pu
+  se charger » et la liste reste utilisable.
+- **Accessibilité** : vérifiée par tests et au clavier (pas d'axe-core). Proportions du téléphone
+  (carte 40 % en édition, sheet à 50 %) écrites en pourcentages dans le SCSS, pas en tokens.

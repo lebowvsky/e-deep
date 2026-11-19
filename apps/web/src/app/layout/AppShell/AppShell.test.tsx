@@ -80,12 +80,13 @@ describe('AppShell — mobile', () => {
     const current = within(dialog).getByRole('link', { name: 'Dashboard' });
     expect(current.getAttribute('aria-current')).toBe('page');
 
-    await user.click(within(dialog).getByRole('link', { name: 'Carte' }));
+    // A page rendered at once (the map page loads its own chunk).
+    await user.click(within(dialog).getByRole('link', { name: 'Statistiques' }));
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(router.state.location.pathname).toBe('/map');
+    expect(router.state.location.pathname).toBe('/stats');
     // Focus moves to the new content and the document title follows.
     expect(document.activeElement).toBe(document.querySelector('main'));
-    expect(document.title).toBe('Carte · E-Deep');
+    expect(document.title).toBe('Statistiques · E-Deep');
   });
 
   it('shows the FAB as a link to a new dive', async () => {
@@ -141,5 +142,19 @@ describe('AppShell — tablet and up', () => {
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('link', { name: 'Paramètres' })).toBeNull();
     expect(document.activeElement).toBe(toggle);
+  });
+});
+
+describe('AppShell — navigation of a section', () => {
+  it('marks « Carte » as the location on a site page', async () => {
+    stubTabletUp();
+    renderAt('/sites/s01');
+
+    const nav = await screen.findByRole('navigation', { name: 'Navigation principale' });
+    const map = within(nav).getByRole('link', { name: 'Carte' });
+    expect(map.getAttribute('aria-current')).toBe('location');
+    expect(
+      within(nav).getByRole('link', { name: 'Dashboard' }).getAttribute('aria-current'),
+    ).toBeNull();
   });
 });

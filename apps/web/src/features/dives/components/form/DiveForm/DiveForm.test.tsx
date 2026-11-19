@@ -6,9 +6,9 @@ import type { SaveDive, SaveDiveResult } from '../../../api/saveDive';
 import { EMPTY_SECTION_SUMMARY } from '../../../form/derived';
 import type { DiveFormValues } from '../../../form/model';
 import { duplicateDiveValues, editDiveValues, editTarget } from '../../../form/prefill';
-import { buildDiveFormSources } from '../../../form/sources';
-import { CONTEXT, filledDive, validValues } from '../../../mocks/diveFormFixture';
+import { CONTEXT, filledDive, formSourcesOf, validValues } from '../../../mocks/diveFormFixture';
 import { mockDives } from '../../../mocks/dives';
+import { MOCK_SITES } from '@/shared/sites/mocks/sites';
 import { LOCKED_EVENT_HINT } from '../fieldBinding';
 import { DiveForm, type DiveFormProps } from './DiveForm';
 
@@ -23,6 +23,8 @@ interface RenderOptions {
   saveDive?: SaveDive;
   canEditEvent?: boolean;
   draftStore?: DiveFormProps['draftStore'];
+  onCreateSite?: DiveFormProps['onCreateSite'];
+  sources?: DiveFormProps['sources'];
 }
 
 /** A new dive (#128) in a data router: `/dives` is where « Annuler » leads. */
@@ -31,6 +33,8 @@ function renderNew({
   saveDive = vi.fn<SaveDive>(),
   canEditEvent = true,
   draftStore = NO_DRAFT,
+  onCreateSite = vi.fn<DiveFormProps['onCreateSite']>(),
+  sources = formSourcesOf(mockDives),
 }: RenderOptions = {}) {
   const onSaved = vi.fn<(id: string, number: number) => void>();
   const form = (
@@ -39,7 +43,7 @@ function renderNew({
       initialValues={initialValues}
       target={{ kind: 'create' }}
       context={CONTEXT}
-      sources={buildDiveFormSources(mockDives)}
+      sources={sources}
       log={mockDives}
       self={{ firstName: 'Marine', lastName: 'Rousseau', level: 'N2' }}
       prefill={{ kind: 'none' }}
@@ -48,6 +52,7 @@ function renderNew({
       draftStore={draftStore}
       cancelHref="/dives"
       onSaved={onSaved}
+      onCreateSite={onCreateSite}
     />
   );
   const router = createMemoryRouter(
@@ -269,6 +274,145 @@ describe('DiveForm — site', () => {
   });
 });
 
+describe('DiveForm — quick site creation', () => {
+  const siteBox = () => screen.getByRole<HTMLInputElement>('combobox', { name: /^Site/ });
+  const panel = () => screen.getByRole('dialog', { name: 'Nouveau site' });
+
+  /** Types a name none of my sites has, then picks « Créer le site » with Entrée. */
+  async function openPanel(user: ReturnType<typeof userEvent.setup>, name: string) {
+    await user.type(siteBox(), name);
+    await user.keyboard('{Enter}');
+    return panel();
+  }
+
+  it('creates the site from the name typed, selects it and moves on to the date', async () => {
+    const user = userEvent.setup();
+    const onCreateSite = vi.fn<DiveFormProps['onCreateSite']>((draft) =>
+      Promise.resolve({ id: 'local-site', name: draft.name }),
+    );
+    renderNew({ initialValues: validValues({ site: { id: null, name: '' } }), onCreateSite });
+
+    const dialog = await openPanel(user, 'Grotte aux Corbs');
+    const name = within(dialog).getByRole<HTMLInputElement>('textbox', { name: /^Nom/ });
+    expect(name.value).toBe('Grotte aux Corbs');
+    expect(document.activeElement).toBe(name);
+    // The region of the latest dive (#127, Revellata), said so.
+    expect(within(dialog).getByRole<HTMLInputElement>('combobox', { name: 'Région' }).value).toBe(
+      'Calvi · Corse',
+    );
+    expect(within(dialog).getByText('Comme ta dernière plongée · modifiable')).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        'Tu pourras placer le site sur la carte plus tard, depuis la page Carte.',
+      ),
+    ).toBeTruthy();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Grotte' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Créer et sélectionner' }));
+
+    expect(onCreateSite).toHaveBeenCalledWith({
+      name: 'Grotte aux Corbs',
+      region: 'Calvi · Corse',
+      type: 'grotte',
+      depthMinM: null,
+      depthMaxM: null,
+      position: null,
+      accessNotes: null,
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Nouveau site' })).toBeNull());
+    expect(siteBox().value).toBe('Grotte aux Corbs');
+    expect(document.activeElement).toBe(input(/^Date/));
+  });
+
+  it('wants a name', async () => {
+    const user = userEvent.setup();
+    const onCreateSite = vi.fn<DiveFormProps['onCreateSite']>();
+    renderNew({ initialValues: validValues({ site: { id: null, name: '' } }), onCreateSite });
+
+    const dialog = await openPanel(user, 'Grotte aux Corbs');
+    await user.clear(within(dialog).getByRole('textbox', { name: /^Nom/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Créer et sélectionner' }));
+
+    expect(within(dialog).getByText('Donne un nom au site.')).toBeTruthy();
+    expect(onCreateSite).not.toHaveBeenCalled();
+  });
+
+  it('offers a close site instead of a duplicate', async () => {
+    const user = userEvent.setup();
+    const onCreateSite = vi.fn<DiveFormProps['onCreateSite']>();
+    renderNew({ initialValues: validValues({ site: { id: null, name: '' } }), onCreateSite });
+
+    // A typo: the combobox lists the Revellata, the diver asks for a new site all the same.
+    await user.type(siteBox(), 'Pointe Revelata');
+    expect(screen.getByRole('option', { name: /Pointe de la Revellata/ })).toBeTruthy();
+    await user.click(screen.getByRole('option', { name: /Créer le site/ }));
+    const status = within(panel()).getByRole('status');
+    expect(status.textContent).toContain('Un site proche existe : Pointe de la Revellata');
+
+    await user.click(within(status).getByRole('button', { name: 'Utiliser celui-ci' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Nouveau site' })).toBeNull();
+    expect(siteBox().value).toBe('Pointe de la Revellata');
+    expect(screen.getByText('Tes sites, ou un nouveau site créé à la volée.')).toBeTruthy();
+    expect(document.activeElement).toBe(input(/^Date/));
+    expect(onCreateSite).not.toHaveBeenCalled();
+  });
+
+  it('closes on Échap or « Annuler » without creating anything, back to the site field', async () => {
+    const user = userEvent.setup();
+    const onCreateSite = vi.fn<DiveFormProps['onCreateSite']>();
+    renderNew({ initialValues: validValues({ site: { id: null, name: '' } }), onCreateSite });
+
+    await openPanel(user, 'Grotte aux Corbs');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Nouveau site' })).toBeNull();
+    expect(document.activeElement).toBe(siteBox());
+
+    await user.keyboard('{ArrowDown}{Enter}');
+    await user.click(within(panel()).getByRole('button', { name: 'Annuler' }));
+    expect(screen.queryByRole('dialog', { name: 'Nouveau site' })).toBeNull();
+    expect(document.activeElement).toBe(siteBox());
+    expect(onCreateSite).not.toHaveBeenCalled();
+  });
+
+  it('opens as a modal bottom sheet on phones', async () => {
+    stubPhone();
+    const user = userEvent.setup();
+    renderNew({ initialValues: validValues({ site: { id: null, name: '' } }) });
+
+    const sheet = await openPanel(user, 'Grotte aux Corbs');
+    expect(sheet.getAttribute('aria-modal')).toBe('true');
+    expect(document.activeElement).toBe(within(sheet).getByRole('textbox', { name: /^Nom/ }));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Nouveau site' })).toBeNull();
+  });
+});
+
+describe('DiveForm — site merged on this device', () => {
+  it('sends a site of the API log as known, even once merged locally', async () => {
+    const user = userEvent.setup();
+    const saveDive = vi.fn<SaveDive>(() => Promise.resolve({ ok: true, id: 'd128', number: 128 }));
+    // La Pointe de la Revellata (s01) merged into La Bibliothèque (s02) here: not in the choices.
+    const sources = formSourcesOf(mockDives, {
+      saved: new Map([['s02', MOCK_SITES.bibliotheque]]),
+      removed: new Set(['s01']),
+      mergedInto: new Map([['s01', 's02']]),
+    });
+    expect(sources.sites.some(({ id }) => id === 's01')).toBe(false);
+    renderNew({ saveDive, sources });
+
+    await user.click(saveButton());
+
+    await waitFor(() => expect(saveDive).toHaveBeenCalledOnce());
+    // Still a site of the API: never « new » (the API would refuse or duplicate it).
+    expect(saveDive.mock.calls[0]?.[0].contacts.site).toEqual({
+      id: 's01',
+      name: 'Pointe de la Revellata',
+      isNew: false,
+    });
+  });
+});
+
 describe('DiveForm — removing a row', () => {
   it('keeps the focus in the form when a member or a stop is removed', async () => {
     const user = userEvent.setup();
@@ -379,7 +523,7 @@ describe('DiveForm — shared event', () => {
             initialValues={editDiveValues(dive)}
             target={editTarget(dive)}
             context={CONTEXT}
-            sources={buildDiveFormSources(mockDives)}
+            sources={formSourcesOf(mockDives)}
             log={mockDives}
             self={{ firstName: 'Marine', lastName: 'Rousseau', level: 'N2' }}
             prefill={{ kind: 'none' }}
@@ -388,6 +532,7 @@ describe('DiveForm — shared event', () => {
             draftStore={NO_DRAFT}
             cancelHref={`/dives/${dive.id}`}
             onSaved={vi.fn()}
+            onCreateSite={vi.fn()}
           />
         ),
       },

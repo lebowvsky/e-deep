@@ -100,13 +100,16 @@ const num = (value: string): number | null => parseNumberInput(value);
 
 /**
  * Validated values → input of `saveDive`. `ids` are those of the new dive and of a site typed by
- * name; a buddy typed by name takes the key of their row (D22). `null` when a required value
- * cannot be read: validate first.
+ * name; a buddy typed by name takes the key of their row (D22). `isSavedSite`: the site is in the
+ * diver's log on the API; a site created on this device only (quick creation, D30) is sent as new,
+ * with its own id, so that the API creates it. `null` when a required value cannot be read:
+ * validate first.
  */
 export function toSaveDiveInput(
   values: DiveFormValues,
   target: DiveFormTarget,
   ids: DiveFormIds,
+  isSavedSite: (id: string) => boolean,
 ): SaveDiveInput | null {
   const maxDepthM = num(values.maxDepthM);
   const durationMin = num(values.durationMin);
@@ -119,7 +122,7 @@ export function toSaveDiveInput(
   const site = {
     id: values.site.id ?? ids.newSiteId,
     name: siteName,
-    isNew: values.site.id === null,
+    isNew: values.site.id === null || !isSavedSite(values.site.id),
   };
   const buddies: DiveWriteBuddy[] = values.team.map((member) => ({
     id: member.id ?? member.key,

@@ -1,0 +1,135 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · QuickCreateDesktop — surface2 card under the site field, with a tail pointing at it.
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-5;
+  background: $color-surface-2;
+  border-radius: $radius-lg;
+  box-shadow:
+    inset 0 0 0 1px $color-line-strong,
+    $shadow-raised;
+}
+
+// 12px square turned 45°, half above the card, under the field icon.
+.tail {
+  position: absolute;
+  top: calc(#{$layout-popover-tail} / -2);
+  left: $space-6;
+  width: $layout-popover-tail;
+  height: $layout-popover-tail;
+  background: $color-surface-2;
+  box-shadow: -1px -1px 0 $color-line-strong;
+  transform: rotate(45deg);
+}
+
+.head {
+  display: flex;
+  gap: $space-3;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.title {
+  @include type($type-title-sm);
+
+  margin: 0;
+  color: $color-text-high;
+}
+
+.escape {
+  @include type($type-chip, $font: $font-mono);
+
+  color: $color-text-low;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+// Live region kept rendered (empty, out of the flow): the close site is announced when it appears.
+.similarRegion:empty {
+  @include visually-hidden;
+}
+
+.similar {
+  @include type($type-body-sm);
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2 $space-3;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-2 $space-2 $space-2 $space-3;
+  margin: 0;
+  color: $color-text-med;
+  background: $color-chip-fill;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line;
+}
+
+.similarName {
+  font-weight: inherit;
+  color: $color-text-high;
+}
+
+.count {
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
+  color: $color-text-low;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: $color-text-low;
+}
+
+.typeGroup {
+  display: flex;
+  flex-direction: column;
+  gap: $layout-field-gap;
+}
+
+// Same look as a `FormField` label (13/500 textMed).
+.typeLabel {
+  @include type($type-body-sm);
+
+  color: $color-text-med;
+}
+
+.types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.info {
+  @include type($type-field-hint);
+
+  display: flex;
+  gap: $space-2;
+  align-items: flex-start;
+  margin: 0;
+  color: $color-text-low;
+}
+
+.infoIcon {
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  gap: $space-2;
+  justify-content: flex-end;
+}
+
+// Phone: the only action, full width at the bottom of the sheet.
+.wide {
+  width: 100%;
+  justify-content: center;
+}

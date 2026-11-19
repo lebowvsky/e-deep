@@ -6,7 +6,7 @@ import { cx } from '@/shared/lib/classNames';
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import { Drawer } from '../Drawer';
 import { Fab } from '../Fab';
-import { hasOwnMobileBars } from '../routeHandle';
+import { hasHandleFlag } from '../routeHandle';
 import { Sidebar } from '../Sidebar';
 import { TopBar } from '../TopBar';
 import styles from './AppShell.module.scss';
@@ -32,8 +32,11 @@ export function AppShell({ user }: AppShellProps) {
   // No FAB on a dive detail (detail-plongee.md) nor on the dive form, which the FAB opens: every
   // page under `/dives/…` (`:diveId`, `new`, `:diveId/edit`), but not the log itself.
   const onDivePage = useMatch({ path: '/dives/:diveId', end: false }) !== null;
+  const matches = useMatches();
   // The dive form has its own ✕ top bar and sticky save bar on phones.
-  const ownMobileBars = hasOwnMobileBars(useMatches());
+  const ownMobileBars = hasHandleFlag(matches, 'ownMobileBars');
+  const hideFab = hasHandleFlag(matches, 'hideFab');
+  const fullBleed = hasHandleFlag(matches, 'fullBleed');
 
   // Client-side navigation: move focus to the new content so screen readers announce it.
   useEffect(() => {
@@ -68,13 +71,13 @@ export function AppShell({ user }: AppShellProps) {
       <main
         ref={mainRef}
         id="main-content"
-        className={cx(styles.main, ownMobileBars && styles.ownBars)}
+        className={cx(styles.main, ownMobileBars && styles.ownBars, fullBleed && styles.fullBleed)}
         tabIndex={-1}
         inert={behindDrawer}
       >
         <Outlet />
       </main>
-      {!isTabletUp && !onDivePage && <Fab inert={behindDrawer} />}
+      {!isTabletUp && !onDivePage && !hideFab && <Fab inert={behindDrawer} />}
     </div>
   );
 }

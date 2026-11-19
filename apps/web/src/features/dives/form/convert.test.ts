@@ -9,6 +9,8 @@ import type { DiveFormValues } from './model';
 import { editDiveValues, editTarget } from './prefill';
 
 const IDS = { eventId: 'new-event', newSiteId: 'new-site' };
+/** Every chosen site is in the log on the API. */
+const ALL_SITES_SAVED = (): boolean => true;
 
 describe('gas', () => {
   it('maps Air and Nitrox to the mixes of the model (RG-23)', () => {
@@ -34,6 +36,21 @@ describe('gas', () => {
 });
 
 describe('toSaveDiveInput', () => {
+  it('sends a site created on this device as new, under its own id (D30)', () => {
+    const input = toSaveDiveInput(
+      validValues({ site: { id: 'local-site', name: 'Grotte aux Corbs' } }),
+      { kind: 'create' },
+      IDS,
+      (id) => id !== 'local-site',
+    );
+    expect(input?.contacts.site).toEqual({
+      id: 'local-site',
+      name: 'Grotte aux Corbs',
+      isNew: true,
+    });
+    expect(input?.event.siteId).toBe('local-site');
+  });
+
   it('writes every field, null when not entered (D-22), with the ids of the form', () => {
     const input = toSaveDiveInput(
       validValues({
@@ -43,6 +60,7 @@ describe('toSaveDiveInput', () => {
       }),
       { kind: 'create' },
       IDS,
+      ALL_SITES_SAVED,
     );
     expect(input?.kind).toBe('create');
     expect(input?.baseUpdatedAt).toBeNull();
@@ -67,37 +85,44 @@ describe('toSaveDiveInput', () => {
 
   it('writes the safety stop only when the switch is on (RG-25)', () => {
     const stop = { safetyStopDurationMin: '3', safetyStopDepthM: '5' };
-    const off = toSaveDiveInput(validValues(stop), { kind: 'create' }, IDS);
-    const on = toSaveDiveInput(validValues({ ...stop, safetyStop: true }), { kind: 'create' }, IDS);
+    const off = toSaveDiveInput(validValues(stop), { kind: 'create' }, IDS, ALL_SITES_SAVED);
+    const on = toSaveDiveInput(
+      validValues({ ...stop, safetyStop: true }),
+      { kind: 'create' },
+      IDS,
+      ALL_SITES_SAVED,
+    );
     expect(off?.participation.safetyStopDurationMin).toBeNull();
     expect(on?.participation).toMatchObject({ safetyStopDurationMin: 3, safetyStopDepthM: 5 });
   });
 
   it('sends the same ids on a retry: a save that timed out is not written twice', () => {
     const values = validValues({ site: { id: null, name: 'Le Sec' } });
-    expect(toSaveDiveInput(values, { kind: 'create' }, IDS)).toEqual(
-      toSaveDiveInput(values, { kind: 'create' }, IDS),
+    expect(toSaveDiveInput(values, { kind: 'create' }, IDS, ALL_SITES_SAVED)).toEqual(
+      toSaveDiveInput(values, { kind: 'create' }, IDS, ALL_SITES_SAVED),
     );
   });
 
   it('keeps « successive » unknown on an edited dive left untouched', () => {
     const dive = { ...filledDive(), isRepetitive: null };
-    const unknown = toSaveDiveInput(editDiveValues(dive), editTarget(dive), IDS);
+    const unknown = toSaveDiveInput(editDiveValues(dive), editTarget(dive), IDS, ALL_SITES_SAVED);
     expect(unknown?.participation.isRepetitive).toBeNull();
     const turnedOn = toSaveDiveInput(
       { ...editDiveValues(dive), repetitive: true },
       editTarget(dive),
       IDS,
+      ALL_SITES_SAVED,
     );
     expect(turnedOn?.participation.isRepetitive).toBe(true);
     expect(
-      toSaveDiveInput(validValues(), { kind: 'create' }, IDS)?.participation.isRepetitive,
+      toSaveDiveInput(validValues(), { kind: 'create' }, IDS, ALL_SITES_SAVED)?.participation
+        .isRepetitive,
     ).toBe(false);
   });
 
   it('sends an edit with the updatedAt it started from, on the site chosen', () => {
     const dive = filledDive();
-    const input = toSaveDiveInput(editDiveValues(dive), editTarget(dive), IDS);
+    const input = toSaveDiveInput(editDiveValues(dive), editTarget(dive), IDS, ALL_SITES_SAVED);
     expect(input?.kind).toBe('update');
     expect(input?.event.id).toBe(dive.id);
     expect(input?.baseUpdatedAt).toBe(dive.updatedAt);
@@ -106,7 +131,9 @@ describe('toSaveDiveInput', () => {
   });
 
   it('gives nothing for values that validation would refuse', () => {
-    expect(toSaveDiveInput(validValues({ maxDepthM: '' }), { kind: 'create' }, IDS)).toBeNull();
+    expect(
+      toSaveDiveInput(validValues({ maxDepthM: '' }), { kind: 'create' }, IDS, ALL_SITES_SAVED),
+    ).toBeNull();
   });
 });
 
@@ -128,7 +155,7 @@ describe('round trip form → DiveDetail → form', () => {
   /** Saves `values` as the edit of `dive`, then reopens the result in the form. */
   function roundTrip(values: DiveFormValues): DiveFormValues {
     const dive = filledDive();
-    const input = toSaveDiveInput(values, editTarget(dive), IDS);
+    const input = toSaveDiveInput(values, editTarget(dive), IDS, ALL_SITES_SAVED);
     if (input === null) throw new Error('Invalid values');
     const detail = buildDiveDetail(toDiveWriteRequest(input), {
       site: {
@@ -161,7 +188,7 @@ describe('round trip form → DiveDetail → form', () => {
 
   it('keeps the count of a species still listed', () => {
     const dive = filledDive();
-    const input = toSaveDiveInput(editDiveValues(dive), editTarget(dive), IDS);
+    const input = toSaveDiveInput(editDiveValues(dive), editTarget(dive), IDS, ALL_SITES_SAVED);
     expect(input?.observations[0]).toEqual({ label: 'Mérou brun', count: 2 });
   });
 });

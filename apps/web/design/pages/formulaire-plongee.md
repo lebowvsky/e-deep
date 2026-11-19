@@ -30,7 +30,7 @@ Les sections suivent l'ordre des cartes du détail. Le modèle sépare **l'évé
 
 | Champ | Contrôle | Règle |
 |---|---|---|
-| Site (É) * | Combobox (capture 32) : recherche dans *mes sites*, texte trouvé surligné, nombre de plongées, option « Créer le site « … » » | Obligatoire. La création à la volée ne demande que le nom ; région et position se précisent plus tard. |
+| Site (É) * | Combobox (capture 32) : recherche tolérante dans *mes sites* (accents, articles, fautes légères), texte trouvé surligné, nombre de plongées, option « Créer le site « … » » | Obligatoire. « Créer le site » ouvre la **création express** (captures 40 et 41, spec `sites.md`) : nom, région, type facultatif ; le site est créé, sélectionné, et marqué « Position à préciser ». `/dives/new?site=:id` (depuis la fiche site) préremplit le champ. |
 | N° de plongée (P) | Nombre, prérempli à max + 1 | Avertissement (non bloquant) s'il existe déjà dans le carnet |
 | Date (É) * | `type="date"` natif, affichage « jeu. 09/04/2026 » | Obligatoire, pas dans le futur |
 | Immersion (P) * / Sortie (P) * | `type="time"` natifs côte à côte | Obligatoires. Sortie > immersion, sauf si Moment = Nuit (passage de minuit autorisé) |

@@ -1,0 +1,27 @@
+@use '@/styles/tokens' as *;
+
+// 2 tiles on phones (dives, depth); 2 × 2 from 768px, 4 columns from 1280px (sites.jsx).
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  > :nth-child(n + 3) {
+    display: none;
+  }
+
+  @include from($bp-tablet) {
+    gap: $space-4;
+
+    > :nth-child(n + 3) {
+      display: flex;
+    }
+  }
+
+  @include from($bp-large) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

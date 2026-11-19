@@ -2,10 +2,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import type { ApiClient } from '@/shared/lib/apiClient';
 import { ApiClientContext } from '@/shared/lib/apiClientContext';
+import {
+  createMemorySitesRepository,
+  type SitesRepository,
+} from '@/shared/sites/repository/sitesRepository';
+import { SitesRepositoryContext } from '@/shared/sites/repository/sitesRepositoryContext';
 
 export interface TestProvidersProps {
   /** Fake API client (`{ get: vi.fn()… }`): tests never reach the network. */
   client: ApiClient;
+  /** Local writes on the sites; an empty in-memory repository per render by default. */
+  sitesRepository?: SitesRepository;
   children: ReactNode;
 }
 
@@ -13,13 +20,16 @@ export interface TestProvidersProps {
  * The data dependencies of `AppProviders`, isolated per test: a fresh query cache for every
  * render (no state leaks between tests) and no retry, so a failure shows at once.
  */
-export function TestProviders({ client, children }: TestProvidersProps) {
+export function TestProviders({ client, sitesRepository, children }: TestProvidersProps) {
+  const [defaultSitesRepository] = useState(createMemorySitesRepository);
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } }),
   );
   return (
     <ApiClientContext value={client}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <SitesRepositoryContext value={sitesRepository ?? defaultSitesRepository}>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </SitesRepositoryContext>
     </ApiClientContext>
   );
 }

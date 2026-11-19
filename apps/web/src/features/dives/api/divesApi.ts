@@ -8,8 +8,9 @@ import type {
   DiveSiteRef as DiveSiteContract,
   DiveSummary,
 } from '@e-deep/shared';
+import { isBuddyRef, isDiveSummary } from '@/shared/diveLog/diveLogApi';
 import { ApiError, type ApiClient, type RequestOptions } from '@/shared/lib/apiClient';
-import { formatInitials } from '@/shared/lib/format';
+import { formatInitials, placeLabel } from '@/shared/lib/format';
 import {
   isArrayOf,
   isBoolean,
@@ -23,13 +24,12 @@ import {
 } from '@/shared/lib/guards';
 import type { DiveMember } from '@/shared/model/dive';
 import { toGeoPoint } from '@/shared/model/geo';
-import { avatarColorOf } from '../lib/avatarColor';
-import { oxygenPercent, placeLabel } from '../lib/labels';
+import { avatarColorOf } from '@/shared/lib/avatarColor';
+import { oxygenPercent } from '../lib/labels';
 import { toRegionKey } from '../lib/region';
 import {
   CURRENT_STRENGTHS,
   ENTRY_TYPES,
-  GAS_MIXES,
   SEA_STATES,
   SUIT_TYPES,
   TANK_MATERIALS,
@@ -45,39 +45,6 @@ import type {
 } from '../types';
 
 // ── Guards (the contract is checked at the boundary, `invalid-response` otherwise) ─────────────
-
-function isSiteRef(value: unknown): value is DiveSiteContract {
-  return (
-    isRecord(value) &&
-    isString(value.id) &&
-    isString(value.name) &&
-    isNullable(isString)(value.locality) &&
-    isNullable(isString)(value.region)
-  );
-}
-
-function isBuddyRef(value: unknown): value is DiveBuddyRef {
-  return (
-    isRecord(value) && isString(value.id) && isString(value.firstName) && isString(value.lastName)
-  );
-}
-
-export function isDiveSummary(value: unknown): value is DiveSummary {
-  return (
-    isRecord(value) &&
-    isString(value.id) &&
-    isNumber(value.number) &&
-    isDateString(value.date) &&
-    isNumber(value.utcOffsetMinutes) &&
-    isSiteRef(value.site) &&
-    isNumber(value.depthMaxM) &&
-    isNumber(value.durationMin) &&
-    isNullable(isNumber)(value.temperatureC) &&
-    isOneOf(value.gasMix, GAS_MIXES) &&
-    isNullable(isString)(value.notes) &&
-    isArrayOf(isBuddyRef)(value.buddies)
-  );
-}
 
 /** One of `options`, or `null`. */
 function isNullableOneOf<const T extends string>(options: readonly T[]) {
@@ -137,19 +104,7 @@ export function isDiveDetail(value: unknown): value is DiveDetail {
   );
 }
 
-export function isDiveLogResponse(value: unknown): value is DiveLogResponse {
-  return isRecord(value) && isArrayOf(isDiveSummary)(value.dives);
-}
-
 // ── Requests ──────────────────────────────────────────────────────────────────────────────────
-
-/** `GET /dives`: the whole live log of the current diver, latest first. */
-export function fetchDiveLog(
-  client: ApiClient,
-  options?: RequestOptions,
-): Promise<DiveLogResponse> {
-  return client.get('dives', isDiveLogResponse, options);
-}
 
 /** `GET /dives/:id`: 404 (`http` error) when the dive is not the current diver's. */
 export function fetchDive(

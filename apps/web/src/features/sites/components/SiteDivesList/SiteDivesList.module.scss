@@ -1,0 +1,175 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · DivesHere — rows of 56px: n°, date, depth, duration, dive team, chevron.
+.card {
+  @include card(1);
+
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-4 $space-5 $space-3;
+
+  @include from($bp-tablet) {
+    padding: $space-5 $space-6 $space-4;
+  }
+}
+
+.title {
+  @include overline;
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+}
+
+.all {
+  @include focus-ring;
+  @include type($type-body-sm);
+
+  display: inline-flex;
+  gap: $space-2;
+  align-items: center;
+  color: $color-accent;
+  text-decoration: none;
+  border-radius: $radius-xs;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.none {
+  @include type($type-body);
+
+  padding: 0 $space-6 $space-6;
+  color: $color-text-low;
+}
+
+.rows {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  // Phones: the 3 latest.
+  li:nth-child(n + 4) {
+    display: none;
+
+    @include from($bp-tablet) {
+      display: block;
+    }
+  }
+}
+
+.row {
+  @include focus-ring;
+
+  display: grid;
+  grid-template-columns: $layout-col-number-sm minmax(0, 1fr) auto;
+  gap: $space-3;
+  align-items: center;
+  height: $layout-row-height-sm;
+  padding: 0 $space-5;
+  color: inherit;
+  text-decoration: none;
+  border-top: 1px solid $color-line;
+
+  &:focus-visible {
+    outline-offset: calc(-1 * #{$layout-hairline});
+  }
+
+  &:hover {
+    background: $color-chip-fill;
+  }
+
+  @include from($bp-tablet) {
+    grid-template-columns:
+      $layout-col-number minmax(0, 1fr) $layout-col-measure $layout-col-measure
+      $layout-col-chevron;
+    padding: 0 $space-6;
+  }
+
+  @include from($bp-large) {
+    grid-template-columns:
+      $layout-col-number minmax(0, 1fr) $layout-col-measure $layout-col-measure
+      $layout-col-team-sm $layout-col-chevron;
+  }
+}
+
+.number {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  color: $color-text-low;
+}
+
+.date {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  overflow: hidden;
+  color: $color-text-high;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.measure,
+.deepest,
+.duration {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  color: $color-text-high;
+  text-align: right;
+}
+
+.deepest {
+  color: $color-accent;
+}
+
+.unit {
+  @include type($type-unit-xs, $font: $font-mono);
+
+  color: $color-text-low;
+}
+
+// Phones: n°, date, depth only.
+.duration,
+.team,
+.chevron {
+  display: none;
+}
+
+@include from($bp-tablet) {
+  .duration {
+    display: block;
+  }
+
+  .chevron {
+    display: flex;
+  }
+}
+
+// The dive team from 1280px (the column is too narrow beside the side column below).
+@include from($bp-large) {
+  .team {
+    display: flex;
+  }
+}
+
+.avatars {
+  display: flex;
+
+  > * + * {
+    margin-left: calc(-1 * #{$space-1} / 2);
+  }
+}
+
+.chevron {
+  color: $color-text-low;
+}
+
+.srOnly {
+  @include visually-hidden;
+}

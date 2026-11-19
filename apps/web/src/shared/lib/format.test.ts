@@ -13,6 +13,8 @@ import {
   formatHeaderDate,
   formatInitials,
   formatMeasure,
+  placeLabel,
+  formatDiveDayMonthYear,
   formatMonthInitial,
   formatMonthLabel,
   formatMonthShort,
@@ -121,5 +123,21 @@ describe('dive form', () => {
     // Intl groups with a narrow no-break space.
     expect(formatCharacterCount(2048)).toBe('2\u202f048 caractères');
     expect(formatCharacterCount(1)).toBe('1 caractère');
+  });
+});
+
+describe('placeLabel', () => {
+  it('joins the parts of a place that were entered, or gives none', () => {
+    expect(placeLabel('Calvi · Corse', 'Méditerranée')).toBe('Calvi · Corse · Méditerranée');
+    expect(placeLabel('Calvi · Corse', null)).toBe('Calvi · Corse');
+    expect(placeLabel('Calvi', null)).toBe('Calvi');
+    expect(placeLabel(null, 'Corse')).toBe('Corse');
+    expect(placeLabel(null, null)).toBeNull();
+  });
+});
+
+describe('formatDiveDayMonthYear', () => {
+  it('reads the calendar day of the dive, whatever the device time zone', () => {
+    expect(formatDiveDayMonthYear('2026-04-08T23:30:00+02:00')).toBe('08 avr. 2026');
   });
 });

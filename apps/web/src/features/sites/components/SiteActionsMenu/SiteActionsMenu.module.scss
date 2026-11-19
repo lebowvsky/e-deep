@@ -1,0 +1,86 @@
+@use '@/styles/tokens' as *;
+
+.root {
+  position: relative;
+}
+
+// 40px framed icon button (sites.jsx · IconBtn); bare in the phone top bar.
+.trigger {
+  @include focus-ring;
+  @include hit-area;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: $layout-control-height;
+  height: $layout-control-height;
+  padding: 0;
+  color: $color-text-med;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: $radius-md;
+
+  @include from($bp-tablet) {
+    background: $color-surface-2;
+    box-shadow: inset 0 0 0 1px $color-line-strong;
+  }
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+// sites.jsx · menu — 230px, surface2, raised, 40px items.
+.menu {
+  position: absolute;
+  top: calc(100% + #{$space-2});
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  width: $layout-menu-width;
+  padding: $space-1;
+  background: $color-surface-2;
+  border-radius: $radius-md;
+  box-shadow:
+    inset 0 0 0 1px $color-line-strong,
+    $shadow-raised;
+}
+
+.item {
+  @include type($type-body-sm);
+
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  min-height: $layout-control-height;
+  padding: $space-2 $space-3;
+  font-weight: 400;
+  color: $color-text-high;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: $radius-segment;
+
+  &:hover,
+  &:focus-visible {
+    background: $color-chip-fill;
+    outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 1px $color-accent;
+  }
+}
+
+.danger {
+  color: $color-danger;
+}
+
+.phoneOnly {
+  @include from($bp-tablet) {
+    display: none;
+  }
+}

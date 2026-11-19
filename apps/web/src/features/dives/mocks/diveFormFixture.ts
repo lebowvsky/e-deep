@@ -5,6 +5,11 @@ import { SELF } from './roster';
 import type { DiveDetailView } from '../types';
 import { emptyDiveFormValues, type DiveFormValues } from '../form/model';
 import type { ValidationContext } from '../form/validation';
+import { buildDiveFormSources, type DiveFormSources } from '../form/sources';
+import { buildSiteCatalogue } from '@/shared/sites/lib/siteCatalogue';
+import { EMPTY_SITES_OVERLAY, type SitesOverlay } from '@/shared/sites/repository/sitesRepository';
+import type { LoggedDive } from '../types';
+import { toDiveLogResponse } from './diveLogResponse';
 
 /** « L'essentiel » filled with valid values, nothing else. */
 export function validValues(overrides: Partial<DiveFormValues> = {}): DiveFormValues {
@@ -28,4 +33,13 @@ export const CONTEXT: ValidationContext = {
 /** #127 of the mocked log with every detail field of the mockup. */
 export function filledDive(): DiveDetailView {
   return toDiveDetailView(mockFilledDiveDetail('d127'), SELF);
+}
+
+/** The sources of the form for `log`, under `overlay` (no local change by default). */
+export function formSourcesOf(
+  log: readonly LoggedDive[],
+  overlay: SitesOverlay = EMPTY_SITES_OVERLAY,
+): DiveFormSources {
+  const { dives } = toDiveLogResponse(log);
+  return buildDiveFormSources(log, buildSiteCatalogue({ dives, positions: new Map(), overlay }));
 }

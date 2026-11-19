@@ -10,11 +10,15 @@ const FOCUSABLE = [
 ].join(',');
 
 /**
- * Keeps keyboard focus inside `containerRef` while `active`: focuses the first focusable element
- * on activation, cycles Tab / Shift+Tab, and gives focus back to the previously focused element
- * on deactivation.
+ * Keeps keyboard focus inside `containerRef` while `active`: focuses `initialFocusRef` (default:
+ * the first focusable element) on activation, cycles Tab / Shift+Tab, and gives focus back to the
+ * previously focused element on deactivation.
  */
-export function useFocusTrap(containerRef: RefObject<HTMLElement | null>, active: boolean): void {
+export function useFocusTrap(
+  containerRef: RefObject<HTMLElement | null>,
+  active: boolean,
+  initialFocusRef?: RefObject<HTMLElement | null>,
+): void {
   useEffect(() => {
     const container = containerRef.current;
     if (!active || !container) return;
@@ -23,7 +27,7 @@ export function useFocusTrap(containerRef: RefObject<HTMLElement | null>, active
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusables = () => Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE));
 
-    focusables()[0]?.focus();
+    (initialFocusRef?.current ?? focusables()[0])?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return;
@@ -46,5 +50,5 @@ export function useFocusTrap(containerRef: RefObject<HTMLElement | null>, active
       container.removeEventListener('keydown', onKeyDown);
       previouslyFocused?.focus();
     };
-  }, [containerRef, active]);
+  }, [containerRef, active, initialFocusRef]);
 }

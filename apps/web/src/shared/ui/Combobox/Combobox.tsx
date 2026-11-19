@@ -33,6 +33,11 @@ export interface ComboboxProps<T extends ComboboxOption> {
   onSelect: (option: T) => void;
   /** Offers to create an entry from the text typed when no option has exactly this name. */
   create?: ComboboxCreate;
+  /**
+   * The options matching the query, in the order to show (a tolerant search). Default: the options
+   * whose label contains the query, ignoring case and accents, in their order.
+   */
+  filter?: (options: readonly T[], query: string) => readonly T[];
   /** Overline above the options (« Mes sites »). */
   groupLabel?: string;
   /** Icon of the field. Default `search`. */
@@ -83,6 +88,7 @@ export function Combobox<T extends ComboboxOption>({
   onInputChange,
   onSelect,
   create,
+  filter,
   groupLabel,
   icon = 'search',
   optionIcon,
@@ -101,11 +107,11 @@ export function Combobox<T extends ComboboxOption>({
   const query = inputValue.trim();
   // Each label folded once: the field re-renders with every key typed in the form around it.
   const foldedLabels = useMemo(() => options.map((option) => foldText(option.label)), [options]);
-  const matches = useMemo(
-    () =>
-      query ? options.filter((_, index) => matchesText(foldedLabels[index] ?? '', query)) : options,
-    [options, foldedLabels, query],
-  );
+  const matches = useMemo(() => {
+    if (!query) return options;
+    if (filter) return filter(options, query);
+    return options.filter((_, index) => matchesText(foldedLabels[index] ?? '', query));
+  }, [options, foldedLabels, query, filter]);
   const exists = useMemo(
     () => options.some((option) => isSameText(option.label, query)),
     [options, query],

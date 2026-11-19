@@ -36,6 +36,7 @@ function setup(overrides: Partial<UseDiveFormOptions> = {}) {
     context: CONTEXT,
     saveDive,
     draftStore: store,
+    isSavedSite: () => true,
     newId: () => `id-${++id}`,
     now: () => Date.UTC(2026, 3, 9, 8, 52),
     ...overrides,

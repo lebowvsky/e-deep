@@ -1,0 +1,100 @@
+@use '@/styles/tokens' as *;
+
+// Phones: bottom sheet over the map (sites.jsx · MapSitesMobile). From 768px: a plain column.
+.sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  height: 50%;
+  background: $color-surface-0;
+  border-radius: $radius-xl $radius-xl 0 0;
+  box-shadow: $shadow-sheet;
+  transition: height $dur-slow $ease-out;
+
+  &[data-snap='folded'] {
+    height: $layout-site-sheet-peek;
+  }
+
+  &[data-snap='full'] {
+    height: calc(100% - #{$space-4});
+  }
+
+  @include from($bp-tablet) {
+    position: static;
+    display: contents;
+  }
+}
+
+.handle {
+  @include focus-ring;
+
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: $space-6;
+  padding: 0;
+  cursor: grab;
+  touch-action: none;
+  background: transparent;
+  border: 0;
+
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+.grip {
+  width: $layout-sheet-handle;
+  height: $layout-depth-bar-height;
+  background: $color-line-strong;
+  border-radius: $radius-xxs;
+}
+
+.head {
+  display: flex;
+  flex-shrink: 0;
+  gap: $space-3;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 $space-4 $space-3 $space-5;
+
+  @include from($bp-tablet) {
+    display: none;
+  }
+}
+
+.title {
+  @include type($type-h-2);
+
+  color: $color-text-high;
+}
+
+.counts {
+  @include type($type-caption);
+
+  font-weight: 400;
+  color: $color-text-low;
+}
+
+.content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+
+  @include from($bp-tablet) {
+    display: contents;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transition: none;
+  }
+}

@@ -1,0 +1,138 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · SiteRow — 32px count, name 14/500, meta 12 textLow, figures in mono.
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: $layout-row-height;
+  border-top: 1px solid $color-line;
+
+  // Accent bar on the left of the selected row.
+  &::before {
+    position: absolute;
+    top: $space-3;
+    bottom: $space-3;
+    left: 0;
+    width: $layout-hairline;
+    content: '';
+    background: transparent;
+    border-radius: $radius-xxs;
+  }
+}
+
+.selected {
+  background: $color-surface-2;
+
+  &::before {
+    background: $color-accent;
+  }
+}
+
+.select {
+  @include focus-ring;
+
+  display: flex;
+  flex: 1;
+  gap: $space-3;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  padding: 0 $space-4;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+
+  // Inside the row: the list clips what overflows.
+  &:focus-visible {
+    outline-offset: calc(-1 * #{$layout-hairline});
+  }
+
+  .item:not(.selected) &:hover {
+    background: $color-chip-fill;
+  }
+}
+
+.count {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $layout-avatar-sm;
+  height: $layout-avatar-sm;
+  font-weight: 600;
+  color: $color-text-high;
+  background: $color-surface-3;
+  border-radius: $radius-pill;
+
+  .selected & {
+    color: $color-accent-ink;
+    background: $color-accent;
+  }
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+}
+
+.name {
+  @include type($type-body-med);
+
+  overflow: hidden;
+  color: $color-text-high;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  @include type($type-caption);
+
+  display: flex;
+  overflow: hidden;
+  font-weight: 400;
+  color: $color-text-low;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.figures {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.depth {
+  @include type($type-data, $font: $font-mono, $tabular: true);
+
+  color: $color-text-high;
+}
+
+.unit,
+.date {
+  @include type($type-meta, $font: $font-mono, $tabular: true);
+
+  color: $color-text-low;
+}
+
+.place,
+.open {
+  flex-shrink: 0;
+  margin-right: $space-2;
+}
+
+.place + .open {
+  margin-left: calc(-1 * #{$space-2});
+}
+
+.srOnly {
+  @include visually-hidden;
+}

@@ -134,15 +134,6 @@ export const SUIT_TYPE_LABELS: Record<SuitType, string> = {
   DRY: 'étanche',
 };
 
-/**
- * « Calvi · Corse »: the parts entered, from the most local, joined; `null` when none is (a site
- * created by its name alone).
- */
-export function placeLabel(...parts: readonly (string | null)[]): string | null {
-  const entered = parts.filter((part) => part !== null);
-  return entered.length === 0 ? null : entered.join(' · ');
-}
-
 /** Species tag: « Mérou brun · 2 », or the species alone when not counted. */
 export function observationLabel({ label, count }: DiveObservation): string {
   return count === null ? label : `${label} · ${count}`;
@@ -187,6 +178,7 @@ export const FILTER_TITLES: Record<DivesFilterKey, string> = {
   depth: 'Profondeur',
   gases: 'Gaz',
   with: 'Palanquée',
+  site: 'Site',
 };
 
 export interface FilterDescription {
@@ -198,7 +190,7 @@ export interface FilterDescription {
 }
 
 /** The names behind the region and member ids of the query. */
-export type FilterNames = Pick<DivesFacets, 'regions' | 'members'>;
+export type FilterNames = Pick<DivesFacets, 'regions' | 'members' | 'sites'>;
 
 function filterValue(query: DivesQuery, key: DivesFilterKey, names: FilterNames): string {
   switch (key) {
@@ -221,6 +213,9 @@ function filterValue(query: DivesQuery, key: DivesFilterKey, names: FilterNames)
         .filter((member) => member !== undefined)
         .map((member) => `${member.firstName} ${member.lastName}`)
         .join(', ');
+    case 'site':
+      // A site without dive in this log (merged, or another diver's link): « un site ».
+      return names.sites.find(({ id }) => id === query.site)?.name ?? 'un site';
   }
 }
 

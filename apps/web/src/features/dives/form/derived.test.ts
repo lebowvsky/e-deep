@@ -117,7 +117,15 @@ describe('divePreview', () => {
   it('shows the number, day, time, site, place and the four mini-KPI', () => {
     const preview = divePreview(
       validValues({ bottomTemperatureC: '14' }),
-      [{ id: 's01', name: 'Pointe de la Revellata', place: 'Calvi · Corse', diveCount: 12 }],
+      [
+        {
+          id: 's01',
+          name: 'Pointe de la Revellata',
+          place: 'Calvi · Corse',
+          diveCount: 12,
+          isSaved: true,
+        },
+      ],
       128,
     );
     expect(preview).toEqual({

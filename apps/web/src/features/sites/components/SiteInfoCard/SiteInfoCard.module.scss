@@ -1,0 +1,69 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · InfosCard / KV — term left in textLow, value right, hairlines between rows.
+.card {
+  @include card(1);
+
+  padding: $space-5;
+
+  @include from($bp-tablet) {
+    padding: $space-5 $space-6;
+  }
+}
+
+.title {
+  @include overline;
+
+  margin-bottom: $space-3;
+}
+
+.facts {
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  gap: $space-4;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: $space-3 0;
+
+  & + & {
+    border-top: 1px solid $color-line;
+  }
+}
+
+.term {
+  @include type($type-body);
+
+  color: $color-text-low;
+}
+
+.value,
+.mono {
+  @include type($type-body-med);
+
+  margin: 0;
+  color: $color-text-high;
+  text-align: right;
+}
+
+.mono {
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
+}
+
+.complete {
+  @include focus-ring;
+
+  color: $color-accent;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}

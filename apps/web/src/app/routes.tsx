@@ -26,6 +26,19 @@ const lazyDiveForm = async () => ({
 });
 const diveFormHandle: AppRouteHandle = { ownMobileBars: true };
 
+// The site page has its own phone top bar (« ‹ Carte » and « … »), and no FAB.
+const lazySiteDetail = async () => ({
+  Component: (await import('./routes/SiteDetailPage')).SiteDetailPage,
+});
+const siteDetailHandle: AppRouteHandle = { ownMobileBars: true, hideFab: true };
+
+// The map page loads MapLibre: its own chunk, and MapLibre itself only once a map is shown.
+const lazyMap = async () => ({
+  Component: (await import('./routes/MapPage')).MapPage,
+});
+// Phones: the map under the top bar, edge to edge, with its own « + Site » (no FAB).
+const mapHandle: AppRouteHandle = { hideFab: true, fullBleed: true };
+
 const placeholder = (path: string, title: string): RouteObject => ({
   path,
   element: <PlaceholderPage title={title} />,
@@ -43,7 +56,8 @@ export const routes: RouteObject[] = [
       { path: '/dives/new', lazy: lazyDiveForm, handle: diveFormHandle },
       { path: '/dives/:diveId', element: <DiveDetailPage /> },
       { path: '/dives/:diveId/edit', lazy: lazyDiveForm, handle: diveFormHandle },
-      placeholder('/map', 'Carte'),
+      { path: '/map', lazy: lazyMap, handle: mapHandle },
+      { path: '/sites/:siteId', lazy: lazySiteDetail, handle: siteDetailHandle },
       placeholder('/stats', 'Statistiques'),
       placeholder('/buddies', 'Binômes'),
       placeholder('/search', 'Recherche'),

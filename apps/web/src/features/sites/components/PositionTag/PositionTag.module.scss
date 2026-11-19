@@ -1,0 +1,15 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · NoPos — warning Tag, mono 11.
+.tag {
+  @include type($type-chip, $font: $font-mono);
+
+  display: inline-flex;
+  gap: $space-1;
+  align-items: center;
+  padding: $space-1 $space-2;
+  color: $color-warning;
+  white-space: nowrap;
+  background: $color-warning-soft;
+  border-radius: $radius-pill;
+}

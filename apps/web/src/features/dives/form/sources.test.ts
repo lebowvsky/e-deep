@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { elise, lucas, makeDive, thao } from '../mocks/diveFixture';
-import { SELF } from '../mocks/roster';
+import { MOCK_SITES } from '@/shared/sites/mocks/sites';
 import {
-  buildDiveFormSources,
-  proposeSurfaceInterval,
-  diveNumberFor,
-  proposeSurfaceIntervalFor,
-} from './sources';
+  createMemorySitesRepository,
+  EMPTY_SITES_OVERLAY,
+} from '@/shared/sites/repository/sitesRepository';
+import { formSourcesOf } from '../mocks/diveFormFixture';
+import { SELF } from '../mocks/roster';
+import { proposeSurfaceInterval, diveNumberFor, proposeSurfaceIntervalFor } from './sources';
 
 const bibliotheque = {
   id: 's02',
@@ -28,13 +29,58 @@ const log = [
 ];
 
 describe('buildDiveFormSources', () => {
-  const sources = buildDiveFormSources(log);
+  const sources = formSourcesOf(log);
 
   it('lists my sites with their dive counts, most dived first', () => {
     expect(sources.sites).toEqual([
-      { id: 's01', name: 'Pointe de la Revellata', place: 'Calvi · Corse', diveCount: 2 },
-      { id: 's02', name: 'La Bibliothèque', place: 'Calvi · Corse', diveCount: 1 },
+      {
+        id: 's01',
+        name: 'Pointe de la Revellata',
+        place: 'Calvi · Corse',
+        diveCount: 2,
+        isSaved: true,
+      },
+      { id: 's02', name: 'La Bibliothèque', place: 'Calvi · Corse', diveCount: 1, isSaved: true },
     ]);
+  });
+
+  it('gives the regions of my sites and the one of the latest dive', () => {
+    expect(sources.regions).toStrictEqual(['Calvi · Corse']);
+    // #3, at the Bibliothèque.
+    expect(sources.lastRegion).toBe('Calvi · Corse');
+    expect(formSourcesOf([]).lastRegion).toBeNull();
+  });
+
+  it('adds the sites created on this device, unsaved, and drops the deleted ones', async () => {
+    const repository = createMemorySitesRepository();
+    await repository.save(MOCK_SITES.grotteAuxCorbs);
+    await repository.save({ ...MOCK_SITES.revellata, name: 'La Revellata' });
+    await repository.remove('s02');
+
+    const { sites } = formSourcesOf(log, await repository.read());
+
+    expect(sites).toEqual([
+      { id: 's01', name: 'La Revellata', place: 'Calvi · Corse', diveCount: 2, isSaved: true },
+      {
+        id: 's24',
+        name: 'Revellata — Grotte aux Corbs',
+        place: 'Calvi · Corse',
+        diveCount: 0,
+        isSaved: false,
+      },
+    ]);
+  });
+
+  it('counts the dives of a merged site on its target', async () => {
+    const repository = createMemorySitesRepository();
+    await repository.merge('s02', MOCK_SITES.revellata);
+
+    const sources = formSourcesOf(log, await repository.read());
+
+    expect(sources.sites.map(({ id, diveCount }) => [id, diveCount])).toEqual([['s01', 3]]);
+    // The latest dive was at the Bibliothèque, merged into the Revellata.
+    expect(sources.lastRegion).toBe('Calvi · Corse');
+    expect(formSourcesOf(log, EMPTY_SITES_OVERLAY).sites).toHaveLength(2);
   });
 
   it('lists the divers met by frequency, the diver left out', () => {
@@ -48,7 +94,7 @@ describe('buildDiveFormSources', () => {
 
   it('gives the highest number, and no dive centre nor species (absent from the log)', () => {
     expect(sources.maxNumber).toBe(3);
-    expect(buildDiveFormSources([]).maxNumber).toBe(0);
+    expect(formSourcesOf([]).maxNumber).toBe(0);
     expect(sources.diveCenters).toEqual([]);
     expect(sources.species).toEqual([]);
   });

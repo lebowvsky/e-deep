@@ -11,7 +11,7 @@ import { Select, type SelectOption } from '@/shared/ui/Select';
 import { teamCount } from '../../../form/derived';
 import type { TeamMemberValue } from '../../../form/model';
 import type { DiveFormDiverOption } from '../../../form/sources';
-import { avatarColorOf } from '../../../lib/avatarColor';
+import { avatarColorOf } from '@/shared/lib/avatarColor';
 import { teamSizeLabel } from '../../../lib/labels';
 import { TEAM_LEVELS } from '../../../lib/levels';
 import { fieldBinder, sameSectionProps, sectionReads, type SectionForm } from '../fieldBinding';

@@ -1,0 +1,123 @@
+@use '@/styles/tokens' as *;
+
+// Phones: a top bar « ‹ Carte » … (the « … » of the header sits in it, see `.menu`); above, the
+// breadcrumb « ‹ Carte / name ».
+.bar {
+  @include type($type-body-lg);
+
+  display: flex;
+  gap: $space-2;
+  align-items: center;
+  height: $layout-hit-target + $layout-top-bar-pad-y * 2;
+  // Full width under the shell padding of phones (space-5).
+  margin: 0 (-$space-5);
+  padding: 0 $space-5;
+  border-bottom: 1px solid $color-line;
+
+  @include from($bp-tablet) {
+    @include type($type-body-sm);
+
+    height: auto;
+    margin: 0;
+    padding: 0;
+    font-weight: 400;
+    color: $color-text-low;
+    border: 0;
+  }
+}
+
+.back {
+  @include focus-ring;
+  @include hit-area;
+
+  display: inline-flex;
+  gap: $space-2;
+  align-items: center;
+  color: $color-text-high;
+  text-decoration: none;
+  border-radius: $radius-xs;
+
+  @include from($bp-tablet) {
+    color: $color-text-med;
+  }
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+.trail {
+  display: none;
+
+  @include from($bp-tablet) {
+    display: inline;
+  }
+
+  &[aria-hidden='true'] {
+    color: $color-text-muted;
+  }
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-4;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  min-width: 0;
+}
+
+.title {
+  @include type($type-h-1);
+
+  @include from($bp-desktop) {
+    @include type($type-display);
+  }
+}
+
+.place {
+  @include type($type-body-lg);
+
+  color: $color-text-med;
+}
+
+.zone {
+  display: none;
+
+  @include from($bp-tablet) {
+    display: inline;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+}
+
+.wideOnly {
+  display: none;
+
+  @include from($bp-tablet) {
+    display: inline-flex;
+  }
+}
+
+// Phones: the « … » goes up into the top bar, at its right end.
+.menu {
+  position: absolute;
+  top: $layout-top-bar-pad-y;
+  right: $space-3;
+
+  @include from($bp-tablet) {
+    position: relative;
+    top: auto;
+    right: auto;
+  }
+}

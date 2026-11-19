@@ -1,0 +1,52 @@
+@use '@/styles/tokens' as *;
+
+// sites.jsx · RegionChips — glass bar, 30px chips, the chosen one in surface2.
+.group {
+  display: flex;
+  // Phones: one row that scrolls sideways.
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  gap: $space-1;
+  padding: $space-1;
+  background: $color-map-overlay;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line;
+  backdrop-filter: blur($layout-blur-map);
+}
+
+.chip {
+  flex-shrink: 0;
+
+  @include focus-ring;
+  @include type($type-caption);
+
+  display: inline-flex;
+  gap: $space-2;
+  align-items: center;
+  height: $layout-filter-height;
+  padding: 0 $space-3;
+  font-weight: 400;
+  color: $color-text-low;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: $radius-segment;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+.checked {
+  font-weight: 500;
+  color: $color-text-high;
+  background: $color-surface-2;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+}
+
+.count {
+  @include type($type-chip, $font: $font-mono, $tabular: true);
+
+  color: $color-text-low;
+}

@@ -17,6 +17,8 @@ import { divesKeys } from './queryKeys';
 import type { SaveDiveInput } from './saveDive';
 
 const IDS = { eventId: 'new-event', newSiteId: 'new-site' };
+/** Every chosen site is in the log on the API. */
+const ALL_SITES_SAVED = (): boolean => true;
 const SAVED: DiveWriteResponse = {
   id: 'new-event',
   number: 128,
@@ -38,12 +40,13 @@ const created = () =>
       }),
       { kind: 'create' },
       IDS,
+      ALL_SITES_SAVED,
     ),
   );
 
 const edited = () => {
   const dive = filledDive();
-  return inputOf(toSaveDiveInput(validValues(), editTarget(dive), IDS));
+  return inputOf(toSaveDiveInput(validValues(), editTarget(dive), IDS, ALL_SITES_SAVED));
 };
 
 function setup(methods: Partial<ApiClient>) {
@@ -206,6 +209,7 @@ describe('createHttpDiveRepository', () => {
         }),
         { kind: 'create' },
         IDS,
+        ALL_SITES_SAVED,
       ),
     );
     await expect(saveDive(onNewSite)).resolves.toEqual({
