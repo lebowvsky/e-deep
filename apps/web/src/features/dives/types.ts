@@ -15,6 +15,7 @@ import type {
   Weather,
 } from '@e-deep/shared';
 import type { DiveMember } from '@/shared/model/dive';
+import type { GeoPoint } from '@/shared/model/geo';
 
 /**
  * Filter and URL key of a region: its name normalised (« Côte Vermeille » → `cote-vermeille`).
@@ -29,12 +30,15 @@ export type GasFamily = (typeof GAS_FAMILIES)[number];
 export interface DiveSiteRef {
   id: string;
   name: string;
-  /** Display label: « Calvi · Corse », or the region alone when the locality is unknown. */
-  place: string;
-  /** Filter key, derived from `regionName`. */
-  region: RegionKey;
-  /** The region as entered: « Corse ». */
-  regionName: string;
+  /**
+   * Display label: « Calvi · Corse », or whichever of the locality and the region is known;
+   * `null` when neither is (site created by its name alone).
+   */
+  place: string | null;
+  /** Filter key, derived from `regionName`; `null` without region. */
+  region: RegionKey | null;
+  /** The region as entered: « Corse »; `null` when not entered. */
+  regionName: string | null;
 }
 
 export interface LoggedDive {
@@ -167,12 +171,6 @@ export type DivesState =
 
 // ── Dive detail (`/dives/:diveId`) ────────────────────────────────────────────────────────────
 
-/** WGS84 coordinates of a site, in degrees. */
-export interface GeoPoint {
-  latitude: number;
-  longitude: number;
-}
-
 /**
  * A member of the dive team in the detail, with a level: the user's at the time of the dive
  * (`diverLevel`, D-09), a buddy's as their contact card declares it (D-21), `null` when unknown.
@@ -214,8 +212,11 @@ export interface DiveEquipment {
 
 /** A logged dive with every field of the event and the participation (`GET /dives/:id`). */
 export interface DiveDetailView extends LoggedDive {
-  /** `area`: sea or area of the site (« Méditerranée »), `null` when not entered. */
-  site: DiveSiteRef & GeoPoint & { area: string | null };
+  /**
+   * `position`: `null` when not entered (site created by its name); `area`: sea or area of the
+   * site (« Méditerranée »), `null` when not entered.
+   */
+  site: DiveSiteRef & { position: GeoPoint | null; area: string | null };
   /** The whole team, the user first, each member with a level. */
   team: DiveDetailMember[];
   /** `null` when not entered. */

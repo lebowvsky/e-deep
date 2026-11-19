@@ -6,7 +6,8 @@ export interface DiveSiteRef {
   name: string;
   /** Town or spot of the site (e.g. `Calvi`), `null` when not entered. */
   locality: string | null;
-  region: string;
+  /** `null` when not entered (site created by its name, D-23). */
+  region: string | null;
 }
 
 /** A buddy of the dive team (the diver themselves is never listed). */
@@ -68,8 +69,9 @@ export interface DiveDetailBuddy extends DiveBuddyRef {
  */
 export interface DiveDetail extends DiveSummary {
   site: DiveSiteRef & {
-    latitude: number;
-    longitude: number;
+    /** Both set or both `null` (position not entered, D-23). */
+    latitude: number | null;
+    longitude: number | null;
     /** Sea or area of the site (e.g. `Méditerranée`). */
     area: string | null;
   };

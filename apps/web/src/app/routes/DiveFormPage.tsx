@@ -1,6 +1,7 @@
-import type { CertificationLevelRef } from '@e-deep/shared';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { dashboardKeys } from '@/features/dashboard/api/queryKeys';
 import { mockUser } from '@/features/dashboard/mocks/dashboard';
 import { DivesError } from '@/features/dives/components/DivesError';
 import { DiveNotFound } from '@/features/dives/components/detail/DiveNotFound';
@@ -27,7 +28,6 @@ import { useDiveFormSources } from '@/features/dives/form/useDiveFormSources';
 import { useDive } from '@/features/dives/hooks/useDive';
 import { useSaveDive } from '@/features/dives/hooks/useSaveDive';
 import { DIVE_LOAD_ERROR_HINT, DIVE_LOAD_ERROR_MESSAGE } from '@/features/dives/lib/labels';
-import { toCertificationLevelRef } from '@/features/dives/lib/levels';
 import type { DiveDetailView, LoggedDive } from '@/features/dives/types';
 import { DiveFormTopBar } from '@/features/dives/components/form/DiveFormTopBar';
 import { pageTitle } from '@/shared/config/app';
@@ -35,7 +35,6 @@ import { useToast } from '@/shared/ui/Toast';
 
 // TODO(auth): the diver will come from the session, as in AppShell.
 const DIVER = mockUser;
-const DIVER_LEVEL: CertificationLevelRef = toCertificationLevelRef(DIVER.level, DIVER.federation);
 const SELF = { firstName: DIVER.firstName, lastName: DIVER.lastName, level: DIVER.level };
 /**
  * V1: every diver creates their own dives, so the shared event of an edited dive is theirs to edit.
@@ -245,7 +244,8 @@ function SuggestedDiveForm({ suggestionId, ...props }: SharedFormProps & { sugge
 function PageDiveForm({ today, ...props }: SharedFormProps & Pick<DiveFormProps, 'prefill'>) {
   const navigate = useNavigate();
   const { notify } = useToast();
-  const saveDive = useSaveDive(DIVER_LEVEL);
+  const queryClient = useQueryClient();
+  const saveDive = useSaveDive();
   // Read once per form: the memoised actions of the form depend on it.
   const [context] = useState(() => ({ today, diverLevel: DIVER.level }));
 
@@ -257,6 +257,9 @@ function PageDiveForm({ today, ...props }: SharedFormProps & Pick<DiveFormProps,
       saveDive={saveDive}
       draftStore={draftStore}
       onSaved={(id, number) => {
+        // The dashboard sums up the log (stats, last dive, sites): another feature, so marked
+        // stale here rather than by the dive write. Not awaited: the dashboard is not the next page.
+        void queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
         // The number the dive got (D26): another one than shown if the log moved meanwhile.
         notify(`Plongée #${number} enregistrée`);
         // The saved dive replaces the form in the history: « Retour » does not reopen it.

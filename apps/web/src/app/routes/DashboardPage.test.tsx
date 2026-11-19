@@ -5,10 +5,11 @@ import { routes } from '@/app/routes';
 import { dashboardResponse } from '@/features/dashboard/api/dashboardResponse.fixture';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { TestProviders } from '@/test/TestProviders';
+import { fakeApiClient } from '@/test/fakeApiClient';
 
 const renderAt = (path: string, get: ApiClient['get'] = vi.fn()) =>
   render(
-    <TestProviders client={{ get }}>
+    <TestProviders client={fakeApiClient({ get })}>
       <RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />
     </TestProviders>,
   );

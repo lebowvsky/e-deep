@@ -23,15 +23,15 @@ export function DashboardReady({ data, now }: DashboardReadyProps) {
       <DashboardHeader
         firstName={user.firstName}
         lastDiveDate={lastDive?.date ?? null}
-        areaName={stats.mainArea.name}
+        areaName={stats.mainArea?.name ?? null}
         {...(now ? { now } : {})}
       />
       <KpiRow stats={stats} sites={sites} />
       <SiteMap
         sites={sites}
         siteCount={stats.sitesVisited}
-        areaName={stats.mainArea.name}
-        mapTitle={stats.mainArea.mapTitle}
+        areaName={stats.mainArea?.name ?? null}
+        mapTitle={stats.mainArea?.mapTitle ?? null}
         initialActiveSiteId={lastDive?.site.id}
       />
       <div className={styles.pair}>

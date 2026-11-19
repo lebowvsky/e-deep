@@ -23,7 +23,9 @@ export function KpiRow({ stats, sites }: KpiRowProps) {
   const averageMinutes = stats.totalDives
     ? Math.floor(stats.totalUnderwaterMinutes / stats.totalDives)
     : 0;
-  const regionCount = new Set(sites.map((site) => site.region)).size;
+  // A site created by its name alone has no region yet: it is not counted.
+  const regionCount = new Set(sites.flatMap(({ region }) => (region === null ? [] : [region])))
+    .size;
   const monthly = stats.divesPerMonth.map((month) => month.count);
   const { depthM, site, date } = stats.maxDepthEver;
 
@@ -61,7 +63,10 @@ export function KpiRow({ stats, sites }: KpiRowProps) {
         srText={`${stats.sitesVisited} sites`}
         caption={{
           short: `${regionCount} régions`,
-          long: `${regionCount} régions · ${stats.mainArea.name} principalement`,
+          long:
+            stats.mainArea === null
+              ? `${regionCount} régions`
+              : `${regionCount} régions · ${stats.mainArea.name} principalement`,
         }}
       />
     </ul>

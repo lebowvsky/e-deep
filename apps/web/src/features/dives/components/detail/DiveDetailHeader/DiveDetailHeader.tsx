@@ -2,7 +2,7 @@ import type { EntryType } from '@e-deep/shared';
 import type { ReactNode } from 'react';
 import { Badge } from '@/shared/ui/Badge';
 import { formatDiveLongDate, formatImmersionTime } from '../../../lib/diveTime';
-import { ENTRY_TYPE_LABELS, gasMixShort, placeWithArea } from '../../../lib/labels';
+import { ENTRY_TYPE_LABELS, gasMixShort, placeLabel } from '../../../lib/labels';
 import type { LoggedDive } from '../../../types';
 import styles from './DiveDetailHeader.module.scss';
 
@@ -28,6 +28,8 @@ export function DiveDetailHeader({
 }: DiveDetailHeaderProps) {
   const date = formatDiveLongDate(dive.date, dive.utcOffsetMinutes);
   const time = formatImmersionTime(dive.date, dive.utcOffsetMinutes);
+  // « Calvi · Corse · Méditerranée », or whatever of the place and area is known.
+  const place = placeLabel(dive.site.place, area);
 
   return (
     <header className={styles.header}>
@@ -41,7 +43,7 @@ export function DiveDetailHeader({
         </p>
         <h1 className={styles.title}>{dive.site.name}</h1>
         <div className={styles.meta}>
-          <p className={styles.place}>{placeWithArea(dive.site.place, area)}</p>
+          {place !== null && <p className={styles.place}>{place}</p>}
           <ul className={styles.tags} aria-label="Étiquettes">
             {stopsOk !== null && (
               <li>

@@ -22,11 +22,13 @@ export interface DiveSiteWrite extends SyncedWrite {
   readonly id: string;
   readonly name: string;
   readonly locality: string | null;
-  readonly region: string;
+  /** `null` when not entered: a site may be created by its name alone (D-23). */
+  readonly region: string | null;
   /** Sea or area (e.g. `Méditerranée`, D-20). */
   readonly area: string | null;
-  readonly latitude: number;
-  readonly longitude: number;
+  /** Both set or both `null` (`ck_dive_sites__position`, D-23). */
+  readonly latitude: number | null;
+  readonly longitude: number | null;
 }
 
 /** Dive sites are private to their owner; `ownerId` always comes from the caller, never a payload. */
@@ -42,44 +44,54 @@ export class DiveSitesService {
    *
    * @throws {FullSyncRequiredError} | {IdentifierConflictError} | {SiteInUseError}
    */
-  async upsert(
+  upsert(
+    ownerId: string,
+    write: DiveSiteWrite,
+    lastPulledAt: Date,
+  ): Promise<SyncWriteResult<DiveSite>> {
+    return this.dataSource.transaction((manager) =>
+      this.upsertIn(manager, ownerId, write, lastPulledAt),
+    );
+  }
+
+  /** `upsert` within the caller's transaction (e.g. a dive written with its new site, D-24). */
+  async upsertIn(
+    manager: EntityManager,
     ownerId: string,
     write: DiveSiteWrite,
     lastPulledAt: Date,
   ): Promise<SyncWriteResult<DiveSite>> {
     assertWithinPurgeHorizon(lastPulledAt, new Date(), this.settings.purgeHorizonDays);
 
-    return await this.dataSource.transaction(async (manager) => {
-      const existing = await manager.findOne(DiveSite, {
-        where: { id: write.id },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (existing !== null && existing.ownerId !== ownerId) {
-        throw new IdentifierConflictError();
-      }
-      if (existing !== null && isStaleRestore(existing, write)) {
-        return { status: 'rejected', current: existing };
-      }
-      if (write.deletedAt !== null && existing !== null && existing.deletedAt === null) {
-        await assertSiteUnused(manager, ownerId, write.id);
-      }
-
-      await upsertOwnedRow(manager, DiveSite, 'ownerId', {
-        id: write.id,
-        ownerId,
-        name: write.name,
-        locality: write.locality,
-        region: write.region,
-        area: write.area,
-        latitude: write.latitude,
-        longitude: write.longitude,
-        deletedAt: write.deletedAt,
-      });
-      return {
-        status: 'applied',
-        current: await manager.findOneByOrFail(DiveSite, { id: write.id }),
-      };
+    const existing = await manager.findOne(DiveSite, {
+      where: { id: write.id },
+      lock: { mode: 'pessimistic_write' },
     });
+    if (existing !== null && existing.ownerId !== ownerId) {
+      throw new IdentifierConflictError();
+    }
+    if (existing !== null && isStaleRestore(existing, write)) {
+      return { status: 'rejected', current: existing };
+    }
+    if (write.deletedAt !== null && existing !== null && existing.deletedAt === null) {
+      await assertSiteUnused(manager, ownerId, write.id);
+    }
+
+    await upsertOwnedRow(manager, DiveSite, 'ownerId', {
+      id: write.id,
+      ownerId,
+      name: write.name,
+      locality: write.locality,
+      region: write.region,
+      area: write.area,
+      latitude: write.latitude,
+      longitude: write.longitude,
+      deletedAt: write.deletedAt,
+    });
+    return {
+      status: 'applied',
+      current: await manager.findOneByOrFail(DiveSite, { id: write.id }),
+    };
   }
 
   /**

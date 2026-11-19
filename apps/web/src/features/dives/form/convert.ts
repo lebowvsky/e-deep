@@ -1,8 +1,8 @@
 // Dive form — values ↔ the input of `saveDive` (and the gas mix in both directions).
-import type { GasMix } from '@e-deep/shared';
+import type { DiveWriteBuddy, GasMix } from '@e-deep/shared';
 import { formatNumberInputValue } from '@/shared/lib/format';
 import { parseNumberInput } from '@/shared/lib/numberInput';
-import type { BuddyContactInput, SaveDiveInput } from '../api/saveDive';
+import type { SaveDiveInput } from '../api/saveDive';
 import { AIR_O2_PERCENT, type DiveFormValues, type GasChoice } from './model';
 import { deviceUtcOffsetMinutes, toLocalIso } from './timeLink';
 
@@ -59,6 +59,8 @@ export type DiveFormTarget =
       observationCounts: ReadonlyMap<string, number>;
       /** « Successive » as stored: `null` (unknown) stays so while the switch is left off. */
       isRepetitive: boolean | null;
+      /** `updatedAt` of the detail the edit starts from, sent back with the save (D-25). */
+      baseUpdatedAt: string;
     };
 
 /**
@@ -119,7 +121,7 @@ export function toSaveDiveInput(
     name: siteName,
     isNew: values.site.id === null,
   };
-  const buddies: BuddyContactInput[] = values.team.map((member) => ({
+  const buddies: DiveWriteBuddy[] = values.team.map((member) => ({
     id: member.id ?? member.key,
     firstName: member.firstName.trim(),
     lastName: member.lastName.trim(),
@@ -170,11 +172,11 @@ export function toSaveDiveInput(
       suitThicknessMm: num(values.suitThicknessMm),
       weightKg: num(values.weightKg),
     },
-    buddyIds: buddies.map(({ id }) => id),
     observations: values.species
       .map((label) => label.trim())
       .filter((label) => label !== '')
       .map((label) => ({ label, count: counts.get(label) ?? null })),
     contacts: { site, buddies },
+    baseUpdatedAt: target.kind === 'update' ? target.baseUpdatedAt : null,
   };
 }

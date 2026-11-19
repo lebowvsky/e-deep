@@ -37,7 +37,7 @@ function searchableText(dive: LoggedDive): string {
   return foldText(
     [
       dive.site.name,
-      dive.site.place,
+      dive.site.place ?? '',
       ...dive.team.map((member) => `${member.firstName} ${member.lastName}`),
       dive.notes ?? '',
     ].join(' '),
@@ -62,7 +62,12 @@ export function matchesQuery(query: DivesQuery, now: Date): (dive: LoggedDive) =
     if (query.period !== 'all' && query.period !== '12m' && !day.startsWith(query.period)) {
       return false;
     }
-    if (query.regions.length > 0 && !query.regions.includes(dive.site.region)) return false;
+    if (
+      query.regions.length > 0 &&
+      (dive.site.region === null || !query.regions.includes(dive.site.region))
+    ) {
+      return false;
+    }
     if (query.depthMin !== null && dive.depthMaxM < query.depthMin) return false;
     if (query.depthMax !== null && dive.depthMaxM > query.depthMax) return false;
     if (query.gases.length > 0 && !query.gases.includes(gasFamily(dive.gasMix))) return false;
@@ -167,9 +172,12 @@ export function computeFacets(dives: readonly LoggedDive[]): DivesFacets {
 
   for (const dive of dives) {
     const { region: key, regionName: name } = dive.site;
-    const region = regions.get(key);
-    if (region) region.count += 1;
-    else regions.set(key, { key, name, count: 1 });
+    // A site without region has no region facet.
+    if (key !== null && name !== null) {
+      const region = regions.get(key);
+      if (region) region.count += 1;
+      else regions.set(key, { key, name, count: 1 });
+    }
     for (const member of dive.team) {
       if (member.isSelf) continue;
       const entry = members.get(member.id);

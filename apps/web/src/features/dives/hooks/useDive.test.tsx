@@ -16,6 +16,7 @@ import { mockDiveDetail } from '../mocks/diveDetailResponse';
 import { mockDiveLogResponse, mockOwner } from '../mocks/diveLogResponse';
 import type { DiveDetailState } from '../types';
 import { useDive } from './useDive';
+import { fakeApiClient } from '@/test/fakeApiClient';
 
 const DIVE_ID = 'd100';
 const LOG_PATH = 'dives';
@@ -68,7 +69,7 @@ function deferred(): { outcome: Outcome; release: (body: unknown) => void } {
 const render = (get: ApiClient['get'], path = `/dives/${DIVE_ID}`) =>
   renderHook(() => useDive(DIVE_ID, mockOwner), {
     wrapper: ({ children }: { children: ReactNode }) => (
-      <TestProviders client={{ get }}>
+      <TestProviders client={fakeApiClient({ get })}>
         <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>
       </TestProviders>
     ),
@@ -112,7 +113,7 @@ describe('useDive', () => {
     const detailRequest = requests.find((request) => request.path === DETAIL_PATH);
     expect(detailRequest?.options?.signal).toBeInstanceOf(AbortSignal);
     expect(dive.number).toBe(100);
-    expect(dive.site.latitude).toBe(42.58);
+    expect(dive.site.position).toEqual({ latitude: 42.58, longitude: 8.725 });
     expect(dive.team[0]?.isSelf).toBe(true);
     expect(insights?.previous?.number).toBe(99);
     expect(insights?.next?.number).toBe(101);
@@ -179,7 +180,7 @@ describe('useDive', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const { result } = renderHook(() => useDive(DIVE_ID, mockOwner), {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <ApiClientContext value={{ get }}>
+        <ApiClientContext value={fakeApiClient({ get })}>
           <QueryClientProvider client={queryClient}>
             <MemoryRouter initialEntries={[`/dives/${DIVE_ID}`]}>{children}</MemoryRouter>
           </QueryClientProvider>
@@ -201,7 +202,7 @@ describe('useDive', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const { result } = renderHook(() => useDive(DIVE_ID, mockOwner), {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <ApiClientContext value={{ get }}>
+        <ApiClientContext value={fakeApiClient({ get })}>
           <QueryClientProvider client={queryClient}>
             <MemoryRouter initialEntries={[`/dives/${DIVE_ID}`]}>{children}</MemoryRouter>
           </QueryClientProvider>
@@ -250,7 +251,7 @@ describe('useDive with the app retry policy', () => {
     const queryClient = createQueryClient();
     return renderHook(() => useDive(DIVE_ID, mockOwner), {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <ApiClientContext value={{ get }}>
+        <ApiClientContext value={fakeApiClient({ get })}>
           <QueryClientProvider client={queryClient}>
             <MemoryRouter initialEntries={[`/dives/${DIVE_ID}`]}>{children}</MemoryRouter>
           </QueryClientProvider>

@@ -1,12 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-  type ActionDispatch,
-  type RefObject,
-} from 'react';
+import { useEffect, useMemo, useReducer, useRef, type ActionDispatch, type RefObject } from 'react';
 import type { SaveDive, SaveDiveResult } from '../api/saveDive';
 import type { DiveDetailView } from '../types';
 import { toSaveDiveInput, type DiveFormIds, type DiveFormTarget } from './convert';
@@ -19,7 +11,7 @@ import {
   type FieldMessages,
   type SubmitStatus,
 } from './diveFormReducer';
-import { draftKey, type DraftStore } from './draftStore';
+import { draftKey, type DiveDraft, type DraftStore } from './draftStore';
 import {
   isDirtyValues,
   type DiveFormField,
@@ -100,7 +92,10 @@ export interface DiveForm {
   isDirty: boolean;
   submitStatus: SubmitStatus;
   draft: DiveFormDraft;
-  /** Ids of the new dive and of a site typed by name: drawn once, sent again on a retry. */
+  /**
+   * Ids of the new dive and of a site typed by name: drawn once, sent again on a retry, kept by the
+   * draft (a restored draft sends its own). New ones for another dive (« Effacer », reset).
+   */
   ids: DiveFormIds;
   actions: DiveFormActions;
   /** « Effacer » of the restored draft. */
@@ -115,9 +110,14 @@ export interface DiveForm {
 
 const randomId = () => crypto.randomUUID();
 
+const drawIds = (newId: () => string): DiveFormIds => ({ eventId: newId(), newSiteId: newId() });
+
+/** A draft before its save time. */
+type PendingDraft = Omit<DiveDraft, 'savedAt'>;
+
 interface DraftWriter {
   /** Values changed but not written yet, `null` when the stored draft is up to date. */
-  pending: RefObject<DiveFormValues | null>;
+  pending: RefObject<PendingDraft | null>;
   store: DraftStore;
   key: string;
   now: () => number;
@@ -126,12 +126,12 @@ interface DraftWriter {
 
 /** Writes the pending draft, if any. `localStorage` writes synchronously: safe on `pagehide`. */
 function writePendingDraft({ pending, store, key, now, dispatch }: DraftWriter): void {
-  const values = pending.current;
-  if (values === null) return;
+  const draft = pending.current;
+  if (draft === null) return;
   pending.current = null;
   const savedAt = now();
   void store
-    .save(key, { values, savedAt })
+    .save(key, { ...draft, savedAt })
     .then(() => dispatch({ type: 'draftSaved', savedAt }))
     // Not saved: the mention keeps the previous time, the form goes on.
     .catch(() => undefined);
@@ -154,7 +154,7 @@ function createActions(
     changeDecoStop: (key, part, value) =>
       dispatch({ type: 'changeDecoStop', key, part, value, context }),
     resume: (source) => dispatch({ type: 'merge', values: carriedValues(source), context }),
-    reset: (values) => dispatch({ type: 'reset', values }),
+    reset: (values) => dispatch({ type: 'reset', values, ids: drawIds(newId) }),
   };
 }
 
@@ -175,11 +175,13 @@ export function useDiveForm({
   newId = randomId,
   now = Date.now,
 }: UseDiveFormOptions): DiveForm {
-  const [state, dispatch] = useReducer(diveFormReducer, initialValues, initDiveFormState);
-  const [ids] = useState<DiveFormIds>(() => ({ eventId: newId(), newSiteId: newId() }));
+  const [state, dispatch] = useReducer(diveFormReducer, initialValues, (values) =>
+    initDiveFormState(values, drawIds(newId)),
+  );
+  const { ids } = state;
   const actions = useMemo(() => createActions(dispatch, context, newId), [context, newId]);
   const isSubmitting = useRef(false);
-  const pendingDraft = useRef<DiveFormValues | null>(null);
+  const pendingDraft = useRef<PendingDraft | null>(null);
   const key = draftKey(mode);
   const isDirty = isDirtyValues(state.values, state.initial);
   const draftReady = state.draft.status === 'ready';
@@ -214,13 +216,13 @@ export function useDiveForm({
       }
       return;
     }
-    pendingDraft.current = state.values;
+    pendingDraft.current = { values: state.values, ids };
     const timer = setTimeout(
       () => writePendingDraft({ pending: pendingDraft, store: draftStore, key, now, dispatch }),
       DRAFT_DEBOUNCE_MS,
     );
     return () => clearTimeout(timer);
-  }, [draftReady, isDirty, hasSavedDraft, draftStore, key, now, state.values]);
+  }, [draftReady, isDirty, hasSavedDraft, draftStore, key, now, state.values, ids]);
 
   // Leaving within the delay must not lose the last changes: the tab closes or goes to the
   // back-forward cache (`pagehide`, which unlike `beforeunload` keeps the page eligible for that
@@ -288,7 +290,7 @@ export function useDiveForm({
     actions,
     discardDraft: () => {
       pendingDraft.current = null;
-      dispatch({ type: 'draftDiscarded' });
+      dispatch({ type: 'draftDiscarded', ids: drawIds(newId) });
       void draftStore.clear(key).catch(() => undefined);
     },
     flushDraft: () =>

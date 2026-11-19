@@ -14,7 +14,11 @@ describe('draftKey', () => {
 
 describe('createLocalDraftStore', () => {
   const key = draftKey({ kind: 'new' });
-  const draft = { values: validValues({ species: ['Corb'] }), savedAt: 1_775_725_920_000 };
+  const draft = {
+    values: validValues({ species: ['Corb'] }),
+    ids: { eventId: 'e1', newSiteId: 's1' },
+    savedAt: 1_775_725_920_000,
+  };
 
   beforeEach(() => {
     localStorage.clear();
@@ -35,10 +39,10 @@ describe('createLocalDraftStore', () => {
     const fresh = draftKey({ kind: 'edit', diveId: 'fresh' });
     const old = draftKey({ kind: 'edit', diveId: 'old' });
     const undated = draftKey({ kind: 'edit', diveId: 'undated' });
-    localStorage.setItem(key, JSON.stringify({ version: 2, ...draft }));
+    localStorage.setItem(key, JSON.stringify({ version: 3, ...draft }));
     localStorage.setItem(old, JSON.stringify({ version: 1, savedAt: 1, values: {} }));
     localStorage.setItem(undated, '{not json');
-    localStorage.setItem(fresh, JSON.stringify({ version: 2, ...draft, savedAt: now - 1000 }));
+    localStorage.setItem(fresh, JSON.stringify({ version: 3, ...draft, savedAt: now - 1000 }));
     localStorage.setItem('other-app', 'kept');
 
     expect(await store.load(key)).toBeNull();
@@ -73,8 +77,17 @@ describe('createLocalDraftStore', () => {
     expect(await store.load(key)).toBeNull();
     localStorage.setItem(
       key,
-      JSON.stringify({ version: 2, savedAt: 1, values: { ...draft.values, gas: 'TRIMIX' } }),
+      JSON.stringify({ ...draft, version: 3, values: { ...draft.values, gas: 'TRIMIX' } }),
     );
+    expect(await store.load(key)).toBeNull();
+    localStorage.setItem(key, JSON.stringify({ ...draft, version: 3, ids: { eventId: 'e1' } }));
+    expect(await store.load(key)).toBeNull();
+  });
+
+  it('ignores a draft of version 2, written without the ids of the dive', async () => {
+    const store = createLocalDraftStore(localStorage, () => draft.savedAt);
+    const { values, savedAt } = draft;
+    localStorage.setItem(key, JSON.stringify({ version: 2, values, savedAt }));
     expect(await store.load(key)).toBeNull();
   });
 

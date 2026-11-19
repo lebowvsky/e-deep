@@ -35,7 +35,7 @@ export function DiveCard({ dive, isPeak }: DiveCardProps) {
           <span className={styles.srOnly}>, plongée n° {dive.number}</span>
         </DiveLink>
       </h3>
-      <p className={styles.place}>{dive.site.place}</p>
+      {dive.site.place !== null && <p className={styles.place}>{dive.site.place}</p>}
       <dl className={styles.measures}>
         <div>
           <dt className={styles.srOnly}>Profondeur max</dt>

@@ -122,7 +122,11 @@ describe('Modifier', () => {
   it('keeps the offset of the dive and its counted species for the save', () => {
     const dive = filledDive();
     const target = editTarget(dive);
-    expect(target).toMatchObject({ kind: 'update', diveId: dive.id });
+    expect(target).toMatchObject({
+      kind: 'update',
+      diveId: dive.id,
+      baseUpdatedAt: dive.updatedAt,
+    });
     expect(target.kind === 'update' && target.observationCounts.get('Mérou brun')).toBe(2);
   });
 });

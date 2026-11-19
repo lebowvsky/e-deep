@@ -2,15 +2,17 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
+import { formatUtcOffset } from '@/shared/lib/format';
 import { mockPayload } from '../../mocks/dashboard';
+import type { DashboardPayload } from '../../types';
 import { DashboardReady } from './DashboardReady';
 
 const NOW = new Date('2025-09-22T15:00:00Z'); // 14 days after the last dive
 
-function renderReady() {
+function renderReady(data: DashboardPayload = mockPayload) {
   return render(
     <MemoryRouter>
-      <DashboardReady data={mockPayload} now={NOW} />
+      <DashboardReady data={data} now={NOW} />
     </MemoryRouter>,
   );
 }
@@ -70,5 +72,43 @@ describe('DashboardReady', () => {
     expect(href('Voir le détail de la dernière plongée')).toBe('/dives/d1');
     expect(href('Voir tous les binômes')).toBe('/buddies');
     expect(href('Rechercher')).toBe('/search');
+  });
+});
+
+describe('DashboardReady, sites created by their name (D-23)', () => {
+  const lastDive = mockPayload.lastDive;
+  if (!lastDive) throw new Error('The mocked payload has a last dive');
+  /** A new site without region nor position, last dived; no main region yet. */
+  const withNameOnlySite: DashboardPayload = {
+    ...mockPayload,
+    stats: { ...mockPayload.stats, mainArea: null },
+    lastDive: { ...lastDive, site: { id: 's-new', name: 'Le Sec', region: null } },
+    sites: [
+      ...mockPayload.sites,
+      { id: 's-new', name: 'Le Sec', region: null, position: null, diveCount: 1, maxDepthM: 18 },
+    ],
+  };
+
+  it('gives no marker to a site without position', () => {
+    renderReady(withNameOnlySite);
+    const markers = screen.getByRole('list', { name: 'Sites de plongée' });
+    expect(within(markers).getAllByRole('button')).toHaveLength(mockPayload.sites.length);
+    expect(within(markers).queryByRole('button', { name: /Le Sec/ })).toBeNull();
+    // No marker is pressed: the last dive's site is not on the map.
+    expect(within(markers).queryByRole('button', { pressed: true })).toBeNull();
+  });
+
+  it('does without the main region and the region of the last dive', () => {
+    renderReady(withNameOnlySite);
+    expect(screen.getByRole('heading', { level: 2, name: 'Mes sites' })).toBeTruthy();
+    // The time zone alone, no « region · » before it.
+    expect(screen.getByText(/^UTC/).textContent).toBe(formatUtcOffset(NOW));
+    expect(screen.queryByText(/principalement/)).toBeNull();
+    // The six regions of the mocked sites, the new site not counted.
+    expect(screen.getAllByText(/^6 régions/).length).toBeGreaterThan(0);
+    const card = screen.getByRole('article', { name: 'Le Sec' });
+    // The date alone under the site name, no « region · » before it.
+    const date = card.querySelector('time');
+    expect(date?.parentElement?.textContent).toBe(date?.textContent);
   });
 });

@@ -9,9 +9,10 @@ import { createQueryClient } from '@/shared/lib/queryClient';
 import { TestProviders } from '@/test/TestProviders';
 import { dashboardResponse } from '../api/dashboardResponse.fixture';
 import { useDashboard } from './useDashboard';
+import { fakeApiClient } from '@/test/fakeApiClient';
 
 function fakeClient(get: ApiClient['get']): ApiClient {
-  return { get };
+  return fakeApiClient({ get });
 }
 
 const at = (path: string, client: ApiClient) =>

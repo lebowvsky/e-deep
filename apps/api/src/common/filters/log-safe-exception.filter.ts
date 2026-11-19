@@ -6,12 +6,15 @@ import {
   type ArgumentsHost,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
+import { toDomainErrorResponse } from '../errors/domain-error-http';
+import { DomainError } from '../errors/domain-errors';
 import { errorClassName } from '../logging/error-class-name';
 
 /**
  * Replaces Nest's default handling of unexpected errors, which logs the full message and stack
  * (e.g. a `QueryFailedError` carries the SQL query and its parameters).
  * `HttpException`s keep Nest's default behavior: they are replied as-is and not logged.
+ * A `DomainError` is replied `{ statusCode, code }` with its status (D-26); only a 5xx is logged.
  */
 @Catch()
 export class LogSafeExceptionFilter extends BaseExceptionFilter<unknown> {
@@ -20,6 +23,15 @@ export class LogSafeExceptionFilter extends BaseExceptionFilter<unknown> {
   override catch(exception: unknown, host: ArgumentsHost): void {
     if (exception instanceof HttpException) {
       super.catch(exception, host);
+      return;
+    }
+
+    if (exception instanceof DomainError) {
+      const response = toDomainErrorResponse(exception);
+      if (response.statusCode >= 500) {
+        this.logger.error(`Unhandled ${errorClassName(exception)}`);
+      }
+      super.catch(new HttpException(response, response.statusCode), host);
       return;
     }
 

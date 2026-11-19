@@ -35,3 +35,8 @@ export function isNullable<T>(guard: (value: unknown) => value is T) {
 export function isArrayOf<T>(guard: (value: unknown) => value is T) {
   return (value: unknown): value is T[] => Array.isArray(value) && value.every(guard);
 }
+
+/** Latitude and longitude come both set or both `null` (D-23): a lone half is a broken body. */
+export function isPositionPair(latitude: unknown, longitude: unknown): boolean {
+  return (latitude === null && longitude === null) || (isNumber(latitude) && isNumber(longitude));
+}

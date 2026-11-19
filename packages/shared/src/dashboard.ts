@@ -26,9 +26,11 @@ export interface DashboardBuddy {
 export interface DashboardSite {
   id: string;
   name: string;
-  region: string;
-  latitude: number;
-  longitude: number;
+  /** `null` when not entered (site created by its name, D-23). */
+  region: string | null;
+  /** Both set or both `null` (position not entered, D-23). */
+  latitude: number | null;
+  longitude: number | null;
   diveCount: number;
   maxDepthM: number;
 }
@@ -61,7 +63,7 @@ export interface DashboardStats {
   divesPerMonth: { month: string; count: number }[];
   /** Dives of the current month. */
   divesThisMonth: number;
-  /** Region with the most dives; `null` without dive. */
+  /** Region with the most dives; `null` without dive or when no dived site has a region. */
   mainRegion: string | null;
 }
 

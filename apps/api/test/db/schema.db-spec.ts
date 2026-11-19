@@ -1,4 +1,5 @@
 import type { DataSource } from 'typeorm';
+import { Fixtures } from './support/fixtures';
 import { selectRows } from './support/sql';
 import { createTestDataSource, resetDatabase } from './support/test-database';
 
@@ -23,6 +24,7 @@ const CONSTRAINTS = [
   'ck_dive_sites__latitude',
   'ck_dive_sites__longitude',
   'ck_dive_sites__area',
+  'ck_dive_sites__position',
   'pk_buddies',
   'fk_buddies__owner_id',
   'fk_buddies__linked_diver_id',
@@ -137,6 +139,9 @@ const COMPOSITE_FOREIGN_KEYS: Record<string, string> = {
   fk_dive_buddies__owner_id_buddy_id:
     'FOREIGN KEY (owner_id, buddy_id) REFERENCES buddies(owner_id, id) ON DELETE CASCADE',
 };
+
+/** Columns made nullable by `AllowDiveSiteWithoutPosition` (D-23). */
+const SITE_POSITION_COLUMNS = ['region', 'latitude', 'longitude'];
 
 interface NameRow {
   name: string;
@@ -276,7 +281,66 @@ describe('dive log schema migrations', () => {
     ]);
   });
 
-  it('reverts AddDiveDetailFields alone, keeping the shared trigger function, then migrates again', async () => {
+  async function sitePositionNullability(): Promise<Record<string, boolean>> {
+    const rows = await selectRows<{ name: string; nullable: boolean }>(
+      dataSource,
+      `SELECT column_name AS name, is_nullable = 'YES' AS nullable FROM information_schema.columns
+        WHERE table_name = 'dive_sites' AND column_name = ANY($1)`,
+      [SITE_POSITION_COLUMNS],
+    );
+    return Object.fromEntries(rows.map((row) => [row.name, row.nullable]));
+  }
+
+  it('makes the region and the position of a site nullable (D-23)', async () => {
+    expect(await sitePositionNullability()).toEqual({
+      region: true,
+      latitude: true,
+      longitude: true,
+    });
+  });
+
+  it('reverts AllowDiveSiteWithoutPosition only once every site has a region and a position', async () => {
+    const fixtures = new Fixtures(dataSource);
+    const diver = await fixtures.diver();
+    const site = await fixtures.site(diver.id, { region: null, latitude: null, longitude: null });
+
+    await expect(dataSource.undoLastMigration({ transaction: 'all' })).rejects.toThrow(
+      'some dive sites have no region or no position',
+    );
+    expect(await sitePositionNullability()).toEqual({
+      region: true,
+      latitude: true,
+      longitude: true,
+    });
+
+    await dataSource.query(
+      "UPDATE dive_sites SET region = 'Var', latitude = 43, longitude = 6 WHERE id = $1",
+      [site.id],
+    );
+    await dataSource.undoLastMigration({ transaction: 'all' });
+    expect(await sitePositionNullability()).toEqual({
+      region: false,
+      latitude: false,
+      longitude: false,
+    });
+    expect(
+      await names(
+        "SELECT conname AS name FROM pg_constraint WHERE conname = 'ck_dive_sites__position'",
+      ),
+    ).toEqual([]);
+
+    await resetDatabase(dataSource);
+    await dataSource.runMigrations({ transaction: 'each' });
+    expect(await sitePositionNullability()).toEqual({
+      region: true,
+      latitude: true,
+      longitude: true,
+    });
+  });
+
+  it('reverts AddDiveDetailFields (after the later migration), keeping the shared trigger function, then migrates again', async () => {
+    // AllowDiveSiteWithoutPosition comes after it: reverted first.
+    await dataSource.undoLastMigration({ transaction: 'all' });
     await dataSource.undoLastMigration({ transaction: 'all' });
 
     expect(

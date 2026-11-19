@@ -2,6 +2,7 @@
 // `api/dashboardApi.ts` maps it to these types, which the components consume.
 import type { Federation, GasMix, UserLevel } from '@e-deep/shared';
 import type { DiveMember } from '@/shared/model/dive';
+import type { GeoPoint } from '@/shared/model/geo';
 
 export type { UserLevel };
 
@@ -17,9 +18,10 @@ export interface User {
 export interface DiveSite {
   id: string;
   name: string;
-  region: string;
-  latitude: number;
-  longitude: number;
+  /** `null` when not entered (site created by its name). */
+  region: string | null;
+  /** `null` when not entered: the site has no marker on the map. */
+  position: GeoPoint | null;
   diveCount: number;
   maxDepthM: number;
 }
@@ -57,8 +59,11 @@ export interface DashboardStats {
   divesPerMonth: { month: string; count: number }[];
   /** Dives of the current month (« +3 ce mois »). */
   recentMonthDelta: number;
-  /** Where most dives happen: short name (header, KPI) and map title. */
-  mainArea: { name: string; mapTitle: string };
+  /**
+   * Where most dives happen: short name (header, KPI) and map title; `null` when no dived site has
+   * a region.
+   */
+  mainArea: { name: string; mapTitle: string } | null;
 }
 
 export interface DashboardPayload {

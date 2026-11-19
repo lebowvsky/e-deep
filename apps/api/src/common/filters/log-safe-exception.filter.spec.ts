@@ -8,6 +8,7 @@ import {
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types';
+import { InvalidReferenceError, UnsupportedContractValueError } from '../errors/domain-errors';
 import { LogSafeExceptionFilter } from './log-safe-exception.filter';
 
 const SENSITIVE_DETAIL = 'patient diagnosis';
@@ -24,6 +25,16 @@ class ThrowingController {
   @Get('bad-request')
   badRequest(): never {
     throw new BadRequestException('Invalid input');
+  }
+
+  @Get('invalid-reference')
+  invalidReference(): never {
+    throw new InvalidReferenceError();
+  }
+
+  @Get('unsupported-value')
+  unsupportedValue(): never {
+    throw new UnsupportedContractValueError();
   }
 }
 
@@ -65,5 +76,20 @@ describe('LogSafeExceptionFilter', () => {
 
     expect(response.text).toContain('Invalid input');
     expect(logError).not.toHaveBeenCalled();
+  });
+
+  it('replies a business error with its status and code, without logging a 4xx', async () => {
+    const response = await request(app.getHttpServer()).get('/invalid-reference').expect(422);
+
+    expect(response.body).toStrictEqual({ statusCode: 422, code: 'invalid-reference' });
+    expect(logError).not.toHaveBeenCalled();
+  });
+
+  it('logs only the class name of a 5xx business error', async () => {
+    const response = await request(app.getHttpServer()).get('/unsupported-value').expect(500);
+
+    expect(response.body).toStrictEqual({ statusCode: 500, code: 'unsupported-contract-value' });
+    expect(logError).toHaveBeenCalledTimes(1);
+    expect(logError).toHaveBeenCalledWith('Unhandled UnsupportedContractValueError');
   });
 });

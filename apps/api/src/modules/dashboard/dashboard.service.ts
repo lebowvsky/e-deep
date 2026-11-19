@@ -50,9 +50,9 @@ interface MonthRow {
 interface SiteRow {
   id: string;
   name: string;
-  region: string;
-  latitude: string;
-  longitude: string;
+  region: string | null;
+  latitude: string | null;
+  longitude: string | null;
   dive_count: number;
   max_depth_m: string;
 }
@@ -71,7 +71,7 @@ interface DiveRow {
   utc_offset_minutes: number;
   site_id: string;
   site_name: string;
-  site_region: string;
+  site_region: string | null;
 }
 
 interface BuddyRow {
@@ -176,8 +176,8 @@ export class DashboardService {
       id: row.id,
       name: row.name,
       region: row.region,
-      latitude: Number(row.latitude),
-      longitude: Number(row.longitude),
+      latitude: row.latitude === null ? null : Number(row.latitude),
+      longitude: row.longitude === null ? null : Number(row.longitude),
       diveCount: row.dive_count,
       maxDepthM: Number(row.max_depth_m),
     }));
@@ -277,11 +277,13 @@ function toDashboardDive(row: DiveRow, buddies: DashboardBuddy[]): DashboardDive
   };
 }
 
-/** Region with the most live dives (ties: alphabetical). */
+/** Region with the most live dives (ties: alphabetical). Sites without a region are ignored. */
 function mainRegion(sites: readonly DashboardSite[]): string | null {
   const counts = new Map<string, number>();
-  for (const site of sites) {
-    counts.set(site.region, (counts.get(site.region) ?? 0) + site.diveCount);
+  for (const { region, diveCount } of sites) {
+    if (region !== null) {
+      counts.set(region, (counts.get(region) ?? 0) + diveCount);
+    }
   }
   let best: { region: string; count: number } | null = null;
   for (const [region, count] of counts) {

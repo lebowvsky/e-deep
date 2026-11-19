@@ -3,31 +3,26 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockFilledDiveDetail } from '@/features/dives/mocks/diveDetailResponse';
+import { dashboardKeys } from '@/features/dashboard/api/queryKeys';
 import { divesKeys } from '@/features/dives/api/queryKeys';
+import { mockFilledDiveDetail } from '@/features/dives/mocks/diveDetailResponse';
 import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
+import { createFakeDiveApi } from '@/features/dives/mocks/fakeDiveApi';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { ApiClientContext } from '@/shared/lib/apiClientContext';
 import { ToastProvider } from '@/shared/ui/Toast';
+import { fakeApiClient } from '@/test/fakeApiClient';
 import { TestProviders } from '@/test/TestProviders';
 import { DiveFormPage, type DiveFormPageProps } from './DiveFormPage';
 
 const DETAIL_PREFIX = 'dives/';
 
-/** Answers like the API: the log on `dives`, the filled detail of any mocked dive on `dives/:id`. */
-function apiLike(): ApiClient['get'] {
-  return vi
-    .fn()
-    .mockImplementation((path: string) =>
-      Promise.resolve(
-        path.startsWith(DETAIL_PREFIX)
-          ? mockFilledDiveDetail(path.slice(DETAIL_PREFIX.length))
-          : mockDiveLogResponse,
-      ),
-    );
-}
-
-function renderAt(path: string, props: DiveFormPageProps = {}) {
+/** Renders the page at `path` over `api` (the mocked log, each dive filled, writes kept). */
+function renderAt(
+  path: string,
+  props: DiveFormPageProps = {},
+  api: ApiClient = createFakeDiveApi().client,
+) {
   const router = createMemoryRouter(
     [
       { path: '/dives/new', element: <DiveFormPage {...props} /> },
@@ -37,7 +32,7 @@ function renderAt(path: string, props: DiveFormPageProps = {}) {
     { initialEntries: [path] },
   );
   render(
-    <TestProviders client={{ get: apiLike() }}>
+    <TestProviders client={api}>
       <ToastProvider>
         <RouterProvider router={router} />
       </ToastProvider>
@@ -142,7 +137,7 @@ describe('DiveFormPage — new dive', () => {
       initialEntries: ['/dives/new'],
     });
     render(
-      <ApiClientContext value={{ get: apiLike() }}>
+      <ApiClientContext value={createFakeDiveApi().client}>
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
             <RouterProvider router={router} />
@@ -239,6 +234,65 @@ describe('DiveFormPage — edit', () => {
     expect(screen.getByRole('status').textContent).toBe('Plongée #127 enregistrée');
   });
 
+  it('replaces the dive with a PUT carrying the updatedAt it was read with (D-25)', async () => {
+    const user = userEvent.setup();
+    const api = createFakeDiveApi();
+    const router = renderAt('/dives/d127/edit', {}, api.client);
+
+    await title('Modifier la plongée #127');
+    await user.click(
+      screen.getAllByRole('button', { name: 'Enregistrer les modifications' })[0] ?? document.body,
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dives/d127'));
+
+    const writes = api.requests.filter(({ method }) => method !== 'GET');
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({
+      method: 'PUT',
+      path: 'dives/d127',
+      body: {
+        event: { id: 'd127', siteId: 's01' },
+        baseUpdatedAt: mockFilledDiveDetail('d127').updatedAt,
+      },
+    });
+    // The log is read again once saved: the API numbers the dives.
+    const writeIndex = api.requests.findIndex(({ method }) => method === 'PUT');
+    expect(api.requests.slice(writeIndex).some(({ path }) => path === 'dives')).toBe(true);
+  });
+
+  it('marks the dashboard stale once saved: its stats and last dive include the dive', async () => {
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
+    queryClient.setQueryData(dashboardKeys.all, { cached: true });
+    const router = createMemoryRouter(
+      [
+        { path: '/dives/:diveId/edit', element: <DiveFormPage /> },
+        { path: '*', element: null },
+      ],
+      { initialEntries: ['/dives/d127/edit'] },
+    );
+    render(
+      <ApiClientContext value={createFakeDiveApi().client}>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </QueryClientProvider>
+      </ApiClientContext>,
+    );
+
+    await title('Modifier la plongée #127');
+    expect(queryClient.getQueryState(dashboardKeys.all)?.isInvalidated).toBe(false);
+    await user.click(
+      screen.getAllByRole('button', { name: 'Enregistrer les modifications' })[0] ?? document.body,
+    );
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dives/d127'));
+    expect(queryClient.getQueryState(dashboardKeys.all)?.isInvalidated).toBe(true);
+  });
+
   it('announces the number the dive got once moved to another date', async () => {
     const router = renderAt('/dives/d127/edit');
 
@@ -298,7 +352,7 @@ describe('DiveFormPage — edit', () => {
       },
     );
     render(
-      <TestProviders client={{ get }}>
+      <TestProviders client={fakeApiClient({ get })}>
         <RouterProvider router={router} />
       </TestProviders>,
     );
@@ -306,5 +360,78 @@ describe('DiveFormPage — edit', () => {
       await screen.findByRole('heading', { level: 1, name: /n’existe pas ou a été supprimée/ }),
     ).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Retour à mes plongées' })).toBeTruthy();
+  });
+});
+
+describe('DiveFormPage — save refused by the API', () => {
+  /** The edit of #127 over an API whose `PUT` fails with `error`. */
+  async function saveEditRejectedWith(error: ApiError) {
+    const user = userEvent.setup();
+    const { client } = createFakeDiveApi();
+    const router = renderAt(
+      '/dives/d127/edit',
+      {},
+      { ...client, put: () => Promise.reject(error) },
+    );
+    await title('Modifier la plongée #127');
+    await user.click(
+      screen.getAllByRole('button', { name: 'Enregistrer les modifications' })[0] ?? document.body,
+    );
+    return router;
+  }
+
+  const httpError = (
+    status: number,
+    body: { code?: string; fieldErrors?: Record<string, string[]> },
+  ) => new ApiError('http', `HTTP ${status}`, { status, ...body });
+
+  it('shows the field errors of a 400 on the fields of the form, and stays', async () => {
+    const router = await saveEditRejectedWith(
+      httpError(400, {
+        code: 'validation-failed',
+        fieldErrors: { 'participation.maxDepthM': ['max'], 'observations.0.label': ['length'] },
+      }),
+    );
+
+    const summary = await screen.findByRole('alert');
+    expect(
+      within(summary)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Profondeur max', 'Espèces']);
+    expect(screen.getByText('Indique une profondeur entre 1 et 100 m.')).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/dives/d127/edit');
+  });
+
+  it('asks to choose the site again on a 422 invalid-reference', async () => {
+    await saveEditRejectedWith(httpError(422, { code: 'invalid-reference' }));
+
+    const summary = await screen.findByRole('alert');
+    expect(within(summary).getByRole('link', { name: 'Site' })).toBeTruthy();
+    expect(
+      screen.getByText('Ce site n’est plus dans ton carnet. Choisis-le à nouveau ou crée-le.'),
+    ).toBeTruthy();
+  });
+
+  it.each([
+    ['a 409 identifier-conflict', httpError(409, { code: 'identifier-conflict' })],
+    ['a 404 (dive deleted meanwhile)', httpError(404, {})],
+    [
+      'a 400 without a field of the form',
+      httpError(400, {
+        code: 'validation-failed',
+        fieldErrors: { 'event.id': ['matches-route'] },
+      }),
+    ],
+  ])('keeps the values and says the save did not go through on %s', async (_label, error) => {
+    // An unexpected failure is reported, not swallowed.
+    const report = vi.fn();
+    vi.stubGlobal('reportError', report);
+    const router = await saveEditRejectedWith(error);
+
+    expect(await screen.findByText(/L’enregistrement n’a pas abouti/)).toBeTruthy();
+    expect(report).toHaveBeenCalledWith(error);
+    expect(field('Pression fin').value).toBe('60');
+    expect(router.state.location.pathname).toBe('/dives/d127/edit');
   });
 });

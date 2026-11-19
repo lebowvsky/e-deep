@@ -17,12 +17,14 @@ import {
   isNullable,
   isNumber,
   isOneOf,
+  isPositionPair,
   isRecord,
   isString,
 } from '@/shared/lib/guards';
 import type { DiveMember } from '@/shared/model/dive';
+import { toGeoPoint } from '@/shared/model/geo';
 import { avatarColorOf } from '../lib/avatarColor';
-import { oxygenPercent } from '../lib/labels';
+import { oxygenPercent, placeLabel } from '../lib/labels';
 import { toRegionKey } from '../lib/region';
 import {
   CURRENT_STRENGTHS,
@@ -50,7 +52,7 @@ function isSiteRef(value: unknown): value is DiveSiteContract {
     isString(value.id) &&
     isString(value.name) &&
     isNullable(isString)(value.locality) &&
-    isString(value.region)
+    isNullable(isString)(value.region)
   );
 }
 
@@ -102,8 +104,7 @@ export function isDiveDetail(value: unknown): value is DiveDetail {
   return (
     isRecord(value) &&
     isRecord(value.site) &&
-    isNumber(value.site.latitude) &&
-    isNumber(value.site.longitude) &&
+    isPositionPair(value.site.latitude, value.site.longitude) &&
     isNullableString(value.site.area) &&
     isArrayOf(isDiveDetailBuddy)(value.buddies) &&
     isNullableNumber(value.visibilityM) &&
@@ -202,13 +203,13 @@ function toBuddyMember(buddy: DiveBuddyRef): DiveMember {
   };
 }
 
-/** « Calvi · Corse », or « Corse » alone when the locality was not entered. */
+/** « Calvi · Corse », or whichever of the locality and the region was entered. */
 function toSiteRef(site: DiveSiteContract): DiveSiteRef {
   return {
     id: site.id,
     name: site.name,
-    place: site.locality === null ? site.region : `${site.locality} · ${site.region}`,
-    region: toRegionKey(site.region),
+    place: placeLabel(site.locality, site.region),
+    region: site.region === null ? null : toRegionKey(site.region),
     regionName: site.region,
   };
 }
@@ -254,8 +255,7 @@ export function toDiveDetailView(detail: DiveDetail, self: DiveMember): DiveDeta
     ...dive,
     site: {
       ...dive.site,
-      latitude: detail.site.latitude,
-      longitude: detail.site.longitude,
+      position: toGeoPoint(detail.site.latitude, detail.site.longitude),
       area: detail.site.area,
     },
     team,

@@ -5,7 +5,7 @@ import { ApiError } from './apiClient';
 const MAX_RETRIES = 1;
 
 /**
- * Server data is only changed by this user's own actions (future mutations will invalidate it):
+ * Server data is only changed by this user's own actions (a dive write invalidates what it changes):
  * coming back to a page within this delay reuses the cache instead of calling the API again.
  */
 const STALE_TIME_MS = 60_000;

@@ -1,17 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DataSource, In, IsNull, Not, type EntityManager } from 'typeorm';
 import { upsertOwnedRow } from '../../common/database/owned-upsert';
+import { isUniqueViolation } from '../../common/database/postgres-errors';
 import { pullPage } from '../../common/database/sync-pull';
 import {
+  BuddyLinkConflictError,
   DuplicateObservationError,
   IdentifierConflictError,
   InvalidReferenceError,
   TooManyObservationsError,
 } from '../../common/errors/domain-errors';
+import { canonicalUuids } from '../../common/ids/uuid';
 import { assertWithinPurgeHorizon, isStaleRestore } from '../../common/sync/sync-rules';
 import { SYNC_SETTINGS, type SyncSettings } from '../../common/sync/sync-settings';
 import type { PullPage, SyncCursor, SyncWriteResult } from '../../common/sync/sync.types';
-import { Buddy } from '../buddies/buddy.entity';
+import { Buddy, BUDDY_LINK_UNIQUE_INDEX } from '../buddies/buddy.entity';
 import { CertificationLevel } from '../certification-levels/certification-level.entity';
 import { DiveSite } from '../dive-sites/dive-site.entity';
 import { Diver } from '../divers/diver.entity';
@@ -21,6 +24,7 @@ import { DiveObservation } from './dive-observation.entity';
 import { DiveParticipation } from './dive-participation.entity';
 import type {
   Dive,
+  DiveLookup,
   DiveObservationValue,
   DiveObservationWrite,
   DiveWrite,
@@ -29,6 +33,9 @@ import type {
 
 /** Cap of observations per participation (RG-27), also guaranteed by `ck_dive_observations__position`. */
 export const MAX_OBSERVATIONS = 50;
+
+/** Cap of members of a dive team, checked by the write DTO (`too-many`). */
+export const MAX_DIVE_BUDDIES = 50;
 
 /**
  * A dive is an aggregate written in one block: event + the diver's participation + its dive team +
@@ -51,105 +58,145 @@ export class DivesService {
    * - A stale restore of the event or of the participation (D-12 a) rejects the whole dive.
    * - A tombstoned participation of the same `(event, diver)` is restored under its existing id,
    *   never recreated: `current.participation.id` may then differ from the id sent.
-   * - A live dive restores its tombstoned site and buddies (D-12 b).
-   * - The dive team is replaced by `buddyIds`, the observations by `observations` (position = index,
-   *   labels trimmed).
+   * - A live dive restores its tombstoned site and buddies (D-12 b), unless a restored buddy's
+   *   linked account is already linked to another live contact (`BuddyLinkConflictError`).
+   * - The dive team is replaced by `buddyIds` (a set: case and order do not matter), the
+   *   observations by `observations` (position = index, labels trimmed).
    *
    * @throws {FullSyncRequiredError} | {IdentifierConflictError} | {InvalidReferenceError} |
-   *   {DuplicateObservationError} | {TooManyObservationsError}
+   *   {BuddyLinkConflictError} | {DuplicateObservationError} | {TooManyObservationsError}
    */
-  async upsertDive(
+  upsertDive(
+    diverId: string,
+    write: DiveWrite,
+    lastPulledAt: Date,
+  ): Promise<SyncWriteResult<Dive>> {
+    return this.dataSource.transaction((manager) =>
+      this.upsertDiveIn(manager, diverId, write, lastPulledAt),
+    );
+  }
+
+  /** `upsertDive` within the caller's transaction (e.g. with a new site and new buddies, D-24). */
+  async upsertDiveIn(
+    manager: EntityManager,
     diverId: string,
     write: DiveWrite,
     lastPulledAt: Date,
   ): Promise<SyncWriteResult<Dive>> {
     assertWithinPurgeHorizon(lastPulledAt, new Date(), this.settings.purgeHorizonDays);
     const observations = normalizeObservations(write.observations);
+    const { event, participation } = write;
+    // Canonical order: rows are restored and team lines inserted in the same order by every write.
+    const buddyIds = canonicalUuids(write.buddyIds);
 
-    return await this.dataSource.transaction(async (manager) => {
-      const { event, participation } = write;
-      const buddyIds = [...new Set(write.buddyIds)];
-
-      const existingEvent = await manager.findOne(DiveEvent, {
-        where: { id: event.id },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (existingEvent !== null && existingEvent.creatorId !== diverId) {
-        throw new IdentifierConflictError();
-      }
-      const existingParticipation = await findParticipationToWrite(
-        manager,
-        diverId,
-        event.id,
-        participation.id,
-      );
-
-      const stale =
-        (existingEvent !== null && isStaleRestore(existingEvent, event)) ||
-        (existingParticipation !== null && isStaleRestore(existingParticipation, participation));
-      if (stale) {
-        return { status: 'rejected', current: await loadDiveOrFail(manager, diverId, event.id) };
-      }
-
-      const certificationLevelId = await resolveParticipationLevel(
-        manager,
-        diverId,
-        participation.certificationLevelId ?? null,
-      );
-      await assertOwnedReferences(manager, diverId, event.siteId, buddyIds);
-
-      await upsertOwnedRow(manager, DiveEvent, 'creatorId', {
-        id: event.id,
-        creatorId: diverId,
-        siteId: event.siteId,
-        startedAt: event.startedAt,
-        utcOffsetMinutes: event.utcOffsetMinutes,
-        entryType: event.entryType,
-        timeOfDay: event.timeOfDay,
-        weather: event.weather,
-        airTemperatureC: event.airTemperatureC,
-        seaState: event.seaState,
-        currentStrength: event.currentStrength,
-        diveCenter: event.diveCenter,
-        deletedAt: event.deletedAt,
-      });
-      await upsertOwnedRow(manager, DiveParticipation, 'diverId', {
-        id: existingParticipation?.id ?? participation.id,
-        diveEventId: event.id,
-        diverId,
-        certificationLevelId,
-        maxDepthM: participation.maxDepthM,
-        durationMin: participation.durationMin,
-        waterTemperatureC: participation.waterTemperatureC,
-        visibilityM: participation.visibilityM,
-        gasMix: participation.gasMix,
-        hasDecompression: participation.hasDecompression,
-        stopsOk: participation.stopsOk,
-        notes: participation.notes,
-        surfaceWaterTemperatureC: participation.surfaceWaterTemperatureC,
-        safetyStopDurationMin: participation.safetyStopDurationMin,
-        safetyStopDepthM: participation.safetyStopDepthM,
-        isRepetitive: participation.isRepetitive,
-        o2Percent: participation.o2Percent,
-        tankVolumeL: participation.tankVolumeL,
-        tankMaterial: participation.tankMaterial,
-        startPressureBar: participation.startPressureBar,
-        endPressureBar: participation.endPressureBar,
-        suitType: participation.suitType,
-        suitThicknessMm: participation.suitThicknessMm,
-        weightKg: participation.weightKg,
-        deletedAt: participation.deletedAt,
-      });
-
-      if (event.deletedAt === null && participation.deletedAt === null) {
-        await restoreParents(manager, diverId, event.siteId, buddyIds);
-      }
-      const participationId = existingParticipation?.id ?? participation.id;
-      await replaceDiveTeam(manager, diverId, participationId, buddyIds);
-      await replaceObservations(manager, participationId, observations);
-
-      return { status: 'applied', current: await loadDiveOrFail(manager, diverId, event.id) };
+    const existingEvent = await manager.findOne(DiveEvent, {
+      where: { id: event.id },
+      lock: { mode: 'pessimistic_write' },
     });
+    if (existingEvent !== null && existingEvent.creatorId !== diverId) {
+      throw new IdentifierConflictError();
+    }
+    const existingParticipation = await findParticipationToWrite(
+      manager,
+      diverId,
+      event.id,
+      participation.id,
+    );
+
+    const stale =
+      (existingEvent !== null && isStaleRestore(existingEvent, event)) ||
+      (existingParticipation !== null && isStaleRestore(existingParticipation, participation));
+    if (stale) {
+      return { status: 'rejected', current: await loadDiveOrFail(manager, diverId, event.id) };
+    }
+
+    const certificationLevelId = await resolveParticipationLevel(
+      manager,
+      diverId,
+      participation.certificationLevelId ?? null,
+    );
+    await assertOwnedReferences(manager, diverId, event.siteId, buddyIds);
+
+    await upsertOwnedRow(manager, DiveEvent, 'creatorId', {
+      id: event.id,
+      creatorId: diverId,
+      siteId: event.siteId,
+      startedAt: event.startedAt,
+      utcOffsetMinutes: event.utcOffsetMinutes,
+      entryType: event.entryType,
+      timeOfDay: event.timeOfDay,
+      weather: event.weather,
+      airTemperatureC: event.airTemperatureC,
+      seaState: event.seaState,
+      currentStrength: event.currentStrength,
+      diveCenter: event.diveCenter,
+      deletedAt: event.deletedAt,
+    });
+    await upsertOwnedRow(manager, DiveParticipation, 'diverId', {
+      id: existingParticipation?.id ?? participation.id,
+      diveEventId: event.id,
+      diverId,
+      certificationLevelId,
+      maxDepthM: participation.maxDepthM,
+      durationMin: participation.durationMin,
+      waterTemperatureC: participation.waterTemperatureC,
+      visibilityM: participation.visibilityM,
+      gasMix: participation.gasMix,
+      hasDecompression: participation.hasDecompression,
+      stopsOk: participation.stopsOk,
+      notes: participation.notes,
+      surfaceWaterTemperatureC: participation.surfaceWaterTemperatureC,
+      safetyStopDurationMin: participation.safetyStopDurationMin,
+      safetyStopDepthM: participation.safetyStopDepthM,
+      isRepetitive: participation.isRepetitive,
+      o2Percent: participation.o2Percent,
+      tankVolumeL: participation.tankVolumeL,
+      tankMaterial: participation.tankMaterial,
+      startPressureBar: participation.startPressureBar,
+      endPressureBar: participation.endPressureBar,
+      suitType: participation.suitType,
+      suitThicknessMm: participation.suitThicknessMm,
+      weightKg: participation.weightKg,
+      deletedAt: participation.deletedAt,
+    });
+
+    if (event.deletedAt === null && participation.deletedAt === null) {
+      await restoreParents(manager, diverId, event.siteId, buddyIds);
+    }
+    const participationId = existingParticipation?.id ?? participation.id;
+    await replaceDiveTeam(manager, diverId, participationId, buddyIds);
+    await replaceObservations(manager, participationId, observations);
+
+    return { status: 'applied', current: await loadDiveOrFail(manager, diverId, event.id) };
+  }
+
+  /**
+   * The dive behind an event id, locked for writing within the caller's transaction, tombstones
+   * included: `absent` (unknown id), `foreign` (the event is not the diver's) or `own`.
+   */
+  async findDiveForWriteIn(
+    manager: EntityManager,
+    diverId: string,
+    eventId: string,
+  ): Promise<DiveLookup> {
+    const event = await manager.findOne(DiveEvent, {
+      where: { id: eventId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (event === null) {
+      return { status: 'absent' };
+    }
+    const participation =
+      event.creatorId === diverId
+        ? await manager.findOne(DiveParticipation, {
+            where: { diveEventId: eventId, diverId },
+            lock: { mode: 'pessimistic_write' },
+          })
+        : null;
+    if (participation === null) {
+      return { status: 'foreign' };
+    }
+    return { status: 'own', dive: await withTeamAndObservations(manager, event, participation) };
   }
 
   /** MVP deletion of a dive: tombstones the event and the participation together. Idempotent. */
@@ -277,7 +324,12 @@ async function assertOwnedReferences(
   }
 }
 
-/** D-12 b: no live reference to a deleted parent. */
+/**
+ * D-12 b: no live reference to a deleted parent.
+ *
+ * @throws {BuddyLinkConflictError} when a restored buddy's linked account is already linked to
+ *   another live contact. PostgreSQL has aborted the transaction by then: it can only be rolled back.
+ */
 async function restoreParents(
   manager: EntityManager,
   diverId: string,
@@ -290,15 +342,24 @@ async function restoreParents(
     { deletedAt: null },
   );
   if (buddyIds.length > 0) {
-    await manager.update(
-      Buddy,
-      { ownerId: diverId, id: In([...buddyIds]), deletedAt: Not(IsNull()) },
-      { deletedAt: null },
-    );
+    try {
+      await manager.update(
+        Buddy,
+        { ownerId: diverId, id: In([...buddyIds]), deletedAt: Not(IsNull()) },
+        { deletedAt: null },
+      );
+    } catch (error) {
+      throw isUniqueViolation(error, BUDDY_LINK_UNIQUE_INDEX)
+        ? new BuddyLinkConflictError()
+        : error;
+    }
   }
 }
 
-/** Only the lines that change are written, so the trigger only touches a participation when needed. */
+/**
+ * Only the lines that change are written, so the trigger only touches a participation when needed.
+ * `buddyIds` comes in canonical order (`canonicalUuids`), so are the lines inserted.
+ */
 async function replaceDiveTeam(
   manager: EntityManager,
   diverId: string,
@@ -383,6 +444,14 @@ async function loadDiveOrFail(
     diveEventId: eventId,
     diverId,
   });
+  return withTeamAndObservations(manager, event, participation);
+}
+
+async function withTeamAndObservations(
+  manager: EntityManager,
+  event: DiveEvent,
+  participation: DiveParticipation,
+): Promise<Dive> {
   const teams = await loadDiveTeams(manager, [participation.id]);
   const observations = await loadObservations(manager, [participation.id]);
   return {

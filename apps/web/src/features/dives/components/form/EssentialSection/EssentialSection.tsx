@@ -43,7 +43,7 @@ export const EssentialSection = memo(
         sites.map((option) => ({
           id: option.id,
           label: option.name,
-          description: option.place,
+          description: option.place ?? undefined,
           meta: formatDiveCount(option.diveCount),
         })),
       [sites],

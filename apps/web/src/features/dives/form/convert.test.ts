@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { toDiveDetailView } from '../api/divesApi';
-import { buildDiveDetail } from '../api/inMemoryDiveRepository';
+import { toDiveWriteRequest } from '../api/httpDiveRepository';
+import { buildDiveDetail } from '../mocks/fakeDiveApi';
 import { filledDive, validValues } from '../mocks/diveFormFixture';
 import { SELF } from '../mocks/roster';
 import { effectiveO2Percent, fromGasMix, startedAtOf, toGasMix, toSaveDiveInput } from './convert';
@@ -44,12 +45,12 @@ describe('toSaveDiveInput', () => {
       IDS,
     );
     expect(input?.kind).toBe('create');
+    expect(input?.baseUpdatedAt).toBeNull();
     expect(input?.contacts.site).toEqual({ id: 'new-site', name: 'Le Sec', isNew: true });
     // A buddy created by name keeps the key of their row: the same id at every try.
     expect(input?.contacts.buddies).toEqual([
       { id: 'k', firstName: 'Lucas', lastName: 'Bernard', levelCode: 'N3', isNew: true },
     ]);
-    expect(input?.buddyIds).toEqual(['k']);
     expect(input?.event).toMatchObject({ id: 'new-event', siteId: 'new-site', diveCenter: null });
     expect(input?.event.startedAt.startsWith('2026-04-09T10:05:00')).toBe(true);
     expect(input?.participation).toMatchObject({
@@ -94,6 +95,16 @@ describe('toSaveDiveInput', () => {
     ).toBe(false);
   });
 
+  it('sends an edit with the updatedAt it started from, on the site chosen', () => {
+    const dive = filledDive();
+    const input = toSaveDiveInput(editDiveValues(dive), editTarget(dive), IDS);
+    expect(input?.kind).toBe('update');
+    expect(input?.event.id).toBe(dive.id);
+    expect(input?.baseUpdatedAt).toBe(dive.updatedAt);
+    expect(input?.event.siteId).toBe(input?.contacts.site.id);
+    expect(input?.contacts.site).toEqual({ id: dive.site.id, name: dive.site.name, isNew: false });
+  });
+
   it('gives nothing for values that validation would refuse', () => {
     expect(toSaveDiveInput(validValues({ maxDepthM: '' }), { kind: 'create' }, IDS)).toBeNull();
   });
@@ -119,8 +130,16 @@ describe('round trip form → DiveDetail → form', () => {
     const dive = filledDive();
     const input = toSaveDiveInput(values, editTarget(dive), IDS);
     if (input === null) throw new Error('Invalid values');
-    const detail = buildDiveDetail(input, {
-      site: { ...dive.site, locality: null, region: dive.site.regionName },
+    const detail = buildDiveDetail(toDiveWriteRequest(input), {
+      site: {
+        id: dive.site.id,
+        name: dive.site.name,
+        locality: null,
+        region: dive.site.regionName,
+        latitude: dive.site.position?.latitude ?? null,
+        longitude: dive.site.position?.longitude ?? null,
+        area: dive.site.area,
+      },
       diverLevel: { agency: 'FFESSM', code: 'N2', label: 'Niveau 2' },
       createdAt: dive.createdAt,
       updatedAt: dive.updatedAt,
