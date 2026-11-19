@@ -45,6 +45,9 @@
   --dl-color-track-fill: rgba(154, 186, 224, 0.14);
   --dl-color-group-header: rgba(11, 26, 46, 0.55);
   --dl-color-run-stop-fill: rgba(91, 211, 145, 0.75);
+  --dl-color-map-overlay: rgba(11, 26, 46, 0.85);
+  --dl-color-map-overlay-strong: rgba(11, 26, 46, 0.9);
+  --dl-color-warning-line: rgba(231, 178, 74, 0.35);
   --dl-font-sans: "Geist Variable", "Geist", -apple-system, system-ui, sans-serif;
   --dl-font-mono: "Geist Mono Variable", "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
   --dl-space-0: 0;
@@ -220,4 +223,21 @@
   --dl-layout-form-field-md: 140px;
   --dl-layout-form-field-lg: 160px;
   --dl-layout-form-field-xl: 240px;
+  --dl-layout-site-list-width: 380px;
+  --dl-layout-site-panel-width: 420px;
+  --dl-layout-map-page-min-height: 640px;
+  --dl-layout-site-popover-width: 250px;
+  --dl-layout-site-marker-min: 18px;
+  --dl-layout-site-marker-max: 40px;
+  --dl-layout-site-marker-step: 2.2px;
+  --dl-layout-site-marker-halo: 18px;
+  --dl-layout-pick-marker: 24px;
+  --dl-layout-pick-marker-ring: 52px;
+  --dl-layout-blur-map: 8px;
+  --dl-layout-menu-width: 230px;
+  --dl-layout-textarea-min-height-sm: 76px;
+  --dl-layout-row-height-sm: 56px;
+  --dl-layout-col-number-sm: 52px;
+  --dl-layout-col-measure: 90px;
+  --dl-layout-col-team-sm: 110px;
 }

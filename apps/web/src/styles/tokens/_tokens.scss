@@ -45,6 +45,9 @@ $color-depth-bar: rgba(154, 186, 224, 0.35);
 $color-track-fill: rgba(154, 186, 224, 0.14);
 $color-group-header: rgba(11, 26, 46, 0.55);
 $color-run-stop-fill: rgba(91, 211, 145, 0.75);
+$color-map-overlay: rgba(11, 26, 46, 0.85);
+$color-map-overlay-strong: rgba(11, 26, 46, 0.9);
+$color-warning-line: rgba(231, 178, 74, 0.35);
 
 // Font
 $font-sans: "Geist Variable", "Geist", -apple-system, system-ui, sans-serif;
@@ -87,6 +90,11 @@ $type-measure: (15px, 20px, 500, 0);
 $type-run-time: (22px, 26px, 600, -0.4px);
 $type-field-value: (15px, 20px, 400, 0);
 $type-field-hint: (12px, 17px, 400, 0);
+$type-marker-count: (11px, 14px, 600, 0);
+$type-marker-count-sm: (10px, 12px, 600, 0);
+$type-title-sm: (15px, 20px, 600, -0.1px);
+$type-panel-title: (18px, 24px, 600, -0.2px);
+$type-metric-xs: (16px, 20px, 600, -0.2px);
 
 // Space (4px scale)
 $space-0: 0;
@@ -281,3 +289,20 @@ $layout-form-field-sm: 120px;
 $layout-form-field-md: 140px;
 $layout-form-field-lg: 160px;
 $layout-form-field-xl: 240px;
+$layout-site-list-width: 380px;
+$layout-site-panel-width: 420px;
+$layout-map-page-min-height: 640px;
+$layout-site-popover-width: 250px;
+$layout-site-marker-min: 18px;
+$layout-site-marker-max: 40px;
+$layout-site-marker-step: 2.2px;
+$layout-site-marker-halo: 18px;
+$layout-pick-marker: 24px;
+$layout-pick-marker-ring: 52px;
+$layout-blur-map: 8px;
+$layout-menu-width: 230px;
+$layout-textarea-min-height-sm: 76px;
+$layout-row-height-sm: 56px;
+$layout-col-number-sm: 52px;
+$layout-col-measure: 90px;
+$layout-col-team-sm: 110px;
