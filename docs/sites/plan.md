@@ -214,3 +214,36 @@ sheet → `shadow.sheet` ; padding 11 des lignes d'infos → `space.3` ; colonne
 - Nav : « Carte » reste active sur une fiche site (`NavEntry.section`).
 - Dette : `?state=` n'est géré ni sur `/map` ni sur `/sites/:id` (pas de mocks dans le code
   applicatif) ; la mise à l'eau et la structure habituelles restent « — » (absentes du carnet).
+
+## 10. Phase 5 — contrôle qualité et bilan
+
+- **Accessibilité** (spec § Accessibilité) :
+  - la carte n'est jamais seule : chaque ligne sélectionnée de la liste mène à la fiche (« Voir la
+    fiche de … »), « Placer sur la carte » pour un site sans position, coordonnées saisissables ;
+  - repères et grappes sont des `<button>` libellés (« Pointe de la Revellata, 7 plongées »,
+    « 5 sites ici. Zoomer pour les voir »), `aria-pressed` sur la sélection ; le repère en cours de
+    pose se déplace aux flèches (1 px, Maj 10 px), ou la carte sous le repère fixe sur téléphone ;
+  - dialogues : panneau du site et création express (`role="dialog"`, titre lié, focus sur le
+    premier champ, Échap, focus rendu à la ligne ou à « Ajouter un site ») ; fusion et suppression
+    en `alertdialog` modal (focus piégé, rendu au déclencheur) ; menu « … » au clavier ;
+  - fermeture de l'aperçu (Échap) : focus rendu à la ligne du site ;
+  - `radiogroup` des zones (flèches), `aria-pressed` de « À compléter » et du fond de carte,
+    nombre de sites listés annoncé (`aria-live`), « Position à préciser » avec icône et texte ;
+  - « Carte » de la navigation porte `aria-current="location"` sur une fiche site.
+- **Performance** : liste virtualisée au-delà de 100 sites (test à 500 : moins de 20 lignes
+  montées), recherche et tri mémoïsés, GeoJSON envoyé à la carte seulement quand les sites changent
+  (test : survol et sélection ne recréent pas le tableau), regroupement des repères par MapLibre.
+- **Valeurs en dur** : aucune dans les nouveaux SCSS et TSX (hors commentaires, `1px` des bordures
+  et proportions 40 % / 50 % du téléphone) ; contours de focus des repères par `focus-ring`.
+
+### Livré
+
+Création express depuis le formulaire, page Carte desktop et mobile (carte, liste, sheet, panneau
+new / place / edit), fiche site desktop et mobile, fusion et suppression, lien du détail de plongée
+vers la fiche, filtre `?site=` de « Mes plongées ».
+
+### Écarts, dette, points ouverts
+
+Voir `ARCHITECTURE.md` § 11, « Issus des sites » : écritures en mémoire, API sites à créer, fusion
+non répercutée côté API, `?state=` non géré sur `/map` et `/sites/:id`, placeholders carte du
+dashboard et du détail à remplacer par `MapView`, géocodage en V2, tuiles sans SLA.
