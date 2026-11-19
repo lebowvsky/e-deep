@@ -9,6 +9,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, type EntityManager } from 'typeorm';
 import { lockIdForTransaction } from '../../common/database/advisory-lock';
 import { IdentifierConflictError, InvalidReferenceError } from '../../common/errors/domain-errors';
+import { normalizeUuid } from '../../common/ids/uuid';
 import { Buddy } from '../buddies/buddy.entity';
 import { BuddiesService } from '../buddies/buddies.service';
 import { CertificationLevel } from '../certification-levels/certification-level.entity';
@@ -55,10 +56,12 @@ export class DiveWriteService {
    *
    * @throws {IdentifierConflictError} when the id is already taken: different content, a deleted
    *   dive or another diver's event, indistinguishable on purpose.
-   * @throws {InvalidReferenceError} | {DomainError} from the services.
+   * @throws {InvalidReferenceError} for a site or buddy unknown or another diver's, including one
+   *   to create under another diver's id (D-24: indistinguishable).
+   * @throws {DomainError} from the services.
    */
-  async create(diverId: string, request: DiveWriteRequest): Promise<DiveCreation> {
-    const outcome = await this.dataSource.transaction(async (manager) => {
+  create(diverId: string, request: DiveWriteRequest): Promise<DiveCreation> {
+    return this.dataSource.transaction(async (manager): Promise<DiveCreation> => {
       // Two creations of the same new id: the second waits, then sees the first as `own`.
       await lockIdForTransaction(manager, request.event.id);
       const lookup = await this.dives.findDiveForWriteIn(manager, diverId, request.event.id);
@@ -70,7 +73,10 @@ export class DiveWriteService {
         if (!isLive(dive) || !isSameDiveWrite(toDiveWrite(request, dive.participation), dive)) {
           throw new IdentifierConflictError();
         }
-        return 'replayed';
+        return {
+          outcome: 'replayed',
+          saved: await this.diveLog.numberOfIn(manager, diverId, request.event.id),
+        };
       }
       await this.writeContacts(manager, diverId, request);
       await this.writeDive(
@@ -78,9 +84,11 @@ export class DiveWriteService {
         diverId,
         toDiveWrite(request, { id: randomUUID(), certificationLevelId: null }),
       );
-      return 'created';
+      return {
+        outcome: 'created',
+        saved: await this.diveLog.numberOfIn(manager, diverId, request.event.id),
+      };
     });
-    return { outcome, saved: await this.diveLog.numberOf(diverId, request.event.id) };
   }
 
   /**
@@ -90,12 +98,8 @@ export class DiveWriteService {
    * @throws {NotFoundException} when the dive is absent, deleted or another diver's (same 404).
    * @throws {InvalidReferenceError} | {DomainError} from the services.
    */
-  async replace(
-    diverId: string,
-    id: string,
-    request: DiveWriteRequest,
-  ): Promise<DiveWriteResponse> {
-    await this.dataSource.transaction(async (manager) => {
+  replace(diverId: string, id: string, request: DiveWriteRequest): Promise<DiveWriteResponse> {
+    return this.dataSource.transaction(async (manager) => {
       const lookup = await this.dives.findDiveForWriteIn(manager, diverId, id);
       if (lookup.status !== 'own' || !isLive(lookup.dive)) {
         throw diveNotFound();
@@ -103,8 +107,8 @@ export class DiveWriteService {
       const { participation } = lookup.dive;
       await this.writeContacts(manager, diverId, request);
       await this.writeDive(manager, diverId, toDiveWrite(request, participation));
+      return this.diveLog.numberOfIn(manager, diverId, id);
     });
-    return this.diveLog.numberOf(diverId, id);
   }
 
   private async writeContacts(
@@ -115,8 +119,9 @@ export class DiveWriteService {
     if (request.site.isNew) {
       await this.createSite(manager, diverId, request.site);
     }
-    // Sequential: the transaction has a single connection.
-    for (const buddy of request.buddies) {
+    // Sequential (the transaction has a single connection) and sorted by id: two writes sharing
+    // buddies lock them in the same order, so they cannot deadlock.
+    for (const buddy of sortedById(request.buddies)) {
       if (buddy.isNew) {
         await this.createBuddy(manager, diverId, buddy);
       } else {
@@ -128,6 +133,8 @@ export class DiveWriteService {
   /**
    * A site known by its name only (D-23). Already the diver's (a retried creation, or a site
    * enriched since): left as is.
+   *
+   * @throws {InvalidReferenceError} when the id is another diver's site.
    */
   private async createSite(
     manager: EntityManager,
@@ -157,7 +164,11 @@ export class DiveWriteService {
     );
   }
 
-  /** A buddy known by its name (and level). Already the diver's: left as is, like a site. */
+  /**
+   * A buddy known by its name (and level). Already the diver's: left as is, like a site.
+   *
+   * @throws {InvalidReferenceError} when the id is another diver's buddy, or the level unknown.
+   */
   private async createBuddy(
     manager: EntityManager,
     diverId: string,
@@ -187,7 +198,8 @@ export class DiveWriteService {
 
   /**
    * The level chosen in the form is the contact's current level (D-21). `null` keeps it. The
-   * contact sheet is rewritten whole, from its locked state, with the new level only.
+   * contact is only locked when its level changes (most saves keep it, and need no lock); the
+   * sheet is then read again under lock and rewritten whole with the new level only.
    *
    * @throws {InvalidReferenceError} for an unknown level, or a buddy that is not the diver's.
    */
@@ -199,14 +211,19 @@ export class DiveWriteService {
     if (buddy.levelCode === null) {
       return;
     }
-    const current = await manager.findOne(Buddy, {
-      where: { id: buddy.id, ownerId: diverId },
-      lock: { mode: 'pessimistic_write' },
-    });
-    if (current === null) {
+    const where = { id: buddy.id, ownerId: diverId };
+    const seen = await manager.findOneBy(Buddy, where);
+    if (seen === null) {
       throw new InvalidReferenceError();
     }
     const certificationLevelId = await levelIdOf(manager, buddy.levelCode);
+    if (seen.certificationLevelId === certificationLevelId) {
+      return;
+    }
+    const current = await manager.findOne(Buddy, { where, lock: { mode: 'pessimistic_write' } });
+    if (current === null) {
+      throw new InvalidReferenceError();
+    }
     if (current.certificationLevelId === certificationLevelId) {
       return;
     }
@@ -246,11 +263,21 @@ function isLive({ event, participation }: Dive): boolean {
   return event.deletedAt === null && participation.deletedAt === null;
 }
 
-/** An id of another diver cannot be taken over (D-02). */
+/**
+ * An id of another diver cannot be taken over (D-02). Answered like an unknown reference, so that
+ * nothing tells another diver's record from a missing one (D-24, ARCHITECTURE §9).
+ */
 function assertOwnedBy(ownerId: string, diverId: string): void {
   if (ownerId !== diverId) {
-    throw new IdentifierConflictError();
+    throw new InvalidReferenceError();
   }
+}
+
+/** By normalised id, in code-point order: the order of PostgreSQL on `uuid` (`canonicalUuids`). */
+function sortedById(buddies: readonly DiveWriteBuddy[]): DiveWriteBuddy[] {
+  const keyed = buddies.map((buddy) => ({ buddy, key: normalizeUuid(buddy.id) }));
+  keyed.sort((left, right) => (left.key < right.key ? -1 : left.key > right.key ? 1 : 0));
+  return keyed.map(({ buddy }) => buddy);
 }
 
 /** @throws {InvalidReferenceError} for an unknown code. */

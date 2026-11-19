@@ -1,17 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DataSource, In, IsNull, Not, type EntityManager } from 'typeorm';
 import { upsertOwnedRow } from '../../common/database/owned-upsert';
+import { isUniqueViolation } from '../../common/database/postgres-errors';
 import { pullPage } from '../../common/database/sync-pull';
 import {
+  BuddyLinkConflictError,
   DuplicateObservationError,
   IdentifierConflictError,
   InvalidReferenceError,
   TooManyObservationsError,
 } from '../../common/errors/domain-errors';
+import { canonicalUuids } from '../../common/ids/uuid';
 import { assertWithinPurgeHorizon, isStaleRestore } from '../../common/sync/sync-rules';
 import { SYNC_SETTINGS, type SyncSettings } from '../../common/sync/sync-settings';
 import type { PullPage, SyncCursor, SyncWriteResult } from '../../common/sync/sync.types';
-import { Buddy } from '../buddies/buddy.entity';
+import { Buddy, BUDDY_LINK_UNIQUE_INDEX } from '../buddies/buddy.entity';
 import { CertificationLevel } from '../certification-levels/certification-level.entity';
 import { DiveSite } from '../dive-sites/dive-site.entity';
 import { Diver } from '../divers/diver.entity';
@@ -30,6 +33,9 @@ import type {
 
 /** Cap of observations per participation (RG-27), also guaranteed by `ck_dive_observations__position`. */
 export const MAX_OBSERVATIONS = 50;
+
+/** Cap of members of a dive team, checked by the write DTO (`too-many`). */
+export const MAX_DIVE_BUDDIES = 50;
 
 /**
  * A dive is an aggregate written in one block: event + the diver's participation + its dive team +
@@ -52,12 +58,13 @@ export class DivesService {
    * - A stale restore of the event or of the participation (D-12 a) rejects the whole dive.
    * - A tombstoned participation of the same `(event, diver)` is restored under its existing id,
    *   never recreated: `current.participation.id` may then differ from the id sent.
-   * - A live dive restores its tombstoned site and buddies (D-12 b).
-   * - The dive team is replaced by `buddyIds`, the observations by `observations` (position = index,
-   *   labels trimmed).
+   * - A live dive restores its tombstoned site and buddies (D-12 b), unless a restored buddy's
+   *   linked account is already linked to another live contact (`BuddyLinkConflictError`).
+   * - The dive team is replaced by `buddyIds` (a set: case and order do not matter), the
+   *   observations by `observations` (position = index, labels trimmed).
    *
    * @throws {FullSyncRequiredError} | {IdentifierConflictError} | {InvalidReferenceError} |
-   *   {DuplicateObservationError} | {TooManyObservationsError}
+   *   {BuddyLinkConflictError} | {DuplicateObservationError} | {TooManyObservationsError}
    */
   upsertDive(
     diverId: string,
@@ -79,7 +86,8 @@ export class DivesService {
     assertWithinPurgeHorizon(lastPulledAt, new Date(), this.settings.purgeHorizonDays);
     const observations = normalizeObservations(write.observations);
     const { event, participation } = write;
-    const buddyIds = [...new Set(write.buddyIds)];
+    // Canonical order: rows are restored and team lines inserted in the same order by every write.
+    const buddyIds = canonicalUuids(write.buddyIds);
 
     const existingEvent = await manager.findOne(DiveEvent, {
       where: { id: event.id },
@@ -316,7 +324,12 @@ async function assertOwnedReferences(
   }
 }
 
-/** D-12 b: no live reference to a deleted parent. */
+/**
+ * D-12 b: no live reference to a deleted parent.
+ *
+ * @throws {BuddyLinkConflictError} when a restored buddy's linked account is already linked to
+ *   another live contact. PostgreSQL has aborted the transaction by then: it can only be rolled back.
+ */
 async function restoreParents(
   manager: EntityManager,
   diverId: string,
@@ -329,15 +342,24 @@ async function restoreParents(
     { deletedAt: null },
   );
   if (buddyIds.length > 0) {
-    await manager.update(
-      Buddy,
-      { ownerId: diverId, id: In([...buddyIds]), deletedAt: Not(IsNull()) },
-      { deletedAt: null },
-    );
+    try {
+      await manager.update(
+        Buddy,
+        { ownerId: diverId, id: In([...buddyIds]), deletedAt: Not(IsNull()) },
+        { deletedAt: null },
+      );
+    } catch (error) {
+      throw isUniqueViolation(error, BUDDY_LINK_UNIQUE_INDEX)
+        ? new BuddyLinkConflictError()
+        : error;
+    }
   }
 }
 
-/** Only the lines that change are written, so the trigger only touches a participation when needed. */
+/**
+ * Only the lines that change are written, so the trigger only touches a participation when needed.
+ * `buddyIds` comes in canonical order (`canonicalUuids`), so are the lines inserted.
+ */
 async function replaceDiveTeam(
   manager: EntityManager,
   diverId: string,

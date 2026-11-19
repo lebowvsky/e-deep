@@ -19,6 +19,14 @@ import { DiveWriteService } from './dive-write.service';
 import { DiveWriteRequestDto } from './dto/dive-write-request.dto';
 import { requestConsistencyErrors } from './dto/validators/request-consistency';
 
+/**
+ * A route id that is not a UUID answers the validation `400` of the write contract (D-26). The `GET`
+ * keeps the default body of `ParseUUIDPipe`, which the front relies on.
+ */
+function routeIdPipe(): ParseUUIDPipe {
+  return new ParseUUIDPipe({ exceptionFactory: () => validationFailed({ id: ['uuid'] }) });
+}
+
 /** Dive log of the current diver. The owner always comes from the guard, never from the request. */
 @Controller('dives')
 @UseGuards(CurrentDiverGuard)
@@ -63,7 +71,7 @@ export class DivesController {
   @Put(':id')
   replace(
     @CurrentDiverId() diverId: string,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', routeIdPipe()) id: string,
     @Body() request: DiveWriteRequestDto,
   ): Promise<DiveWriteResponse> {
     assertConsistent(request, id);

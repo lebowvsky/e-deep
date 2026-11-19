@@ -62,6 +62,7 @@ describe('DiveWriteRequestDto', () => {
   it('accepts every bound of the CHECKs', async () => {
     const request = diveWriteRequest({
       event: {
+        startedAt: '2026-04-09T10:05:00+14:00',
         utcOffsetMinutes: 840,
         airTemperatureC: -40,
         diveCenter: `  ${'c'.repeat(120)}  `,
@@ -153,8 +154,6 @@ describe('DiveWriteRequestDto', () => {
     ['event.startedAt', '2026-02-30T10:05:00+02:00', 'date-time'],
     ['event.startedAt', '2026-04-09T24:00:00Z', 'date-time'],
     ['event.startedAt', '2026-04-09T10:05:00.1234+02:00', 'date-time'],
-    ['event.utcOffsetMinutes', -721, 'min'],
-    ['event.utcOffsetMinutes', 841, 'max'],
     ['event.utcOffsetMinutes', 60.5, 'integer'],
     ['event.entryType', 'PIER', 'in'],
     ['event.timeOfDay', 'DUSK', 'in'],
@@ -252,6 +251,47 @@ describe('DiveWriteRequestDto', () => {
       expect(await fieldErrorsOf(bodyOf(withParticipation({ endPressureBar: 50 })))).toEqual({});
     });
 
+    it.each([
+      ['2026-04-09T10:05:00Z', 0],
+      ['2026-04-09T10:05:00+00:00', 0],
+      ['2026-04-09T10:05:00-03:30', -210],
+      ['2026-04-09T10:05:00.250+05:45', 345],
+    ])('accepts %s with an offset of %i minutes', async (startedAt, utcOffsetMinutes) => {
+      const request = diveWriteRequest({ event: { startedAt, utcOffsetMinutes } });
+      expect(await fieldErrorsOf(bodyOf(request))).toEqual({});
+    });
+
+    it.each([
+      ['2026-04-09T10:05:00+02:00', 60],
+      ['2026-04-09T10:05:00Z', 120],
+      ['2026-04-09T10:05:00-02:00', 120],
+    ])(
+      'refuses %s with an offset of %i minutes, on the offset',
+      async (startedAt, utcOffsetMinutes) => {
+        const request = diveWriteRequest({ event: { startedAt, utcOffsetMinutes } });
+        expect(await fieldErrorsOf(bodyOf(request))).toEqual({
+          'event.utcOffsetMinutes': ['matches-offset'],
+        });
+      },
+    );
+
+    it('refuses an offset beyond the CHECK bounds, even matching startedAt', async () => {
+      const east = diveWriteRequest({
+        event: { startedAt: '2026-04-09T10:05:00+14:01', utcOffsetMinutes: 841 },
+      });
+      const west = diveWriteRequest({
+        event: { startedAt: '2026-04-09T10:05:00-12:01', utcOffsetMinutes: -721 },
+      });
+      expect(await fieldErrorsOf(bodyOf(east))).toEqual({ 'event.utcOffsetMinutes': ['max'] });
+      expect(await fieldErrorsOf(bodyOf(west))).toEqual({ 'event.utcOffsetMinutes': ['min'] });
+    });
+
+    it('does not judge the offset against an invalid startedAt', async () => {
+      expect(await fieldErrorsOf(withField('event.startedAt', '2026-04-09T10:05:00'))).toEqual({
+        'event.startedAt': ['date-time'],
+      });
+    });
+
     it('does not judge a rule against a mistyped sibling (its own error is enough)', async () => {
       const body = withField('participation.durationMin', 'long');
       (body['participation'] as Record<string, unknown>)['safetyStopDurationMin'] = 3;
@@ -269,6 +309,21 @@ describe('DiveWriteRequestDto', () => {
       }));
       expect(await fieldErrorsOf(bodyOf(diveWriteRequest({ observations })))).toEqual({
         observations: ['too-many'],
+      });
+    });
+
+    it('accepts 50 buddies and refuses more', async () => {
+      const buddiesOf = (count: number) =>
+        Array.from({ length: count }, (_, index) => ({
+          id: `01900000-0000-7000-8000-${index.toString(16).padStart(12, '0')}`,
+          firstName: 'Lucas',
+          lastName: 'Bernard',
+          levelCode: null,
+          isNew: false,
+        }));
+      expect(await fieldErrorsOf(bodyOf(diveWriteRequest({ buddies: buddiesOf(50) })))).toEqual({});
+      expect(await fieldErrorsOf(bodyOf(diveWriteRequest({ buddies: buddiesOf(51) })))).toEqual({
+        buddies: ['too-many'],
       });
     });
 

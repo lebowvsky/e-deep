@@ -100,6 +100,15 @@ export function isIsoDateTime(value: unknown): boolean {
   return wallClock.slice(0, WALL_CLOCK_LENGTH) === value.slice(0, WALL_CLOCK_LENGTH);
 }
 
+/** Offset written in a valid `isIsoDateTime` value, in minutes; `null` for any other value. */
+export function isoOffsetMinutes(value: unknown): number | null {
+  if (!isIsoDateTime(value) || !isString(value)) {
+    return null;
+  }
+  const offset = ISO_DATE_TIME.exec(value)?.groups?.['offset'];
+  return offset === undefined ? null : offsetMinutes(offset);
+}
+
 /** `Z` → 0, `+05:30` → 330, `-03:00` → -180. */
 function offsetMinutes(offset: string): number {
   if (offset === 'Z') {

@@ -1,7 +1,8 @@
 import type { DiveWriteRequest } from '@e-deep/shared';
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsObject, ValidateNested } from 'class-validator';
-import { MAX_OBSERVATIONS } from '../dives.service';
+import { normalizeUuid } from '../../../common/ids/uuid';
+import { MAX_DIVE_BUDDIES, MAX_OBSERVATIONS } from '../dives.service';
 import { DiveWriteBuddyDto } from './dive-write-buddy.dto';
 import { DiveWriteEventDto } from './dive-write-event.dto';
 import { DiveWriteObservationDto } from './dive-write-observation.dto';
@@ -42,9 +43,11 @@ export class DiveWriteRequestDto implements DiveWriteRequest {
   @Type(() => DiveWriteSiteDto)
   site: DiveWriteSiteDto;
 
+  /** 0 to 50 members, each once whatever the case of its id. */
   @Required()
   @IsArray()
-  @UniqueBy('id', (id) => id.toLowerCase())
+  @ArrayMaxSize(MAX_DIVE_BUDDIES)
+  @UniqueBy('id', normalizeUuid)
   @ValidateNested()
   @Type(() => DiveWriteBuddyDto)
   buddies: DiveWriteBuddyDto[];

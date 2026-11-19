@@ -13,6 +13,9 @@ import { SyncedEntity } from '../../common/database/timestamped.entity';
 import { CertificationLevel } from '../certification-levels/certification-level.entity';
 import { Diver } from '../divers/diver.entity';
 
+/** A linked account is linked to at most one live contact of the same owner. */
+export const BUDDY_LINK_UNIQUE_INDEX = 'uq_buddies__owner_id_linked_diver_id';
+
 /**
  * Private contact of a diver. The optional link to an E-Deep account grants no access to the
  * owner's dives.
@@ -20,7 +23,7 @@ import { Diver } from '../divers/diver.entity';
 @Entity({ name: 'buddies' })
 // Target of the composite FK from `dive_buddies`; also covers the `owner_id` FK.
 @Unique('uq_buddies__owner_id_id', ['ownerId', 'id'])
-@Index('uq_buddies__owner_id_linked_diver_id', ['ownerId', 'linkedDiverId'], {
+@Index(BUDDY_LINK_UNIQUE_INDEX, ['ownerId', 'linkedDiverId'], {
   unique: true,
   where: 'linked_diver_id IS NOT NULL AND deleted_at IS NULL',
 })

@@ -14,6 +14,7 @@ import {
   TIMES_OF_DAY,
   WEATHERS,
 } from '../dive-detail-lists';
+import { MatchesOffsetOf } from './validators/cross-field-rules';
 import {
   IsInteger,
   IsIsoDateTime,
@@ -41,10 +42,12 @@ export class DiveWriteEventDto implements DiveWriteEvent {
   @IsIsoDateTime()
   startedAt: string;
 
+  /** The offset written in `startedAt` (D-10). */
   @Required()
   @IsInteger()
   @Min(UTC_OFFSET_MINUTES.min)
   @Max(UTC_OFFSET_MINUTES.max)
+  @MatchesOffsetOf<DiveWriteEventDto>('startedAt')
   utcOffsetMinutes: number;
 
   @Nullable()

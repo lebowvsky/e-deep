@@ -28,14 +28,18 @@ const UUID = /^[0-9a-f-]{36}$/;
 interface StoredRows {
   sites?: Partial<DiveSite>[];
   buddies?: Partial<Buddy>[];
+  /** Buddies as read under lock, when they changed since the unlocked read. */
+  lockedBuddies?: Partial<Buddy>[] | undefined;
 }
 
 function setup(lookup: DiveLookup, rows: StoredRows = {}) {
-  const findBy = (entity: unknown, where: Record<string, unknown>): unknown => {
+  const findBy = (entity: unknown, where: Record<string, unknown>, locked = false): unknown => {
     const matches = (row: Record<string, unknown>) =>
       Object.entries(where).every(([key, value]) => row[key] === value);
     if (entity === DiveSite) return rows.sites?.find(matches) ?? null;
-    if (entity === Buddy) return rows.buddies?.find(matches) ?? null;
+    if (entity === Buddy) {
+      return ((locked ? rows.lockedBuddies : undefined) ?? rows.buddies)?.find(matches) ?? null;
+    }
     if (entity === CertificationLevel) {
       return where['agency'] === 'FFESSM' && where['code'] === 'N3' ? { id: N3_ID } : null;
     }
@@ -46,8 +50,9 @@ function setup(lookup: DiveLookup, rows: StoredRows = {}) {
     findOneBy: jest.fn((entity: unknown, where: Record<string, unknown>) =>
       Promise.resolve(findBy(entity, where)),
     ),
-    findOne: jest.fn((entity: unknown, { where }: { where: Record<string, unknown> }) =>
-      Promise.resolve(findBy(entity, where)),
+    findOne: jest.fn(
+      (entity: unknown, { where, lock }: { where: Record<string, unknown>; lock?: unknown }) =>
+        Promise.resolve(findBy(entity, where, lock !== undefined)),
     ),
   };
   const dataSource = {
@@ -60,7 +65,7 @@ function setup(lookup: DiveLookup, rows: StoredRows = {}) {
   };
   const sites = { upsertIn: jest.fn().mockResolvedValue({ status: 'applied' }) };
   const buddies = { upsertIn: jest.fn().mockResolvedValue({ status: 'applied' }) };
-  const diveLog = { numberOf: jest.fn().mockResolvedValue(SAVED) };
+  const diveLog = { numberOfIn: jest.fn().mockResolvedValue(SAVED) };
   const service = new DiveWriteService(
     dataSource as unknown as DataSource,
     dives as unknown as DivesService,
@@ -68,7 +73,7 @@ function setup(lookup: DiveLookup, rows: StoredRows = {}) {
     buddies as unknown as BuddiesService,
     diveLog as unknown as DiveLogService,
   );
-  return { service, dives, sites, buddies, diveLog };
+  return { service, manager, dives, sites, buddies, diveLog };
 }
 
 function writtenDive(dives: { upsertDiveIn: jest.Mock }): DiveWrite {
@@ -105,7 +110,7 @@ function buddy(values: Partial<DiveWriteBuddy> = {}): DiveWriteBuddy {
 describe('DiveWriteService', () => {
   describe('create', () => {
     it('creates the new site and buddies, then the dive, and answers its number', async () => {
-      const { service, dives, sites, buddies, diveLog } = setup({ status: 'absent' });
+      const { service, manager, dives, sites, buddies, diveLog } = setup({ status: 'absent' });
       const request = diveWriteRequest({
         site: { name: 'Tombant des Américains', isNew: true },
         buddies: [buddy({ isNew: true, levelCode: 'N3' })],
@@ -149,7 +154,25 @@ describe('DiveWriteService', () => {
       expect(write.participation.id).toMatch(UUID);
       expect(write.participation.certificationLevelId).toBeNull();
       expect(write.buddyIds).toEqual([BUDDY_ID]);
-      expect(diveLog.numberOf).toHaveBeenCalledWith(DIVER_ID, request.event.id);
+      // Numbered within the transaction: a concurrent deletion cannot turn it into a 404.
+      expect(diveLog.numberOfIn).toHaveBeenCalledWith(manager, DIVER_ID, request.event.id);
+    });
+
+    it('writes the buddies sorted by id, whatever their order and case', async () => {
+      const first = '01900000-0000-7000-8000-0000000000a1';
+      const second = '01900000-0000-7000-8000-0000000000B1';
+      const third = '01900000-0000-7000-8000-0000000000c1';
+      const { service, buddies } = setup({ status: 'absent' });
+      const request = diveWriteRequest({
+        buddies: [third, second, first].map((id) => buddy({ id, isNew: true })),
+      });
+
+      await service.create(DIVER_ID, request);
+
+      const written = (buddies.upsertIn.mock.calls as [unknown, string, { id: string }][]).map(
+        ([, , write]) => write.id,
+      );
+      expect(written).toEqual([first, second, third]);
     });
 
     it('leaves a site or a buddy already created by the diver as is', async () => {
@@ -173,7 +196,7 @@ describe('DiveWriteService', () => {
     });
 
     it.each(['site', 'buddy'] as const)(
-      "refuses to create a %s with another diver's id",
+      "refuses to create a %s with another diver's id, like an unknown reference (D-24)",
       async (kind) => {
         const request = diveWriteRequest({
           site: { isNew: kind === 'site' },
@@ -187,7 +210,7 @@ describe('DiveWriteService', () => {
             : { buddies: [{ id: BUDDY_ID, ...foreign }] },
         );
 
-        await expect(service.create(DIVER_ID, request)).rejects.toThrow(IdentifierConflictError);
+        await expect(service.create(DIVER_ID, request)).rejects.toThrow(InvalidReferenceError);
         expect(dives.upsertDiveIn).not.toHaveBeenCalled();
       },
     );
@@ -205,12 +228,16 @@ describe('DiveWriteService', () => {
         site: { isNew: true },
         buddies: [buddy({ isNew: true })],
       });
-      const { service, dives, sites, buddies } = setup({ status: 'own', dive: stored(request) });
+      const { service, manager, dives, sites, buddies, diveLog } = setup({
+        status: 'own',
+        dive: stored(request),
+      });
 
       expect(await service.create(DIVER_ID, request)).toEqual({
         outcome: 'replayed',
         saved: SAVED,
       });
+      expect(diveLog.numberOfIn).toHaveBeenCalledWith(manager, DIVER_ID, request.event.id);
       expect(sites.upsertIn).not.toHaveBeenCalled();
       expect(buddies.upsertIn).not.toHaveBeenCalled();
       expect(dives.upsertDiveIn).not.toHaveBeenCalled();
@@ -235,14 +262,14 @@ describe('DiveWriteService', () => {
 
       await expect(service.create(DIVER_ID, request)).rejects.toThrow(IdentifierConflictError);
       expect(dives.upsertDiveIn).not.toHaveBeenCalled();
-      expect(diveLog.numberOf).not.toHaveBeenCalled();
+      expect(diveLog.numberOfIn).not.toHaveBeenCalled();
     });
   });
 
   describe('replace', () => {
     it('rewrites the dive under its participation and level snapshot', async () => {
       const request = diveWriteRequest({ baseUpdatedAt: '2026-07-16T07:30:00.000Z' });
-      const { service, dives, diveLog } = setup({ status: 'own', dive: stored(request) });
+      const { service, manager, dives, diveLog } = setup({ status: 'own', dive: stored(request) });
 
       expect(await service.replace(DIVER_ID, request.event.id, request)).toEqual(SAVED);
 
@@ -252,7 +279,7 @@ describe('DiveWriteService', () => {
         baseUpdatedAt: new Date('2026-07-16T07:30:00.000Z'),
         deletedAt: null,
       });
-      expect(diveLog.numberOf).toHaveBeenCalledWith(DIVER_ID, request.event.id);
+      expect(diveLog.numberOfIn).toHaveBeenCalledWith(manager, DIVER_ID, request.event.id);
     });
 
     it.each<[string, (request: DiveWriteRequest) => DiveLookup]>([
@@ -292,44 +319,70 @@ describe('DiveWriteService', () => {
         deletedAt: null,
       };
 
-      function replaceWith(levelCode: string | null, buddies: Partial<Buddy>[] = [contact]) {
+      function replaceWith(
+        levelCode: string | null,
+        buddies: Partial<Buddy>[] = [contact],
+        lockedBuddies?: Partial<Buddy>[],
+      ) {
         const request = diveWriteRequest({ buddies: [buddy({ levelCode })] });
-        const doubles = setup({ status: 'own', dive: stored(request) }, { buddies });
+        const doubles = setup({ status: 'own', dive: stored(request) }, { buddies, lockedBuddies });
         return {
           ...doubles,
           run: () => doubles.service.replace(DIVER_ID, request.event.id, request),
         };
       }
 
-      it('rewrites the contact sheet with the new level only', async () => {
-        const { run, buddies } = replaceWith('N3');
+      function lockedReads(manager: { findOne: jest.Mock }): unknown[] {
+        return (manager.findOne.mock.calls as [unknown, { lock?: unknown }][])
+          .filter(([entity, { lock }]) => entity === Buddy && lock !== undefined)
+          .map(([entity]) => entity);
+      }
+
+      it('rewrites the contact sheet with the new level only, read again under lock', async () => {
+        const renamed = { ...contact, firstName: 'Luc', updatedAt: new Date('2026-07-02') };
+        const { run, buddies, manager } = replaceWith('N3', [contact], [renamed]);
 
         await run();
 
+        expect(lockedReads(manager)).toHaveLength(1);
         expect(buddies.upsertIn).toHaveBeenCalledWith(
           expect.anything(),
           DIVER_ID,
           {
             id: BUDDY_ID,
-            firstName: 'Lucas',
+            firstName: 'Luc',
             lastName: 'Bernard',
             linkedDiverId: null,
             certificationLevelId: N3_ID,
-            baseUpdatedAt: contact.updatedAt,
+            baseUpdatedAt: renamed.updatedAt,
             deletedAt: null,
           },
           expect.any(Date),
         );
       });
 
-      it('writes nothing when the level is unchanged or not given', async () => {
+      it('neither locks nor writes when the level is unchanged or not given', async () => {
         const unchanged = replaceWith('N3', [{ ...contact, certificationLevelId: N3_ID }]);
         await unchanged.run();
         expect(unchanged.buddies.upsertIn).not.toHaveBeenCalled();
+        expect(lockedReads(unchanged.manager)).toEqual([]);
 
         const notGiven = replaceWith(null);
         await notGiven.run();
         expect(notGiven.buddies.upsertIn).not.toHaveBeenCalled();
+        expect(lockedReads(notGiven.manager)).toEqual([]);
+      });
+
+      it('writes nothing when the level was set meanwhile, as seen under lock', async () => {
+        const { run, buddies } = replaceWith(
+          'N3',
+          [contact],
+          [{ ...contact, certificationLevelId: N3_ID }],
+        );
+
+        await run();
+
+        expect(buddies.upsertIn).not.toHaveBeenCalled();
       });
 
       it("refuses another diver's buddy or an unknown level", async () => {

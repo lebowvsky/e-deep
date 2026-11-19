@@ -167,13 +167,18 @@ export class DiveLogService {
 
   /**
    * Number (D26) and latest change of a live dive of the diver, as answered to a write. Same
-   * numbering and `updatedAt` as the detail.
+   * numbering and `updatedAt` as the detail. Read within the writing transaction: once committed,
+   * a concurrent deletion could turn a successful write into a 404.
    *
    * @throws {NotFoundException} when the dive is not a live dive of the diver.
    */
-  async numberOf(diverId: string, eventId: string): Promise<DiveWriteResponse> {
+  async numberOfIn(
+    manager: EntityManager,
+    diverId: string,
+    eventId: string,
+  ): Promise<DiveWriteResponse> {
     const [row] = await queryRows<DiveNumberRow>(
-      this.dataSource.manager,
+      manager,
       `WITH ${NUMBERED_LIVE_DIVES}
        SELECT n.id, n.number, GREATEST(de.updated_at, dp.updated_at) AS updated_at
          FROM numbered n

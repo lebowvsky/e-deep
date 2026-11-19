@@ -1,4 +1,6 @@
 import type { DiveWriteRequest } from '@e-deep/shared';
+import { canonicalUuids, isSameUuid } from '../../common/ids/uuid';
+import type { SyncedWrite } from '../../common/sync/sync.types';
 import type { Dive, DiveEventWrite, DiveParticipationWrite, DiveWrite } from './dive.types';
 
 /** Identity of the participation to write, decided by the server (D-24). */
@@ -37,44 +39,65 @@ export function toDiveWrite(
   };
 }
 
-/** Event fields compared as is by `isSameDiveWrite` (the id is the lookup key). */
-const EVENT_FIELDS = [
-  'utcOffsetMinutes',
-  'entryType',
-  'timeOfDay',
-  'weather',
-  'airTemperatureC',
-  'seaState',
-  'currentStrength',
-  'diveCenter',
-] as const satisfies readonly (keyof DiveEventWrite)[];
+/**
+ * Event fields compared as is by `isSameDiveWrite`: all but the id (the lookup key), the instant
+ * and the site (compared apart) and the protocol fields (liveness is the caller's concern).
+ */
+type ComparedEventField = Exclude<
+  keyof DiveEventWrite,
+  'id' | 'siteId' | 'startedAt' | keyof SyncedWrite
+>;
 
 /**
- * Participation fields compared by `isSameDiveWrite`. Neither the id nor the level snapshot: both
- * are decided by the server.
+ * Participation fields compared as is: all but the id and the level snapshot, both decided by the
+ * server, and the protocol fields.
  */
-const PARTICIPATION_FIELDS = [
-  'maxDepthM',
-  'durationMin',
-  'waterTemperatureC',
-  'visibilityM',
-  'gasMix',
-  'hasDecompression',
-  'stopsOk',
-  'notes',
-  'surfaceWaterTemperatureC',
-  'safetyStopDurationMin',
-  'safetyStopDepthM',
-  'isRepetitive',
-  'o2Percent',
-  'tankVolumeL',
-  'tankMaterial',
-  'startPressureBar',
-  'endPressureBar',
-  'suitType',
-  'suitThicknessMm',
-  'weightKg',
-] as const satisfies readonly (keyof DiveParticipationWrite)[];
+type ComparedParticipationField = Exclude<
+  keyof DiveParticipationWrite,
+  'id' | 'certificationLevelId' | keyof SyncedWrite
+>;
+
+/**
+ * The keys of a record that lists every field once: a field added to the write type and forgotten
+ * in the record fails the typecheck, so a replay changing it cannot pass for the same creation.
+ */
+function everyField<K extends string>(fields: Readonly<Record<K, true>>): K[] {
+  return Object.keys(fields) as K[];
+}
+
+const EVENT_FIELDS = everyField<ComparedEventField>({
+  utcOffsetMinutes: true,
+  entryType: true,
+  timeOfDay: true,
+  weather: true,
+  airTemperatureC: true,
+  seaState: true,
+  currentStrength: true,
+  diveCenter: true,
+});
+
+const PARTICIPATION_FIELDS = everyField<ComparedParticipationField>({
+  maxDepthM: true,
+  durationMin: true,
+  waterTemperatureC: true,
+  visibilityM: true,
+  gasMix: true,
+  hasDecompression: true,
+  stopsOk: true,
+  notes: true,
+  surfaceWaterTemperatureC: true,
+  safetyStopDurationMin: true,
+  safetyStopDepthM: true,
+  isRepetitive: true,
+  o2Percent: true,
+  tankVolumeL: true,
+  tankMaterial: true,
+  startPressureBar: true,
+  endPressureBar: true,
+  suitType: true,
+  suitThicknessMm: true,
+  weightKg: true,
+});
 
 /**
  * Whether `write` would leave the stored dive unchanged: same event, participation, dive team (as a
@@ -92,21 +115,12 @@ export function isSameDiveWrite(write: DiveWrite, current: Dive): boolean {
     PARTICIPATION_FIELDS.every(
       (field) => write.participation[field] === current.participation[field],
     ) &&
-    isSameList(teamOf(write.buddyIds), teamOf(current.buddyIds)) &&
+    isSameList(canonicalUuids(write.buddyIds), canonicalUuids(current.buddyIds)) &&
     isSameList(
       write.observations.map(({ label, count }) => [label.trim(), count]),
       current.observations.map(({ label, count }) => [label, count]),
     )
   );
-}
-
-function isSameUuid(left: string, right: string): boolean {
-  return left.toLowerCase() === right.toLowerCase();
-}
-
-/** The dive team is a set: deduplicated, sorted, lowercase. */
-function teamOf(buddyIds: readonly string[]): string[] {
-  return [...new Set(buddyIds.map((id) => id.toLowerCase()))].sort();
 }
 
 function isSameList(left: readonly unknown[], right: readonly unknown[]): boolean {

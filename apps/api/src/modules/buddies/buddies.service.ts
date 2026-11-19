@@ -19,7 +19,7 @@ import type {
 import { CertificationLevel } from '../certification-levels/certification-level.entity';
 import { Diver } from '../divers/diver.entity';
 import { DiveBuddy } from '../dives/dive-buddy.entity';
-import { Buddy } from './buddy.entity';
+import { Buddy, BUDDY_LINK_UNIQUE_INDEX } from './buddy.entity';
 
 /** Every field is required, `null` included (D-22). */
 export interface BuddyWrite extends SyncedWrite {
@@ -30,8 +30,6 @@ export interface BuddyWrite extends SyncedWrite {
   /** Current level declared by the owner (D-21); any existing level, even deactivated. */
   readonly certificationLevelId: string | null;
 }
-
-const LINK_UNIQUE_INDEX = 'uq_buddies__owner_id_linked_diver_id';
 
 /**
  * Buddies are private contacts. Linking one to an E-Deep account shares nothing (H-05).
@@ -90,7 +88,9 @@ export class BuddiesService {
         deletedAt: write.deletedAt,
       });
     } catch (error) {
-      throw isUniqueViolation(error, LINK_UNIQUE_INDEX) ? new BuddyLinkConflictError() : error;
+      throw isUniqueViolation(error, BUDDY_LINK_UNIQUE_INDEX)
+        ? new BuddyLinkConflictError()
+        : error;
     }
     if (write.deletedAt !== null) {
       await removeFromDiveTeams(manager, ownerId, write.id);

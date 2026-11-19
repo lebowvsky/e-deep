@@ -3,6 +3,7 @@ import type { DiveWriteBuddy, DiveWriteRequest } from '@e-deep/shared';
 import { NotFoundException } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
 import {
+  BuddyLinkConflictError,
   IdentifierConflictError,
   InvalidReferenceError,
 } from '../../src/common/errors/domain-errors';
@@ -178,7 +179,7 @@ describe('DiveWriteService', () => {
       expect(await counts()).toMatchObject({ buddies: 0, events: 0 });
     });
 
-    it("refuses a new site carrying the id of another diver's site (409)", async () => {
+    it("refuses a new site carrying the id of another diver's site (422, as unknown)", async () => {
       const { diver } = await diverWithSite();
       const other = await diverWithSite();
       const request = diveWriteRequest({
@@ -186,13 +187,28 @@ describe('DiveWriteService', () => {
         site: { name: 'Mine', isNew: true },
       });
 
-      await expect(service.create(diver.id, request)).rejects.toThrow(IdentifierConflictError);
+      await expect(service.create(diver.id, request)).rejects.toThrow(InvalidReferenceError);
       expect(
         await dataSource.manager.findOneByOrFail(DiveSite, { id: other.site.id }),
       ).toMatchObject({
         ownerId: other.diver.id,
         name: 'La Vesse',
       });
+    });
+
+    it("refuses a new buddy carrying the id of another diver's buddy (422, as unknown)", async () => {
+      const { diver } = await diverWithSite();
+      const other = await fixtures.diver();
+      const foreignBuddy = await fixtures.buddy(other.id, { firstName: 'Sam' });
+      const request = requestWithNewContacts({
+        buddies: [newBuddy({ id: foreignBuddy.id, firstName: 'Mine' })],
+      });
+
+      await expect(service.create(diver.id, request)).rejects.toThrow(InvalidReferenceError);
+      expect(await counts()).toMatchObject({ sites: 1, buddies: 1, events: 0 });
+      expect(
+        await dataSource.manager.findOneByOrFail(Buddy, { id: foreignBuddy.id }),
+      ).toMatchObject({ ownerId: other.id, firstName: 'Sam' });
     });
 
     it('answers a replayed creation without writing anything', async () => {
@@ -422,6 +438,85 @@ describe('DiveWriteService', () => {
       expect(await dataSource.manager.findOneByOrFail(Buddy, { id: buddy.id })).toMatchObject({
         certificationLevelId: await fixtures.levelId('N3'),
       });
+    });
+  });
+
+  describe('concurrency and restored contacts', () => {
+    function member(id: string, levelCode: string | null): DiveWriteBuddy {
+      return { id, firstName: 'Sam', lastName: 'Durand', levelCode, isNew: false };
+    }
+
+    it('runs two replacements sharing two buddies in reverse orders, both changing their levels', async () => {
+      const { diver, site } = await diverWithSite();
+      const first = await fixtures.buddy(diver.id);
+      const second = await fixtures.buddy(diver.id);
+      const dives = [
+        diveWriteRequest({ event: { siteId: site.id } }),
+        diveWriteRequest({ event: { siteId: site.id } }),
+      ] as const;
+      for (const request of dives) {
+        await service.create(diver.id, request);
+      }
+      const levels = ['N1', 'N2', 'N3', 'N4'];
+
+      // Each round, both requests change both levels (to two values unlike the previous round's),
+      // so both lock both buddies: in opposite orders, without sorting, they deadlock.
+      for (let round = 0; round < 6; round += 1) {
+        const one = levels[(2 * round) % levels.length] ?? null;
+        const other = levels[(2 * round + 1) % levels.length] ?? null;
+        const results = await Promise.allSettled([
+          service.replace(diver.id, dives[0].event.id, {
+            ...dives[0],
+            buddies: [member(first.id, one), member(second.id, one)],
+          }),
+          service.replace(diver.id, dives[1].event.id, {
+            ...dives[1],
+            buddies: [member(second.id, other), member(first.id, other)],
+          }),
+        ]);
+
+        const failures = results.flatMap((result) =>
+          result.status === 'rejected' ? [String(result.reason)] : [],
+        );
+        expect(failures).toEqual([]);
+      }
+      // Lock waits on a loaded machine: a deadlock fails at once (`deadlock detected`) anyway.
+    }, 30_000);
+
+    it('refuses to restore a buddy whose account is linked to another live contact (409), writing nothing', async () => {
+      const { diver, site } = await diverWithSite();
+      const account = await fixtures.diver();
+      const request = diveWriteRequest({ event: { siteId: site.id } });
+      await service.create(diver.id, request);
+      const deleted = await fixtures.buddy(diver.id, {
+        linkedDiverId: account.id,
+        deletedAt: new Date(),
+      });
+      await fixtures.buddy(diver.id, { linkedDiverId: account.id });
+      const before = await counts();
+      const participationUpdatedAt = await updatedAtOf(
+        dataSource,
+        'dive_participations',
+        (await dataSource.manager.findOneByOrFail(DiveParticipation, {})).id,
+      );
+
+      await expect(
+        service.replace(diver.id, request.event.id, {
+          ...request,
+          participation: { ...request.participation, durationMin: 40 },
+          buddies: [member(deleted.id, null)],
+        }),
+      ).rejects.toThrow(BuddyLinkConflictError);
+
+      expect(await counts()).toEqual(before);
+      expect(await dataSource.manager.findOneByOrFail(Buddy, { id: deleted.id })).toMatchObject({
+        deletedAt: expect.any(Date) as unknown,
+      });
+      const participation = await dataSource.manager.findOneByOrFail(DiveParticipation, {});
+      expect(participation.durationMin).toBe(52);
+      expect(await updatedAtOf(dataSource, 'dive_participations', participation.id)).toBe(
+        participationUpdatedAt,
+      );
     });
   });
 

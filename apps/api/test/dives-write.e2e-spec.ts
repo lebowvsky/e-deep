@@ -128,6 +128,22 @@ describe('/api/dives writes (e2e)', () => {
       expect(diveWriteService.create).not.toHaveBeenCalled();
     });
 
+    it('answers 400 when the offset of startedAt is not utcOffsetMinutes', async () => {
+      const mismatch = { ...body, event: { ...body.event, startedAt: '2026-04-09T08:05:00Z' } };
+
+      const response = await request(app.getHttpServer())
+        .post('/api/dives')
+        .send(mismatch)
+        .expect(400);
+
+      expect(response.body).toStrictEqual({
+        statusCode: 400,
+        code: 'validation-failed',
+        fieldErrors: { 'event.utcOffsetMinutes': ['matches-offset'] },
+      } satisfies ApiValidationErrorResponse);
+      expect(diveWriteService.create).not.toHaveBeenCalled();
+    });
+
     it('answers 409 identifier-conflict for an id already taken', async () => {
       diveWriteService.create.mockRejectedValue(new IdentifierConflictError());
 
@@ -176,8 +192,17 @@ describe('/api/dives writes (e2e)', () => {
       expect(diveWriteService.replace).not.toHaveBeenCalled();
     });
 
-    it('answers 400 for an id that is not a UUID', async () => {
-      await request(app.getHttpServer()).put('/api/dives/abc').send(body).expect(400);
+    it('answers 400 validation-failed for an id that is not a UUID', async () => {
+      const response = await request(app.getHttpServer())
+        .put('/api/dives/abc')
+        .send(body)
+        .expect(400);
+
+      expect(response.body).toStrictEqual({
+        statusCode: 400,
+        code: 'validation-failed',
+        fieldErrors: { id: ['uuid'] },
+      } satisfies ApiValidationErrorResponse);
       expect(diveWriteService.replace).not.toHaveBeenCalled();
     });
 

@@ -1,4 +1,5 @@
 import type { ApiFieldErrors, DiveWriteRequest } from '@e-deep/shared';
+import { isSameUuid } from '../../../../common/ids/uuid';
 
 /**
  * Identifiers that must agree across the request (and with the route on a `PUT`), compared as
@@ -17,8 +18,4 @@ export function requestConsistencyErrors(
     fieldErrors['event.siteId'] = ['matches-site'];
   }
   return fieldErrors;
-}
-
-function isSameUuid(left: string, right: string): boolean {
-  return left.toLowerCase() === right.toLowerCase();
 }

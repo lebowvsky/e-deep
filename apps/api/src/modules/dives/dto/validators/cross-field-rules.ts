@@ -1,4 +1,5 @@
 import { ValidateBy, type ValidationArguments } from 'class-validator';
+import { isoOffsetMinutes } from './field-rules';
 
 // Rules that compare a field with its siblings (RG-23, RG-24, RG-25) or the items of a list. They
 // only judge a well-typed value: a missing or mistyped sibling reports its own error. Each
@@ -42,6 +43,17 @@ export function AtMostField<T extends object>(
   return CrossFieldRule<T>(code, (value, object) => {
     const bound = object[sibling];
     return typeof value !== 'number' || typeof bound !== 'number' || value <= bound;
+  });
+}
+
+/**
+ * The offset (in minutes) written in an ISO date-time sibling (`±HH:MM`, `Z` = 0)
+ * (`matches-offset`). Judges an integer against a valid date-time only.
+ */
+export function MatchesOffsetOf<T extends object>(sibling: keyof T & string): PropertyDecorator {
+  return CrossFieldRule<T>('matches-offset', (value, object) => {
+    const written = isoOffsetMinutes(object[sibling]);
+    return !Number.isInteger(value) || written === null || value === written;
   });
 }
 
