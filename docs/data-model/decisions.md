@@ -422,7 +422,8 @@ leurs tests en font partie.
   1. `dive_participations` tombstonées (cascade `dive_buddies`) ;
   2. `dive_events` tombstonés **sans participation restante** ;
   3. `buddies` tombstonés (cascade `dive_buddies`, déjà vidées par D-05) ;
-  4. `dive_sites` tombstonés **sans aucun événement** (`NOT EXISTS`, tombstonés compris) ;
+  4. `dive_sites` tombstonés **sans aucun événement** (`NOT EXISTS`, tombstonés compris) et sans
+     site non purgeable qui les cible par `merged_into_id` (D-30) ;
   5. `certification_levels` : jamais purgés.
 - **d. Horizon de purge.** Le client transmet la date de son dernier pull réussi. Si elle est
   antérieure à l'horizon de purge, le serveur **refuse le push** et exige d'abord une synchronisation
@@ -777,10 +778,101 @@ Révision du **2026-11-18**.
     | --------------------------------------------------------------------------------- | ------ |
     | `duplicate-observation`, `too-many-observations`                                  | 400    |
     | `identifier-conflict`, `buddy-link-conflict`, `site-in-use`, `full-sync-required` | 409    |
-    | `invalid-reference`, `inactive-certification-level`                               | 422    |
+    | `invalid-reference`, `inactive-certification-level`, `merge-into-self` (D-33)     | 422    |
     | `unsupported-contract-value` (bug de mapping du serveur)                          | 500    |
 
 - **Réversibilité** : élevée.
+
+### D-27 — Type, profondeurs et accès sur le site
+
+Révision du **2026-11-19** (API des sites, `evolution-sites.md`).
+
+- **Contexte** : la page Carte et la fiche site saisissent un type, une plage de profondeurs et des
+  notes d'accès, gardés en mémoire par le front (D30 d'`ARCHITECTURE.md`).
+- **Options étudiées** : `jsonb` de détails (non contraint, illisible pour les `CHECK`) ; table de
+  référence des types (contredit D-14) ; **colonnes plates nullables**.
+- **Décision** : `dive_sites.type text NULL` (`tombant`, `epave`, `sec`, `grotte`, `herbier`,
+  `autre`, RG-31), `depth_min_m` et `depth_max_m numeric(4,1) NULL` (min ∈ [0 ; 350], max ∈
+  ]0 ; 350], min ≤ max, RG-32), `access_notes text NULL` (1 à 2 000 caractères non blancs, RG-33).
+  `NULL` = non renseigné, sans défaut ni backfill. Une seule migration `AddDiveSiteDetails` (D-22).
+  La **zone** reste calculée par le front, jamais stockée (distincte de `area`, D-20).
+- **Conséquences** : les quatre champs entrent dans `DiveSiteWrite` (requis, D-22) et dans le pull.
+- **Réversibilité** : élevée.
+
+### D-28 — Origine du site : `created_via`
+
+- **Contexte** : la spec distingue un site créé en express (`quick`, nom seul) d'un site complet
+  (`full`) ; le front le **déduisait** de la position, ce qui devient faux dès qu'un site express
+  est placé.
+- **Décision** : `dive_sites.created_via text NOT NULL` (`quick` | `full`), fixé à la création,
+  **immuable** (RG-34) : requis au `POST /api/sites`, absent du `PUT`, ignoré par l'upsert d'un site
+  existant. Un site créé par son nom dans `POST /api/dives` (`isNew`) prend `quick`. Backfill de la
+  migration : `full` si le site a une position, sinon `quick` (la règle du front jusqu'ici).
+- **Réversibilité** : élevée.
+
+### D-29 — Fusion de sites côté serveur, en une transaction
+
+- **Contexte** : la fusion du front ne gardait qu'un alias local : « Mes plongées » et le détail
+  montraient encore l'ancien site, et la fusion disparaissait au rechargement.
+- **Décision** : `POST /api/sites/:id/merge` `{ targetId }`, une transaction : verrou des deux
+  sites dans l'ordre des ids, réaffectation de **tous** les `dive_events` de la source (tombstones
+  comprises) par la FK composite `(creator_id, site_id)`, champs `NULL` de la cible complétés par la
+  source (position en paire, profondeurs sans violer min ≤ max, nom et origine de la cible
+  conservés), chaînes réduites à un saut, source tombstonée avec `merged_into_id` (RG-35). Réponse :
+  la cible complétée.
+- **Conséquences** : `updated_at` des événements réaffectés avance (trigger) : les autres appareils
+  les tireront. Le nom du site suit la fusion dans `GET /dives` sans changement de lecture.
+- **Réversibilité** : faible par nature (fusion irréversible, voulue par la spec).
+
+### D-30 — `merged_into_id` : redirection des références vers un site fusionné
+
+- **Contexte** : un client hors ligne peut écrire une plongée sur la source après la fusion. Avec
+  une tombstone seule, D-12 b **restaurerait** la source (fusion défaite en silence) ; un refus
+  ferait perdre la saisie.
+- **Options étudiées** : tombstone seule ; table d'alias `dive_site_merges` (une jointure et une
+  purge de plus pour au plus une cible par site) ; **colonne `merged_into_id`**.
+- **Décision** : `dive_sites.merged_into_id uuid NULL`, FK composite
+  `(owner_id, merged_into_id) → dive_sites(owner_id, id)` **NO ACTION**, `CHECK` « tombstone
+  seulement » et « pas soi-même », index partiel `(owner_id, merged_into_id) WHERE merged_into_id IS
+NOT NULL`. `upsertDiveIn` **redirige** un site fusionné vers sa cible (avant D-12 b) ; l'upsert de
+  synchronisation d'un site fusionné est **rejeté** (état serveur renvoyé) ; en REST, une source
+  fusionnée répond 404 comme toute tombstone (§9 d'`ARCHITECTURE.md`). Purge (D-12 c, étape 4) :
+  un site encore ciblé par un site non purgeable attend.
+- **Réversibilité** : moyenne (colonne additive ; la retirer ferait perdre la redirection).
+
+### D-31 — Suppression d'un site : refusée s'il reste des plongées vivantes
+
+- **Décision** : `DELETE /api/sites/:id` → **204** ; absent, supprimé ou d'un autre → **404** ;
+  une plongée vivante l'utilise → **409 `site-in-use`** (code existant), que le front traduit en
+  dialogue de fusion (RG-37). Des événements tombstonés ne bloquent pas : la FK `RESTRICT` ne joue
+  qu'à la purge, après la leur.
+- **Réversibilité** : élevée.
+
+### D-32 — Libellé « Région » du front et colonnes `locality` / `region` / `area`
+
+- **Contexte** : les écrans des sites n'ont qu'un champ « Région » au libellé composé
+  (« Calvi · Corse », `placeLabel`), la base sépare `locality` (D27) et `region`, et porte `area`
+  (D-20) que ces écrans n'affichent pas. Le `PUT` est un remplacement complet (D-22).
+- **Options étudiées** : ajouter un champ « Localité » aux panneaux (changement d'écran, hors
+  mission) ; envoyer le libellé entier dans `region` (perd la localité, double « Calvi » dans le
+  carnet) ; **découper le libellé dans l'adaptateur HTTP**.
+- **Décision** : le contrat sert et reçoit `locality`, `region` et `area` séparés. Le `Site` du
+  front garde ces valeurs brutes (non affichées) à côté du libellé ; à l'écriture, un libellé
+  inchangé renvoie les valeurs brutes, un libellé modifié est découpé au **premier** « · »
+  (sans séparateur : `locality = null`) ; `area` est renvoyée telle quelle.
+- **Réversibilité** : élevée (un champ « Localité » pourra remplacer le découpage).
+
+### D-33 — Endpoints REST des sites
+
+- **Décision** : `GET /api/sites` (sites **vivants** du plongeur, tri par nom), `GET /api/sites/:id`,
+  `POST /api/sites` (201 ; idempotent si contenu identique → 200 ; sinon, site supprimé ou d'un
+  autre → 409 `identifier-conflict`, sérialisé par verrou consultatif), `PUT /api/sites/:id`
+  (remplacement complet, tous les champs requis sauf `createdVia`, LWW strict D-25, `id` de l'URL =
+  `id` du corps, absent / supprimé / d'un autre → 404), `POST /api/sites/:id/merge` (D-29 ; cible =
+  source → **422 `merge-into-self`**, nouveau code ; cible absente, supprimée ou d'un autre → 422
+  `invalid-reference`), `DELETE /api/sites/:id` (D-31). Contrats `packages/shared/src/sites.ts` ;
+  DTO couvrant tous les `CHECK` (D-26) ; propriétaire par `CurrentDiverGuard`, `no-store`.
+- **Réversibilité** : élevée (routes additives).
 
 ## Dénormalisations et snapshots
 

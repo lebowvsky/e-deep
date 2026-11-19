@@ -9,6 +9,10 @@
 > (`apps/web/design/pages/detail-plongee.md`, `mockups/dive-detail.jsx`, captures 20 et 21 ;
 > inventaire `evolution-champs-detail-plongee.md`). Elle ajoute des colonnes facultatives à
 > `dive_events`, `dive_participations`, `dive_sites` et `buddies`, et une table `dive_observations`.
+> **Évolution du 2026-11-19** (mode évolution, D-27 à D-33) : API des sites
+> (`apps/web/design/pages/sites.md` ; delta et justification dans `evolution-sites.md`). Elle ajoute
+> à `dive_sites` le type, les profondeurs, l'accès, l'origine (`created_via`) et la cible d'une
+> fusion (`merged_into_id`).
 > Décisions, hypothèses (`H-xx`) et questions ouvertes : voir `decisions.md`.
 
 Périmètre : ce que les écrans et le code montrent aujourd'hui (dashboard + contrat
@@ -224,6 +228,19 @@ supprimés.
   ils sont communs à la palanquée et seul le créateur les modifie (RG-17).
 - **RG-30** _(D-13 à D-21)_ — Les données ajoutées par l'évolution du détail de plongée sont toutes
   facultatives, sans valeur par défaut : une valeur absente signifie « non renseigné ».
+- **RG-31** _(D-27)_ — Le type d'un site est facultatif, dans une liste fermée (`tombant`, `epave`,
+  `sec`, `grotte`, `herbier`, `autre`).
+- **RG-32** _(D-27)_ — Les profondeurs d'un site (min, max) sont celles du site, facultatives, à une
+  décimale : min ∈ [0 ; 350], max ∈ ]0 ; 350], min ≤ max quand les deux sont saisies.
+- **RG-33** _(D-27)_ — Les notes d'accès d'un site sont facultatives, 1 à 2 000 caractères non blancs.
+- **RG-34** _(D-28)_ — Un site a une origine immuable : `quick` (créé par son nom depuis une plongée)
+  ou `full` (créé depuis la page Carte).
+- **RG-35** _(D-29)_ — Fusionner A dans B rattache toutes les plongées de A à B, complète les champs
+  vides de B par ceux de A et supprime A, qui garde la trace de B. A ≠ B, deux sites vivants du même
+  plongeur.
+- **RG-36** _(D-30)_ — Une écriture qui référence un site fusionné est redirigée vers sa cible ; la
+  chaîne de fusion est toujours réduite à un saut. Un site fusionné n'est jamais restauré.
+- **RG-37** _(D-31)_ — Un site n'est supprimé que s'il n'a aucune plongée vivante.
 
 ## 3. MCD (notation Merise)
 
@@ -328,6 +345,7 @@ clé candidate (`UNIQUE`, RG-16).
 certification_levels(**id**, agency, code, label, rank, is_active, created_at, updated_at)
 divers(**id**, first_name, last_name, #certification_level_id, avatar_url, created_at, updated_at)
 dive_sites(**id**, #owner_id, name, locality, region, area, latitude, longitude,
+            type, depth_min_m, depth_max_m, access_notes, created_via, #merged_into_id,
             created_at, updated_at, deleted_at)
 dive_events(**id**, #creator_id, #site_id, started_at, utc_offset_minutes,
             entry_type, time_of_day, weather, air_temperature_c, sea_state, current_strength,
@@ -344,6 +362,7 @@ dive_observations(**#participation_id, position**, label, count)
 ```
 
 - `dive_events.(creator_id, site_id)` → `dive_sites.(owner_id, id)`.
+- `dive_sites.(owner_id, merged_into_id)` → `dive_sites.(owner_id, id)` (réflexive, D-30).
 - `dive_buddies.(owner_id, participation_id)` → `dive_participations.(diver_id, id)` ;
   `dive_buddies.(owner_id, buddy_id)` → `buddies.(owner_id, id)`.
 - `divers.certification_level_id` et `dive_participations.certification_level_id` →
@@ -427,6 +446,12 @@ erDiagram
     text area
     numeric latitude
     numeric longitude
+    text type
+    numeric depth_min_m
+    numeric depth_max_m
+    text access_notes
+    text created_via
+    uuid merged_into_id FK
     timestamptz created_at
     timestamptz updated_at
     timestamptz deleted_at
@@ -516,10 +541,16 @@ erDiagram
 | divers                  | avatar_url                  | text           | oui  | —                   | `char_length(avatar_url) <= 2048`                                                    |
 | dive_sites              | id                          | uuid           | non  | aucun (client)      | UUIDv7 fourni par le client (D-02)                                                   |
 | dive_sites              | owner_id                    | uuid           | non  | —                   | FK divers                                                                            |
-| dive_sites              | name, region                | text           | non  | —                   | 1..120 caractères non blancs                                                         |
+| dive_sites              | name                        | text           | non  | —                   | 1..120 caractères non blancs                                                         |
+| dive_sites              | region                      | text           | oui  | —                   | 1..120 caractères non blancs (D-23)                                                  |
 | dive_sites              | locality, area              | text           | oui  | —                   | 1..120 caractères non blancs (D27, D-20)                                             |
-| dive_sites              | latitude                    | numeric(8,6)   | non  | —                   | `BETWEEN -90 AND 90`                                                                 |
-| dive_sites              | longitude                   | numeric(9,6)   | non  | —                   | `BETWEEN -180 AND 180`                                                               |
+| dive_sites              | latitude                    | numeric(8,6)   | oui  | —                   | `BETWEEN -90 AND 90` ; avec `longitude` ou aucune (D-23)                             |
+| dive_sites              | longitude                   | numeric(9,6)   | oui  | —                   | `BETWEEN -180 AND 180`                                                               |
+| dive_sites              | type                        | text           | oui  | —                   | liste fermée RG-31 (D-27)                                                            |
+| dive_sites              | depth_min_m, depth_max_m    | numeric(4,1)   | oui  | —                   | min 0..350, max ]0..350], min ≤ max (RG-32)                                          |
+| dive_sites              | access_notes                | text           | oui  | —                   | 1..2000 caractères non blancs (RG-33)                                                |
+| dive_sites              | created_via                 | text           | non  | —                   | `quick` / `full`, immuable (RG-34, D-28)                                             |
+| dive_sites              | merged_into_id              | uuid           | oui  | —                   | cible d'une fusion, tombstone seulement (D-30)                                       |
 | dive_events             | id                          | uuid           | non  | aucun (client)      |                                                                                      |
 | dive_events             | creator_id, site_id         | uuid           | non  | —                   | FK composite vers dive_sites                                                         |
 | dive_events             | started_at                  | timestamptz    | non  | —                   | instant UTC                                                                          |
@@ -599,6 +630,13 @@ La liste complémentaire (CMAS, PADI, SSI) est une **proposition à valider** da
 | dive_sites           | ck_dive_sites__latitude / __longitude                                                      | bornes WGS84                                                                                                                 | RG-09                                                                                                                |
 | dive_sites           | ck_dive_sites__name / __region                                                             | 1..120 caractères non blancs                                                                                                 |                                                                                                                      |
 | dive_sites           | ck_dive_sites__locality / __area                                                           | `x IS NULL OR char_length(btrim(x)) BETWEEN 1 AND 120`                                                                       | D27, D-20                                                                                                            |
+| dive_sites           | ck_dive_sites__position                                                                    | `(latitude IS NULL) = (longitude IS NULL)`                                                                                   | D-23                                                                                                                 |
+| dive_sites           | ck_dive_sites__type                                                                        | `type IS NULL OR type IN ('tombant','epave','sec','grotte','herbier','autre')`                                               | RG-31, D-27                                                                                                          |
+| dive_sites           | ck_dive_sites__depth_min_m / __depth_max_m / __depth_range                                 | `IS NULL OR BETWEEN 0 AND 350` / `IS NULL OR (> 0 AND <= 350)` / `min IS NULL OR max IS NULL OR min <= max`                  | RG-32                                                                                                                |
+| dive_sites           | ck_dive_sites__access_notes                                                                | `access_notes IS NULL OR char_length(btrim(access_notes)) BETWEEN 1 AND 2000`                                                | RG-33                                                                                                                |
+| dive_sites           | ck_dive_sites__created_via                                                                 | `created_via IN ('quick','full')`                                                                                            | RG-34, D-28                                                                                                          |
+| dive_sites           | fk_dive_sites__owner_id_merged_into_id                                                     | (owner_id, merged_into_id) → dive_sites(owner_id, id) **NO ACTION**                                                          | RG-35, D-30 (cible du même plongeur)                                                                                 |
+| dive_sites           | ck_dive_sites__merged_into_id_tombstone / __merged_into_id_not_self                        | `merged_into_id IS NULL OR deleted_at IS NOT NULL` / `merged_into_id IS NULL OR merged_into_id <> id`                        | RG-36, D-30                                                                                                          |
 | dive_events          | fk_dive_events__creator_id                                                                 | → divers(id) **ON DELETE CASCADE**                                                                                           | RG-03, RG-11 ; MVP seulement : passera en **RESTRICT** avec le partage, après transfert des événements (RG-22, D-08) |
 | dive_events          | fk_dive_events__creator_id_site_id                                                         | (creator_id, site_id) → dive_sites(owner_id, id) **ON DELETE RESTRICT**                                                      | RG-04 (site du créateur), RG-12 (purge d'un site référencé impossible)                                               |
 | dive_events          | ck_dive_events__utc_offset_minutes                                                         | `utc_offset_minutes BETWEEN -720 AND 840`                                                                                    | RG-09, D-10                                                                                                          |
@@ -646,16 +684,17 @@ seront levés avec le partage (D-08).
 
 ### Index
 
-| Table               | Nom                                             | Définition                                            | Justification                                                                                                        |
-| ------------------- | ----------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| dive_participations | idx_dive_participations__diver_id_dive_event_id | `(diver_id, dive_event_id) WHERE deleted_at IS NULL`  | Dashboard : toutes les statistiques partent de mes participations vivantes puis joignent l'événement par PK (D-08)   |
-| dive_participations | idx_dive_participations__diver_id_updated_at_id | `(diver_id, updated_at, id)`                          | Pull de synchronisation (tombstones incluses)                                                                        |
-| dive_events         | idx_dive_events__creator_id_updated_at_id       | `(creator_id, updated_at, id)`                        | Pull de synchronisation ; couvre la FK `creator_id`                                                                  |
-| dive_events         | idx_dive_events__creator_id_site_id             | `(creator_id, site_id)`                               | FK composite (contrôle RESTRICT), refus de suppression d'un site utilisé (RG-12), `NOT EXISTS` de la purge des sites |
-| dive_sites          | idx_dive_sites__owner_id_updated_at_id          | `(owner_id, updated_at, id)`                          | Pull ; la FK `owner_id` est couverte par `uq_dive_sites__owner_id_id`                                                |
-| buddies             | idx_buddies__owner_id_updated_at_id             | `(owner_id, updated_at, id)`                          | Pull                                                                                                                 |
-| buddies             | idx_buddies__linked_diver_id                    | `(linked_diver_id) WHERE linked_diver_id IS NOT NULL` | FK `ON DELETE SET NULL` à la suppression d'un compte                                                                 |
-| dive_buddies        | idx_dive_buddies__owner_id_buddy_id             | `(owner_id, buddy_id)`                                | FK composite vers buddies ; « Binômes fréquents »                                                                    |
+| Table               | Nom                                             | Définition                                                    | Justification                                                                                                        |
+| ------------------- | ----------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| dive_participations | idx_dive_participations__diver_id_dive_event_id | `(diver_id, dive_event_id) WHERE deleted_at IS NULL`          | Dashboard : toutes les statistiques partent de mes participations vivantes puis joignent l'événement par PK (D-08)   |
+| dive_participations | idx_dive_participations__diver_id_updated_at_id | `(diver_id, updated_at, id)`                                  | Pull de synchronisation (tombstones incluses)                                                                        |
+| dive_events         | idx_dive_events__creator_id_updated_at_id       | `(creator_id, updated_at, id)`                                | Pull de synchronisation ; couvre la FK `creator_id`                                                                  |
+| dive_events         | idx_dive_events__creator_id_site_id             | `(creator_id, site_id)`                                       | FK composite (contrôle RESTRICT), refus de suppression d'un site utilisé (RG-12), `NOT EXISTS` de la purge des sites |
+| dive_sites          | idx_dive_sites__owner_id_updated_at_id          | `(owner_id, updated_at, id)`                                  | Pull ; la FK `owner_id` est couverte par `uq_dive_sites__owner_id_id`                                                |
+| dive_sites          | idx_dive_sites__owner_id_merged_into_id         | `(owner_id, merged_into_id) WHERE merged_into_id IS NOT NULL` | FK réflexive (suppression d'une cible à la purge), réduction des chaînes à la fusion (D-30)                          |
+| buddies             | idx_buddies__owner_id_updated_at_id             | `(owner_id, updated_at, id)`                                  | Pull                                                                                                                 |
+| buddies             | idx_buddies__linked_diver_id                    | `(linked_diver_id) WHERE linked_diver_id IS NOT NULL`         | FK `ON DELETE SET NULL` à la suppression d'un compte                                                                 |
+| dive_buddies        | idx_dive_buddies__owner_id_buddy_id             | `(owner_id, buddy_id)`                                        | FK composite vers buddies ; « Binômes fréquents »                                                                    |
 
 FK couvertes par un index existant : `dive_participations.dive_event_id` (par
 `uq_dive_participations__dive_event_id_diver_id`), `dive_participations.diver_id` (par
