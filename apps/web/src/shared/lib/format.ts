@@ -228,3 +228,12 @@ const wholeNumber = new Intl.NumberFormat('fr-FR');
 export function formatCharacterCount(count: number): string {
   return `${wholeNumber.format(count)} ${count > 1 ? 'caractères' : 'caractère'}`;
 }
+
+/**
+ * « Calvi · Corse »: the parts entered, from the most local, joined; `null` when none is (a site
+ * created by its name alone).
+ */
+export function placeLabel(...parts: readonly (string | null)[]): string | null {
+  const entered = parts.filter((part) => part !== null);
+  return entered.length === 0 ? null : entered.join(' · ');
+}

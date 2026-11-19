@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { diveLogQueryOptions } from '@/shared/diveLog/diveLogApi';
 import { useApiClient } from '@/shared/hooks/useApiClient';
-import { fetchDiveLog, toDiveLog, type DiveLogOwner } from '../api/divesApi';
-import { divesKeys } from '../api/queryKeys';
+import { toDiveLog, type DiveLogOwner } from '../api/divesApi';
 import type { LoggedDive } from '../types';
 import { buildDiveFormSources, type DiveFormSources } from './sources';
 
@@ -18,10 +18,7 @@ export type DiveFormSourcesState =
  */
 export function useDiveFormSources(owner: DiveLogOwner): DiveFormSourcesState {
   const client = useApiClient();
-  const { data, isError, isFetching, refetch } = useQuery({
-    queryKey: divesKeys.log(),
-    queryFn: ({ signal }) => fetchDiveLog(client, { signal }),
-  });
+  const { data, isError, isFetching, refetch } = useQuery(diveLogQueryOptions(client));
   const log = useMemo(() => (data ? toDiveLog(data, owner) : null), [data, owner]);
   const sources = useMemo(() => (log ? buildDiveFormSources(log) : null), [log]);
 

@@ -5,7 +5,6 @@ import type {
   DashboardSite,
   DashboardUser,
   Federation,
-  GasMix,
   UserLevel,
 } from '@e-deep/shared';
 import type { ApiClient, RequestOptions } from '@/shared/lib/apiClient';
@@ -17,17 +16,17 @@ import {
   isNullable,
   isNumber,
   isOneOf,
-  isPositionPair,
   isRecord,
   isString,
 } from '@/shared/lib/guards';
 import type { DiveMember } from '@/shared/model/dive';
+import { GAS_MIXES } from '@/shared/model/gasMix';
+import { isDashboardSite } from '@/shared/sites/api/sitePositionsApi';
 import { toGeoPoint } from '@/shared/model/geo';
 import type { Buddy, DashboardState, Dive, DiveSite, User } from '../types';
 
 const USER_LEVELS = ['N1', 'N2', 'N3', 'N4'] as const satisfies readonly UserLevel[];
 const FEDERATIONS = ['FFESSM', 'CMAS', 'OTHER'] as const satisfies readonly Federation[];
-const GAS_MIXES = ['AIR', 'NITROX32', 'NITROX36', 'OTHER'] as const satisfies readonly GasMix[];
 
 function isUser(value: unknown): value is DashboardUser {
   return (
@@ -48,18 +47,6 @@ function isBuddy(value: unknown): value is DashboardBuddy {
     isString(value.firstName) &&
     isString(value.lastName) &&
     isNumber(value.sharedDives)
-  );
-}
-
-function isSite(value: unknown): value is DashboardSite {
-  return (
-    isRecord(value) &&
-    isString(value.id) &&
-    isString(value.name) &&
-    isNullable(isString)(value.region) &&
-    isPositionPair(value.latitude, value.longitude) &&
-    isNumber(value.diveCount) &&
-    isNumber(value.maxDepthM)
   );
 }
 
@@ -117,7 +104,7 @@ export function isDashboardResponse(value: unknown): value is DashboardResponse 
     isNumber(stats.divesThisMonth) &&
     isNullable(isString)(stats.mainRegion) &&
     isNullable(isDive)(value.lastDive) &&
-    isArrayOf(isSite)(value.sites) &&
+    isArrayOf(isDashboardSite)(value.sites) &&
     isArrayOf(isBuddy)(value.frequentBuddies)
   );
 }

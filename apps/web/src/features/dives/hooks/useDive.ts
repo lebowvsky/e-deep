@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
+import { diveLogQueryOptions } from '@/shared/diveLog/diveLogApi';
 import { useApiClient } from '@/shared/hooks/useApiClient';
 import {
   fetchDive,
-  fetchDiveLog,
   isDiveNotFound,
   toDiveDetailView,
   toDiveLog,
@@ -45,11 +45,7 @@ export function useDive(id: string, owner: DiveLogOwner): DiveDetailState {
     // No retry on a 404 / 400: the global policy (`shouldRetry`) never retries a 4xx.
     enabled: forced === null,
   });
-  const logQuery = useQuery({
-    queryKey: divesKeys.log(),
-    queryFn: ({ signal }) => fetchDiveLog(client, { signal }),
-    enabled: forced === null,
-  });
+  const logQuery = useQuery({ ...diveLogQueryOptions(client), enabled: forced === null });
 
   const self = useMemo(() => toSelfMember(owner), [owner]);
   const dive = useMemo(

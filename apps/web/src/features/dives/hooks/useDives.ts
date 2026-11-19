@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
+import { diveLogQueryOptions } from '@/shared/diveLog/diveLogApi';
 import { useApiClient } from '@/shared/hooks/useApiClient';
-import { fetchDiveLog, toDiveLog, type DiveLogOwner } from '../api/divesApi';
-import { divesKeys } from '../api/queryKeys';
+import { toDiveLog, type DiveLogOwner } from '../api/divesApi';
 import { computeFacets, describeLog, filterDives, selectDives } from '../lib/selectDives';
 import type { DivesQuery, DivesState } from '../types';
 
@@ -29,8 +29,7 @@ export function useDives(query: DivesQuery, now: Date, owner: DiveLogOwner): Div
   const [searchParams] = useSearchParams();
   const forced = import.meta.env.DEV ? parseForcedState(searchParams.get('state')) : null;
   const { data, isError, isFetching, refetch } = useQuery({
-    queryKey: divesKeys.log(),
-    queryFn: ({ signal }) => fetchDiveLog(client, { signal }),
+    ...diveLogQueryOptions(client),
     enabled: forced === null,
   });
 

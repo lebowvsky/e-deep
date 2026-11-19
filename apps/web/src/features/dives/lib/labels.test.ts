@@ -6,7 +6,6 @@ import {
   observationSpoken,
   oxygenLabel,
   oxygenPercent,
-  placeLabel,
   repetitiveLabel,
 } from './labels';
 
@@ -42,14 +41,6 @@ describe('stop labels', () => {
 });
 
 describe('detail labels', () => {
-  it('joins the parts of a place that were entered, or gives none', () => {
-    expect(placeLabel('Calvi · Corse', 'Méditerranée')).toBe('Calvi · Corse · Méditerranée');
-    expect(placeLabel('Calvi · Corse', null)).toBe('Calvi · Corse');
-    expect(placeLabel('Calvi', null)).toBe('Calvi');
-    expect(placeLabel(null, 'Corse')).toBe('Corse');
-    expect(placeLabel(null, null)).toBeNull();
-  });
-
   it('shows the count of a species, spoken with its noun', () => {
     expect(observationLabel({ label: 'Mérou brun', count: 2 })).toBe('Mérou brun · 2');
     expect(observationLabel({ label: 'Corb', count: null })).toBe('Corb');

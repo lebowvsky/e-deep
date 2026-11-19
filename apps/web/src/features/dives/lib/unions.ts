@@ -3,7 +3,6 @@
 import type {
   CurrentStrength,
   EntryType,
-  GasMix,
   SeaState,
   SuitType,
   TankMaterial,
@@ -12,13 +11,7 @@ import type {
 } from '@e-deep/shared';
 
 // Every value of each union: a value the front does not know breaks the contract (D-14, deployed
-// front first).
-export const GAS_MIXES = [
-  'AIR',
-  'NITROX32',
-  'NITROX36',
-  'OTHER',
-] as const satisfies readonly GasMix[];
+// front first). The gas mixes live in `@/shared/model/gasMix` (the dive log and the dashboard read them).
 export const ENTRY_TYPES = ['BOAT', 'SHORE'] as const satisfies readonly EntryType[];
 export const TIMES_OF_DAY = ['DAY', 'NIGHT'] as const satisfies readonly TimeOfDay[];
 export const WEATHERS = [
