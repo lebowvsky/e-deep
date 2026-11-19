@@ -15,27 +15,36 @@ import { fakeApiClient } from '@/test/fakeApiClient';
 import { TestProviders } from '@/test/TestProviders';
 import { MapPage } from './MapPage';
 
+// The `sites` given to the map at each render (memoisation check).
+const mapRenders = vi.hoisted(() => ({ sites: [] as unknown[] }));
+
 // MapLibre needs WebGL: the map is replaced by its markers as buttons, and a button that places.
 vi.mock('@/shared/ui/MapView', () => ({
-  MapView: ({ sites, selectedId, onSelect, pick, popover }: MapViewProps) => (
-    <div data-testid="map">
-      {sites.map((site) => (
-        <button
-          key={site.id}
-          type="button"
-          aria-label={`Repère ${site.name}`}
-          aria-pressed={site.id === selectedId}
-          onClick={() => onSelect(site.id)}
-        />
-      ))}
-      {pick && (
-        <button type="button" onClick={() => pick.onPick({ latitude: 42.5794, longitude: 8.7262 })}>
-          Cliquer sur la carte
-        </button>
-      )}
-      {popover}
-    </div>
-  ),
+  MapView: ({ sites, selectedId, onSelect, pick, popover }: MapViewProps) => {
+    mapRenders.sites.push(sites);
+    return (
+      <div data-testid="map">
+        {sites.map((site) => (
+          <button
+            key={site.id}
+            type="button"
+            aria-label={`Repère ${site.name}`}
+            aria-pressed={site.id === selectedId}
+            onClick={() => onSelect(site.id)}
+          />
+        ))}
+        {pick && (
+          <button
+            type="button"
+            onClick={() => pick.onPick({ latitude: 42.5794, longitude: 8.7262 })}
+          >
+            Cliquer sur la carte
+          </button>
+        )}
+        {popover}
+      </div>
+    );
+  },
 }));
 
 const SITES: Site[] = [MOCK_SITES.revellata, MOCK_SITES.bibliotheque, MOCK_SITES.liban];
@@ -146,10 +155,13 @@ describe('MapPage — list and map', () => {
     expect(
       screen.getByRole('button', { name: 'Repère Épave du Liban' }).getAttribute('aria-pressed'),
     ).toBe('true');
-    // The preview of the selected site, with its page.
-    expect(screen.getByRole('link', { name: /Voir la fiche/ }).getAttribute('href')).toBe(
+    // The preview of the selected site, and its row, lead to its page.
+    const map = within(screen.getByTestId('map'));
+    expect(map.getByRole('link', { name: /Voir la fiche/ }).getAttribute('href')).toBe(
       '/sites/s07',
     );
+    const row = within(list()).getByRole('link', { name: 'Voir la fiche de Épave du Liban' });
+    expect(row.getAttribute('href')).toBe('/sites/s07');
 
     await user.click(screen.getByRole('button', { name: 'Repère La Bibliothèque' }));
     expect(router.state.location.search).toBe('?site=s02');
@@ -218,6 +230,22 @@ describe('MapPage — list and map', () => {
     expect(router.state.location.search).toBe('?zone=mediterranee');
     expect(document.activeElement).toBe(radios[1]);
     expect(radios[1]?.getAttribute('aria-checked')).toBe('true');
+  });
+});
+
+describe('MapPage — performance', () => {
+  it('gives the map the same sites while only the hover or the selection changes', async () => {
+    const user = userEvent.setup();
+    await renderAt('/map');
+    const before = mapRenders.sites.at(-1);
+    const renders = mapRenders.sites.length;
+
+    await user.hover(within(list()).getByRole('button', { name: /Épave du Liban/ }));
+    await user.click(within(list()).getByRole('button', { name: /La Bibliothèque/ }));
+
+    // The map rendered again (hover, selection), with the very same array: no new GeoJSON.
+    expect(mapRenders.sites.length).toBeGreaterThan(renders);
+    expect(mapRenders.sites.slice(renders).every((sites) => sites === before)).toBe(true);
   });
 });
 

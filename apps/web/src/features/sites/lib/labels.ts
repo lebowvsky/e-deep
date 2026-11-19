@@ -4,6 +4,21 @@ import { SITE_TYPE_LABELS } from '@/shared/sites/lib/labels';
 /** Id of the row of a site in the list: target of the focus and of the scroll. */
 export const siteItemId = (id: string) => `site-item-${id}`;
 
+/**
+ * Gives the focus back after the panel or the preview closes: the row of the site, else the
+ * « Ajouter un site » (`data-add-site`: header, phone sheet) shown at this width. After the next
+ * paint, once the list is back.
+ */
+export function focusAfterClose(siteId: string | null): void {
+  requestAnimationFrame(() => {
+    const row = siteId ? document.getElementById(siteItemId(siteId)) : null;
+    const add = Array.from(document.querySelectorAll<HTMLElement>('[data-add-site]')).find(
+      (button) => button.getClientRects().length > 0,
+    );
+    (row ?? add)?.focus();
+  });
+}
+
 /** « Calvi · Corse · Tombant »: what is known of the region and the type. */
 export function siteMeta(site: Pick<Site, 'region' | 'type'>): string | null {
   const parts = [site.region, site.type && SITE_TYPE_LABELS[site.type]].filter(

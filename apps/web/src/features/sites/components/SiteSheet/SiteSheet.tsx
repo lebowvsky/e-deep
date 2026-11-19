@@ -6,6 +6,7 @@ import {
   type PointerEvent,
   type ReactNode,
 } from 'react';
+import { space } from '@/design/tokens';
 import { Button } from '@/shared/ui/Button';
 import { formatSiteCount } from '../../lib/labels';
 import styles from './SiteSheet.module.scss';
@@ -20,7 +21,7 @@ const SNAP_LABELS: Record<SheetSnap, string> = {
 };
 
 /** A drag shorter than this (px) is a tap: the sheet goes to the next height. */
-const DRAG_THRESHOLD = 24;
+const DRAG_THRESHOLD = space[6];
 
 export interface SiteSheetProps {
   siteCount: number;
@@ -100,7 +101,7 @@ export function SiteSheet({ siteCount, waitingCount, onAdd, children }: SiteShee
             {waitingCount > 0 && ` · ${waitingCount} à compléter`}
           </p>
         </div>
-        <Button icon="plus" onClick={onAdd}>
+        <Button icon="plus" onClick={onAdd} data-add-site>
           Site
         </Button>
       </div>

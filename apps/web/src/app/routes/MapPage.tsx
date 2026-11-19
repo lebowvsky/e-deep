@@ -5,7 +5,7 @@ import { SitePanel } from '@/features/sites/components/SitePanel';
 import { SiteSheet } from '@/features/sites/components/SiteSheet';
 import { SitesMap } from '@/features/sites/components/SitesMap';
 import { useMapQuery } from '@/features/sites/hooks/useMapQuery';
-import { formatSiteCount, siteItemId } from '@/features/sites/lib/labels';
+import { focusAfterClose, formatSiteCount } from '@/features/sites/lib/labels';
 import { panelKey, type MapPanel } from '@/features/sites/lib/mapQuery';
 import {
   DEFAULT_SITE_LIST_QUERY,
@@ -169,13 +169,9 @@ function MapStage({ entries, panel }: MapStageProps) {
   const save = (draft: SiteDraft, site: Site | null) =>
     site ? update(site, draft) : create(draft, 'full');
   const closePanel = () => {
-    const site = panel?.site;
     updateQuery({ panel: null });
-    // Back to where the panel was opened from: the row of the site, or the add button.
-    requestAnimationFrame(() => {
-      const target = site ? document.getElementById(siteItemId(site.id)) : null;
-      target?.focus();
-    });
+    // Back to where the panel was opened from: the row of the site, or « Ajouter un site ».
+    focusAfterClose(panel?.site?.id ?? null);
   };
 
   return (
@@ -185,7 +181,12 @@ function MapStage({ entries, panel }: MapStageProps) {
         selectedId={query.siteId}
         highlightedId={highlightedId}
         onSelect={(id) => updateQuery({ siteId: id }, { replace: true })}
-        onDeselect={() => updateQuery({ siteId: null }, { replace: true })}
+        onDeselect={() => {
+          const { siteId } = query;
+          updateQuery({ siteId: null }, { replace: true });
+          // The preview closes with its link: the focus goes to the row of the site.
+          focusAfterClose(siteId);
+        }}
         viewport={viewport}
         isNarrow={isPhone}
         zone={query.zone}

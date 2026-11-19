@@ -37,10 +37,7 @@
     background-color $dur-fast $ease-out,
     box-shadow $dur-fast $ease-out;
 
-  &:focus-visible {
-    outline: 2px solid $color-accent;
-    outline-offset: 2px;
-  }
+  @include focus-ring;
 
   &[data-highlighted],
   &:hover {
@@ -99,8 +96,10 @@
     border-radius: $radius-pill;
   }
 
+  @include focus-ring;
+
+  // Around the dashed ring, not on the dot.
   &:focus-visible {
-    outline: 2px solid $color-accent;
     outline-offset: $space-4;
   }
 }

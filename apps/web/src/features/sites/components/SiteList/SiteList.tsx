@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { layout } from '@/design/tokens';
 import { cx } from '@/shared/lib/classNames';
 import { SITE_TYPES, type SiteEntry, type SiteType } from '@/shared/model/site';
@@ -70,12 +70,16 @@ export function SiteList({
 }: SiteListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ scrollTop: 0, height: 0 });
-  const sites = selectSites(entries, query);
+  // Not again on every scroll or hover: 500 sites searched and sorted once per change of query.
+  const sites = useMemo(() => selectSites(entries, query), [entries, query]);
   const waiting = toCompleteCount(entries);
-  const regionOptions: SelectOption<string>[] = [
-    { value: ALL, label: 'Région' },
-    ...regionGroups(entries).map((group) => ({ value: group, label: group })),
-  ];
+  const regionOptions: SelectOption<string>[] = useMemo(
+    () => [
+      { value: ALL, label: 'Région' },
+      ...regionGroups(entries).map((group) => ({ value: group, label: group })),
+    ],
+    [entries],
+  );
   const { start, end } = visibleRange(sites.length, viewport.scrollTop, viewport.height);
   const isVirtual = sites.length > VIRTUALIZE_FROM;
   const selectedIndex = sites.findIndex(({ site }) => site.id === selectedId);
@@ -185,7 +189,7 @@ export function SiteList({
           </ul>
         )}
       </div>
-      <p className={styles.footer}>
+      <p className={styles.footer} aria-live="polite">
         <span className={styles.figure}>{sites.length}</span> sur{' '}
         <span className={styles.figure}>{entries.length}</span>{' '}
         {entries.length > 1 ? 'sites' : 'site'}

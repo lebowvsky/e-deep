@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { cx } from '@/shared/lib/classNames';
 import type { SiteEntry, SiteZone } from '@/shared/model/site';
 import { Button } from '@/shared/ui/Button';
@@ -58,10 +58,16 @@ export function SitesMap({
   // A new attempt mounts a new map.
   const [attempt, setAttempt] = useState(0);
 
-  const sites: MapSite[] = entries.flatMap(({ site, stats }) =>
-    site.position
-      ? [{ id: site.id, name: site.name, position: site.position, diveCount: stats.diveCount }]
-      : [],
+  // Same array while the sites are the same: hovering a row or selecting a site must not send
+  // the whole GeoJSON to the map again (no React Compiler here).
+  const sites: MapSite[] = useMemo(
+    () =>
+      entries.flatMap(({ site, stats }) =>
+        site.position
+          ? [{ id: site.id, name: site.name, position: site.position, diveCount: stats.diveCount }]
+          : [],
+      ),
+    [entries],
   );
   const selected = entries.find(({ site }) => site.id === selectedId);
 

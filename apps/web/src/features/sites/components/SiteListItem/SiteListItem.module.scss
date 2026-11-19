@@ -123,9 +123,14 @@
   color: $color-text-low;
 }
 
-.place {
+.place,
+.open {
   flex-shrink: 0;
   margin-right: $space-2;
+}
+
+.place + .open {
+  margin-left: calc(-1 * #{$space-2});
 }
 
 .srOnly {

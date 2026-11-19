@@ -144,3 +144,17 @@ describe('AppShell — tablet and up', () => {
     expect(document.activeElement).toBe(toggle);
   });
 });
+
+describe('AppShell — navigation of a section', () => {
+  it('marks « Carte » as the location on a site page', async () => {
+    stubTabletUp();
+    renderAt('/sites/s01');
+
+    const nav = await screen.findByRole('navigation', { name: 'Navigation principale' });
+    const map = within(nav).getByRole('link', { name: 'Carte' });
+    expect(map.getAttribute('aria-current')).toBe('location');
+    expect(
+      within(nav).getByRole('link', { name: 'Dashboard' }).getAttribute('aria-current'),
+    ).toBeNull();
+  });
+});

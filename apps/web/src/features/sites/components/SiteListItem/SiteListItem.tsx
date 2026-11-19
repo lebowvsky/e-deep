@@ -2,7 +2,8 @@ import { cx } from '@/shared/lib/classNames';
 import { formatDiveDayMonth, formatMeasure } from '@/shared/lib/format';
 import type { SiteEntry } from '@/shared/model/site';
 import { Button } from '@/shared/ui/Button';
-import { siteItemId, siteMeta } from '../../lib/labels';
+import { IconLink } from '@/shared/ui/IconButton';
+import { siteHrefOf, siteItemId, siteMeta } from '../../lib/labels';
 import { PositionTag } from '../PositionTag';
 import styles from './SiteListItem.module.scss';
 
@@ -18,7 +19,8 @@ export interface SiteListItemProps {
 
 /**
  * A row of « Mes sites » (sites.jsx · SiteRow): dive count, name, region and type (or « Position à
- * préciser »), the user's deepest dive and latest dive here. Fixed height (virtualised list).
+ * préciser »), the user's deepest dive and latest dive here; once selected, « Placer sur la
+ * carte » (no position) and the link to its page. Fixed height (virtualised list).
  */
 export function SiteListItem({
   entry,
@@ -80,6 +82,16 @@ export function SiteListItem({
         >
           Placer sur la carte
         </Button>
+      )}
+      {/* The list reaches everything the map does (spec § Accessibilité): the site page too. */}
+      {isSelected && (
+        <IconLink
+          to={siteHrefOf(site.id)}
+          icon="arrowRight"
+          iconSize="md"
+          label={`Voir la fiche de ${site.name}`}
+          className={styles.open}
+        />
       )}
     </li>
   );
