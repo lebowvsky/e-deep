@@ -2,6 +2,10 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+// Same origin as the API (D34): `/api` is forwarded to the Nest server in dev and preview,
+// so the browser never makes a cross-origin call (CORS is removed at lot 4).
+const API_PROXY = { '/api': 'http://localhost:3000' } satisfies Record<string, string>;
+
 // https://vite.dev/config/ — Vitest options live here too, so tests share the alias and plugins.
 export default defineConfig({
   plugins: [react()],
@@ -9,7 +13,8 @@ export default defineConfig({
     // Keep in sync with `paths` in tsconfig.app.json.
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
-  server: { port: 5173, strictPort: true },
+  server: { port: 5173, strictPort: true, proxy: API_PROXY },
+  preview: { proxy: API_PROXY },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
