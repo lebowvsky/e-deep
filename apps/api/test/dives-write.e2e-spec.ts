@@ -3,11 +3,10 @@ import type {
   ApiValidationErrorResponse,
   DiveWriteResponse,
 } from '@e-deep/shared';
-import type { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import type { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { CurrentDiverGuard } from '../src/common/auth/current-diver.guard';
 import { IdentifierConflictError, InvalidReferenceError } from '../src/common/errors/domain-errors';
@@ -33,7 +32,7 @@ const find = jest.fn<Promise<{ id: string }[]>, []>();
 let devAuthStub = true;
 
 describe('/api/dives writes (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: NestExpressApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -47,8 +46,8 @@ describe('/api/dives writes (e2e)', () => {
       ],
     }).compile();
 
-    app = moduleRef.createNestApplication({ logger: false });
-    configureApp(app, { corsOrigins: ['http://localhost:5173'] });
+    app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
+    configureApp(app, { corsOrigins: ['http://localhost:5173'], trustProxy: 0 });
     await app.init();
   });
 

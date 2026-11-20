@@ -1,8 +1,8 @@
 import type { HealthResponse } from '@e-deep/shared';
-import { Module, type INestApplication } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import type { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import { configureApp } from '../src/configure-app';
 import { HealthModule } from '../src/modules/health/health.module';
@@ -27,15 +27,15 @@ const query = jest.fn<Promise<unknown>, [string]>();
 class FakeDatabaseModule {}
 
 describe('GET /api/health (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: NestExpressApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [{ module: FakeDatabaseModule, global: true }, HealthModule],
     }).compile();
 
-    app = moduleRef.createNestApplication({ logger: false });
-    configureApp(app, { corsOrigins: [WEB_ORIGIN] });
+    app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
+    configureApp(app, { corsOrigins: [WEB_ORIGIN], trustProxy: 0 });
     await app.init();
   });
 
@@ -61,6 +61,14 @@ describe('GET /api/health (e2e)', () => {
       timestamp: ISO_TIMESTAMP,
     } satisfies HealthResponseMatcher);
     expect(response.headers['access-control-allow-origin']).toBe(WEB_ORIGIN);
+    expect(response.headers['x-powered-by']).toBeUndefined();
+  });
+
+  it('applies the trust proxy setting', () => {
+    // Typed as `unknown`: Express settings are untyped.
+    const trustProxy: unknown = app.getHttpAdapter().getInstance().get('trust proxy');
+
+    expect(trustProxy).toBe(0);
   });
 
   it('returns 200 with a degraded status when the database is down', async () => {
