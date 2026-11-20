@@ -22,6 +22,7 @@ import { DEFAULT_PURGE_HORIZON_DAYS } from '../common/sync/sync-settings';
 const MIN_PORT = 1;
 const MAX_PORT = 65_535;
 const MAX_PURGE_HORIZON_DAYS = 3_650;
+const MAX_TRUST_PROXY_HOPS = 10;
 
 export const NODE_ENVIRONMENTS = ['development', 'test', 'production'] as const;
 
@@ -69,9 +70,9 @@ export class DatabaseEnvironment {
 
 /** Every variable the API reads. Validated once at startup by `ConfigModule`. */
 export class EnvironmentVariables extends DatabaseEnvironment {
-  /** Optional, `development` by default. `production` forbids `DEV_AUTH_STUB`. */
+  /** Required: `development`, `test` or `production`. `production` forbids `DEV_AUTH_STUB`. */
   @IsIn(NODE_ENVIRONMENTS)
-  NODE_ENV: NodeEnvironment = 'development';
+  NODE_ENV: NodeEnvironment;
 
   @IsInt()
   @Min(MIN_PORT)
@@ -96,6 +97,27 @@ export class EnvironmentVariables extends DatabaseEnvironment {
   @Min(1)
   @Max(MAX_PURGE_HORIZON_DAYS)
   SYNC_PURGE_HORIZON_DAYS: number = DEFAULT_PURGE_HORIZON_DAYS;
+
+  /**
+   * Number of reverse-proxy hops trusted by Express (`trust proxy`), so that `req.ip` and
+   * `req.protocol` reflect the client. `0` (default) in development, where nothing sits in front.
+   */
+  @IsInt()
+  @Min(0)
+  @Max(MAX_TRUST_PROXY_HOPS)
+  TRUST_PROXY: number = 0;
+
+  /**
+   * `Secure` attribute of the session cookie (D34). Not read by anything until lot 3. Fail-safe:
+   * only the exact value `false` disables it, any other value (or none) keeps it on. Set it to
+   * `false` only for local development over plain http.
+   */
+  @Transform(({ obj }: { obj: Record<string, unknown> }) => {
+    const raw = obj['SESSION_COOKIE_SECURE'];
+    return !(raw === false || raw === 'false');
+  })
+  @IsBoolean()
+  SESSION_COOKIE_SECURE: boolean = true;
 
   /**
    * DEVELOPMENT ONLY, until authentication exists: when `true`, the current diver is the first one
