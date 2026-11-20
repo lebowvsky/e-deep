@@ -3,6 +3,10 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+// Same origin as the API (D34): `/api` is forwarded to the Nest server in dev and preview,
+// so the browser never makes a cross-origin call (CORS is removed at lot 4).
+const API_PROXY = { '/api': 'http://localhost:3000' } satisfies Record<string, string>;
+
 // https://vite.dev/config/ — Vitest options live here too, so tests share the alias and plugins.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -10,8 +14,8 @@ export default defineConfig({
     // Keep in sync with `paths` in tsconfig.json / tsconfig.app.json (also read by the shadcn CLI).
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
-  server: { port: 5174, strictPort: true },
-  preview: { port: 4174, strictPort: true },
+  server: { port: 5174, strictPort: true, proxy: API_PROXY },
+  preview: { port: 4174, strictPort: true, proxy: API_PROXY },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
