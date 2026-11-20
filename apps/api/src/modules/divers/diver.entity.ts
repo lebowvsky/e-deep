@@ -10,9 +10,17 @@ import {
 import { TimestampedEntity } from '../../common/database/timestamped.entity';
 import { CertificationLevel } from '../certification-levels/certification-level.entity';
 
+/**
+ * Owner of the dive log (D28, D36). The minimal sign-up creates a diver without last name nor level
+ * (incomplete profile); `/welcome` sets the level before any access to the log (D38). Readers that
+ * need the level go through `CompleteDiver`.
+ */
 @Entity({ name: 'divers' })
 @Check('ck_divers__first_name', 'char_length(btrim(first_name)) BETWEEN 1 AND 100')
-@Check('ck_divers__last_name', 'char_length(btrim(last_name)) BETWEEN 1 AND 100')
+@Check(
+  'ck_divers__last_name',
+  'last_name IS NULL OR char_length(btrim(last_name)) BETWEEN 1 AND 100',
+)
 @Check('ck_divers__avatar_url', 'avatar_url IS NULL OR char_length(avatar_url) <= 2048')
 export class Diver extends TimestampedEntity {
   @PrimaryColumn('uuid', {
@@ -25,20 +33,24 @@ export class Diver extends TimestampedEntity {
   @Column({ type: 'text', name: 'first_name' })
   firstName: string;
 
-  @Column({ type: 'text', name: 'last_name' })
-  lastName: string;
+  /** Optional (D36). */
+  @Column({ type: 'text', name: 'last_name', nullable: true })
+  lastName: string | null;
 
-  /** Current level; it determines the agency. Must be active when chosen (service rule). */
-  @Column({ type: 'uuid', name: 'certification_level_id' })
-  certificationLevelId: string;
+  /**
+   * Current level; it determines the agency. Must be active when chosen (service rule). `NULL`
+   * until onboarding (D36).
+   */
+  @Column({ type: 'uuid', name: 'certification_level_id', nullable: true })
+  certificationLevelId: string | null;
 
   // Deliberately not indexed: levels are never deleted.
-  @ManyToOne(() => CertificationLevel, { onDelete: 'RESTRICT', nullable: false })
+  @ManyToOne(() => CertificationLevel, { onDelete: 'RESTRICT', nullable: true })
   @JoinColumn({
     name: 'certification_level_id',
     foreignKeyConstraintName: 'fk_divers__certification_level_id',
   })
-  certificationLevel?: Relation<CertificationLevel>;
+  certificationLevel?: Relation<CertificationLevel> | null;
 
   @Column({ type: 'text', name: 'avatar_url', nullable: true })
   avatarUrl: string | null;

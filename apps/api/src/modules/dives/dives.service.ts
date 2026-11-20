@@ -18,6 +18,7 @@ import { Buddy, BUDDY_LINK_UNIQUE_INDEX } from '../buddies/buddy.entity';
 import { CertificationLevel } from '../certification-levels/certification-level.entity';
 import { DiveSite } from '../dive-sites/dive-site.entity';
 import { resolveMergedSiteIn } from '../dive-sites/dive-sites.service';
+import { assertCompleteDiver } from '../divers/complete-diver';
 import { Diver } from '../divers/diver.entity';
 import { DiveBuddy } from './dive-buddy.entity';
 import { DiveEvent } from './dive-event.entity';
@@ -293,7 +294,10 @@ async function findParticipationToWrite(
 
 /**
  * Level snapshot (D-09): a level sent by the client is kept as is (only its existence is checked);
- * without one, the diver's current level is copied.
+ * without one, the diver's current level is copied, so a participation always has a level.
+ *
+ * @throws {Error} (invariant, `assertCompleteDiver`) without a requested level when the diver has
+ *   none yet.
  */
 async function resolveParticipationLevel(
   manager: EntityManager,
@@ -305,6 +309,7 @@ async function resolveParticipationLevel(
     throw new InvalidReferenceError();
   }
   if (requested === null) {
+    assertCompleteDiver(diver);
     return diver.certificationLevelId;
   }
   if (!(await manager.existsBy(CertificationLevel, { id: requested }))) {

@@ -135,6 +135,22 @@ describe('dashboard', () => {
     expect(result).toMatchObject({ lastDive: null, sites: [], frequentBuddies: [] });
   });
 
+  it('refuses an incomplete profile (invariant, until the onboarding guard of lot 4)', async () => {
+    const diver = await fixtures.incompleteDiver();
+
+    await expect(dashboard.getDashboard(diver.id, NOW)).rejects.toThrow(
+      'Incomplete diver profile: no certification level',
+    );
+  });
+
+  it('refuses a diver without last name while the contract requires one (temporary)', async () => {
+    const diver = await fixtures.diver({ lastName: null });
+
+    await expect(dashboard.getDashboard(diver.id, NOW)).rejects.toThrow(
+      'Incomplete diver profile: no last name for the dashboard contract',
+    );
+  });
+
   describe('CurrentDiverGuard (development stub)', () => {
     const request: { currentDiverId?: string } = {};
     const context = {

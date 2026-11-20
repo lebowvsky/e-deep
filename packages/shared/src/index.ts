@@ -1,4 +1,22 @@
 export type {
+  AccountRole,
+  AdminLoginRequest,
+  AdminMeResponse,
+  CertificationLevelListResponse,
+  CertificationLevelOption,
+  ChangePasswordRequest,
+  ConsentGrantRequest,
+  ConsentPurpose,
+  DeleteAccountRequest,
+  HealthPolicyVersion,
+  LoginRequest,
+  MeResponse,
+  OnboardingRequest,
+  OnboardingStatus,
+  RegisterRequest,
+  StaffRole,
+} from './auth.js';
+export type {
   DashboardBuddy,
   DashboardDive,
   DashboardResponse,

@@ -102,10 +102,13 @@ class DevSeeder {
     return report;
   }
 
-  /** Empties the dive log; `certification_levels` (migration seed) is kept. */
+  /**
+   * Empties the dive log, with the accounts and consents that reference the divers;
+   * `certification_levels` (migration seed) is kept.
+   */
   private async reset(): Promise<void> {
     await this.dataSource.query(
-      'TRUNCATE dive_observations, dive_buddies, dive_participations, dive_events, buddies, dive_sites, divers',
+      'TRUNCATE auth_events, sessions, accounts, consents, dive_observations, dive_buddies, dive_participations, dive_events, buddies, dive_sites, divers',
     );
   }
 

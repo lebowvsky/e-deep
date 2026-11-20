@@ -4,7 +4,10 @@ import { ConfigModule } from '@nestjs/config';
 import { EnvironmentVariables, validateEnvironment } from './config/environment';
 import { SyncModule } from './common/sync/sync.module';
 import { DatabaseModule } from './database/database.module';
+import { AccountsModule } from './modules/accounts/accounts.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { BuddiesModule } from './modules/buddies/buddies.module';
+import { ConsentsModule } from './modules/consents/consents.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { CertificationLevelsModule } from './modules/certification-levels/certification-levels.module';
 import { DiveSitesModule } from './modules/dive-sites/dive-sites.module';
@@ -30,6 +33,9 @@ import { HealthModule } from './modules/health/health.module';
     BuddiesModule,
     DivesModule,
     DashboardModule,
+    AccountsModule,
+    AuthModule,
+    ConsentsModule,
   ],
 })
 export class AppModule {}
