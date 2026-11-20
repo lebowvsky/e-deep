@@ -486,6 +486,17 @@ describe('DivesService', () => {
       expect(nulled.current.participation.certificationLevelId).toBe(diver.certificationLevelId);
     });
 
+    it('refuses to copy the level of an incomplete profile, writes nothing (invariant)', async () => {
+      const diver = await fixtures.incompleteDiver();
+      const site = await fixtures.site(diver.id);
+      const write = diveWrite(site.id);
+
+      await expect(dives.upsertDive(diver.id, write, recentPull())).rejects.toThrow(
+        'Incomplete diver profile: no certification level',
+      );
+      expect(await dataSource.manager.existsBy(DiveEvent, { id: write.event.id })).toBe(false);
+    });
+
     it('refuses an unknown level', async () => {
       const { diver, site } = await diverWithSite();
       await expect(

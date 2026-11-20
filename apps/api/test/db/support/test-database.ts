@@ -3,8 +3,12 @@ import { DataSource } from 'typeorm';
 import type { DatabaseEnvironment } from '../../../src/config/environment';
 import { buildDataSourceOptions } from '../../../src/database/database.options';
 import { loadDatabaseEnvironment } from '../../../src/database/load-database-environment';
+import { Account } from '../../../src/modules/accounts/account.entity';
+import { AuthEvent } from '../../../src/modules/auth/auth-event.entity';
+import { Session } from '../../../src/modules/auth/session.entity';
 import { Buddy } from '../../../src/modules/buddies/buddy.entity';
 import { CertificationLevel } from '../../../src/modules/certification-levels/certification-level.entity';
+import { Consent } from '../../../src/modules/consents/consent.entity';
 import { DiveSite } from '../../../src/modules/dive-sites/dive-site.entity';
 import { Diver } from '../../../src/modules/divers/diver.entity';
 import { DiveBuddy } from '../../../src/modules/dives/dive-buddy.entity';
@@ -26,6 +30,10 @@ export const ENTITIES = [
   DiveParticipation,
   DiveBuddy,
   DiveObservation,
+  Account,
+  Session,
+  Consent,
+  AuthEvent,
 ];
 
 /** The dev database from `apps/api/.env` (the docker compose one). */
@@ -56,7 +64,7 @@ const SEEDED_LEVELS = "agency = 'FFESSM' AND code IN ('N1', 'N2', 'N3', 'N4')";
 /** Empties every table and restores the seeded reference data. */
 export async function resetDatabase(dataSource: DataSource): Promise<void> {
   await dataSource.query(
-    'TRUNCATE dive_observations, dive_buddies, dive_participations, dive_events, buddies, dive_sites, divers',
+    'TRUNCATE auth_events, sessions, accounts, consents, dive_observations, dive_buddies, dive_participations, dive_events, buddies, dive_sites, divers',
   );
   await dataSource.query(`DELETE FROM certification_levels WHERE NOT (${SEEDED_LEVELS})`);
   await dataSource.query('UPDATE certification_levels SET is_active = true WHERE NOT is_active');

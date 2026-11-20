@@ -88,6 +88,38 @@ const CONSTRAINTS = [
   'ck_dive_observations__position',
   'ck_dive_observations__label',
   'ck_dive_observations__count',
+  'pk_accounts',
+  'fk_accounts__diver_id',
+  'uq_accounts__email',
+  'uq_accounts__diver_id',
+  'ck_accounts__email',
+  'ck_accounts__password_hash',
+  'ck_accounts__role',
+  'ck_accounts__diver_role',
+  'pk_sessions',
+  'fk_sessions__account_id',
+  'uq_sessions__token_hash',
+  'ck_sessions__token_hash',
+  'ck_sessions__audience',
+  'pk_consents',
+  'fk_consents__diver_id',
+  'ck_consents__purpose',
+  'ck_consents__policy_version',
+  'ck_consents__withdrawn_after_granted',
+  'pk_auth_events',
+  'fk_auth_events__account_id',
+  'ck_auth_events__type',
+];
+
+/** Every migration, in the order they are played. */
+const MIGRATIONS = [
+  'InitDiveLogSchema1794132143754',
+  'AddDiveSiteLocality1794590554546',
+  'AddDiveDetailFields1794867520362',
+  'AllowDiveSiteWithoutPosition1794956266342',
+  'AddDiveSiteDetails1795125645653',
+  'CreateAuthSchema1795191490987',
+  'AllowIncompleteDiverProfile1795191584720',
 ];
 
 const INDEXES: Record<string, string> = {
@@ -104,9 +136,16 @@ const INDEXES: Record<string, string> = {
     '(diver_id, dive_event_id) WHERE (deleted_at IS NULL)',
   idx_dive_participations__diver_id_updated_at_id: '(diver_id, updated_at, id)',
   idx_dive_buddies__owner_id_buddy_id: '(owner_id, buddy_id)',
+  idx_sessions__account_id: '(account_id)',
+  idx_sessions__expires_at: '(expires_at)',
+  idx_auth_events__account_id: '(account_id)',
+  idx_auth_events__occurred_at: '(occurred_at)',
+  uq_consents__live: '(diver_id, purpose) WHERE (withdrawn_at IS NULL)',
+  idx_consents__diver_id: '(diver_id)',
 };
 
 const TRIGGERS = [
+  'trg_accounts__set_updated_at',
   'trg_buddies__set_updated_at',
   'trg_certification_levels__set_updated_at',
   'trg_dive_buddies__touch_participation',
@@ -192,6 +231,26 @@ describe('dive log schema migrations', () => {
     return rows.map((row) => row.name).sort();
   }
 
+  async function executedMigrations(): Promise<string[]> {
+    const rows = await selectRows<NameRow>(dataSource, 'SELECT name FROM migrations ORDER BY id');
+    return rows.map((row) => row.name);
+  }
+
+  /** Reverts the migrations played after `migration` (newest first): it becomes the last one. */
+  async function revertDownTo(migration: string): Promise<void> {
+    // Checked first: a mistyped name must not revert every migration before failing.
+    if (!(await executedMigrations()).includes(migration)) {
+      throw new Error(`Migration not played: ${migration}`);
+    }
+    while ((await executedMigrations()).at(-1) !== migration) {
+      await dataSource.undoLastMigration({ transaction: 'all' });
+    }
+  }
+
+  it('plays every migration, in order', async () => {
+    expect(await executedMigrations()).toEqual(MIGRATIONS);
+  });
+
   it('creates every constraint with its name', async () => {
     const constraints = await names(
       "SELECT conname AS name FROM pg_constraint WHERE connamespace = 'public'::regnamespace AND conrelid <> 'migrations'::regclass AND contype <> 'n'",
@@ -228,7 +287,7 @@ describe('dive log schema migrations', () => {
     );
   });
 
-  it('gives server-side defaults: uuidv7() for divers and levels, none for client ids and stops_ok', async () => {
+  it('gives server-side defaults: uuidv7() for divers, levels and auth tables, none for client ids and stops_ok', async () => {
     const rows = await selectRows<{ column: string; default: string | null }>(
       dataSource,
       `SELECT table_name || '.' || column_name AS column, column_default AS default
@@ -238,6 +297,10 @@ describe('dive log schema migrations', () => {
     expect(Object.fromEntries(rows.map((row) => [row.column, row.default]))).toEqual({
       'certification_levels.id': 'uuidv7()',
       'divers.id': 'uuidv7()',
+      'accounts.id': 'uuidv7()',
+      'sessions.id': 'uuidv7()',
+      'consents.id': 'uuidv7()',
+      'auth_events.id': 'uuidv7()',
       'dive_sites.id': null,
       'buddies.id': null,
       'dive_events.id': null,
@@ -352,6 +415,7 @@ describe('dive log schema migrations', () => {
     const fixtures = new Fixtures(dataSource);
     const diver = await fixtures.diver();
 
+    await revertDownTo('AddDiveSiteDetails1795125645653');
     await dataSource.undoLastMigration({ transaction: 'all' });
     expect(await siteDetailColumns()).toEqual({});
     expect(
@@ -388,8 +452,7 @@ describe('dive log schema migrations', () => {
     const fixtures = new Fixtures(dataSource);
     const diver = await fixtures.diver();
     const site = await fixtures.site(diver.id, { region: null, latitude: null, longitude: null });
-    // AddDiveSiteDetails comes after it: reverted first.
-    await dataSource.undoLastMigration({ transaction: 'all' });
+    await revertDownTo('AllowDiveSiteWithoutPosition1794956266342');
 
     await expect(dataSource.undoLastMigration({ transaction: 'all' })).rejects.toThrow(
       'some dive sites have no region or no position',
@@ -416,8 +479,9 @@ describe('dive log schema migrations', () => {
       ),
     ).toEqual([]);
 
-    await resetDatabase(dataSource);
+    // Migrated first: the reset also empties the auth tables, reverted at this point.
     await dataSource.runMigrations({ transaction: 'each' });
+    await resetDatabase(dataSource);
     expect(await sitePositionNullability()).toEqual({
       region: true,
       latitude: true,
@@ -426,9 +490,7 @@ describe('dive log schema migrations', () => {
   });
 
   it('reverts AddDiveDetailFields (after the later migrations), keeping the shared trigger function, then migrates again', async () => {
-    // AddDiveSiteDetails and AllowDiveSiteWithoutPosition come after it: reverted first.
-    await dataSource.undoLastMigration({ transaction: 'all' });
-    await dataSource.undoLastMigration({ transaction: 'all' });
+    await revertDownTo('AddDiveDetailFields1794867520362');
     await dataSource.undoLastMigration({ transaction: 'all' });
 
     expect(
@@ -451,7 +513,11 @@ describe('dive log schema migrations', () => {
       ),
     ).toEqual(['set_updated_at', 'touch_participation_on_buddies_change']);
     expect(await names('SELECT tgname AS name FROM pg_trigger WHERE NOT tgisinternal')).toEqual(
-      TRIGGERS.filter((trigger) => trigger !== 'trg_dive_observations__touch_participation'),
+      TRIGGERS.filter(
+        (trigger) =>
+          trigger !== 'trg_dive_observations__touch_participation' &&
+          trigger !== 'trg_accounts__set_updated_at',
+      ),
     );
 
     await dataSource.runMigrations({ transaction: 'each' });

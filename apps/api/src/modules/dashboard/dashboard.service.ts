@@ -10,6 +10,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, type EntityManager } from 'typeorm';
 import { queryRows } from '../../common/database/query-rows';
 import { InvalidReferenceError } from '../../common/errors/domain-errors';
+import { assertCompleteDiver } from '../divers/complete-diver';
 import { Diver } from '../divers/diver.entity';
 import { toFederation, toUserLevel } from '../divers/diver-contract.mapper';
 import { toLocalDateTime } from '../dives/dive-contract.mapper';
@@ -89,7 +90,11 @@ interface BuddyRow {
 export class DashboardService {
   constructor(private readonly dataSource: DataSource) {}
 
-  /** @throws {InvalidReferenceError} when the diver does not exist. */
+  /**
+   * @throws {InvalidReferenceError} when the diver does not exist.
+   * @throws {Error} (invariant) for an incomplete profile: no level, or no last name (temporary,
+   *   see `requireDashboardLastName`).
+   */
   getDashboard(diverId: string, now: Date = new Date()): Promise<DashboardResponse> {
     // One snapshot for every query, so the figures are consistent with each other.
     return this.dataSource.transaction('REPEATABLE READ', async (manager) => {
@@ -97,9 +102,15 @@ export class DashboardService {
         where: { id: diverId },
         relations: { certificationLevel: true },
       });
-      if (diver?.certificationLevel === undefined) {
+      if (diver === null) {
         throw new InvalidReferenceError();
       }
+      assertCompleteDiver(diver);
+      const { certificationLevel } = diver;
+      if (certificationLevel === undefined) {
+        throw new InvalidReferenceError();
+      }
+      const lastName = requireDashboardLastName(diver.lastName);
 
       // Sequential: the queries share the transaction's single connection.
       const totals = await this.totals(manager, diverId);
@@ -131,9 +142,9 @@ export class DashboardService {
         user: {
           id: diver.id,
           firstName: diver.firstName,
-          lastName: diver.lastName,
-          level: toUserLevel(diver.certificationLevel),
-          federation: toFederation(diver.certificationLevel),
+          lastName,
+          level: toUserLevel(certificationLevel),
+          federation: toFederation(certificationLevel),
           avatarUrl: diver.avatarUrl,
         },
         stats,
@@ -257,6 +268,21 @@ export class DashboardService {
     const team = new Set(rows.map((row) => row.buddy_id));
     return buddies.filter((buddy) => team.has(buddy.id));
   }
+}
+
+/**
+ * TEMPORARY (lot 1 of docs/plans/auth.md): `DashboardUser.lastName` is still a `string` in the
+ * shared contract, while the last name became optional (D36). Same invariant as
+ * `assertCompleteDiver`, to be removed when the contract becomes nullable. Safe message: no id, no
+ * name.
+ *
+ * @throws {Error} when the diver has no last name.
+ */
+function requireDashboardLastName(lastName: string | null): string {
+  if (lastName === null) {
+    throw new Error('Incomplete diver profile: no last name for the dashboard contract');
+  }
+  return lastName;
 }
 
 function toDashboardDive(row: DiveRow, buddies: DashboardBuddy[]): DashboardDive {

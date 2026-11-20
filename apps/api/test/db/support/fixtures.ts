@@ -1,11 +1,19 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { DataSource } from 'typeorm';
 import type { SyncSettings } from '../../../src/common/sync/sync-settings';
+import { Account } from '../../../src/modules/accounts/account.entity';
+import { AuthEvent } from '../../../src/modules/auth/auth-event.entity';
+import { Session } from '../../../src/modules/auth/session.entity';
 import { Buddy } from '../../../src/modules/buddies/buddy.entity';
 import type { BuddyWrite } from '../../../src/modules/buddies/buddies.service';
 import { CertificationLevel } from '../../../src/modules/certification-levels/certification-level.entity';
+import { Consent } from '../../../src/modules/consents/consent.entity';
 import { DiveSite } from '../../../src/modules/dive-sites/dive-site.entity';
 import type { DiveSiteWrite } from '../../../src/modules/dive-sites/dive-sites.service';
+import {
+  assertCompleteDiver,
+  type CompleteDiver,
+} from '../../../src/modules/divers/complete-diver';
 import { Diver } from '../../../src/modules/divers/diver.entity';
 import { DiveBuddy } from '../../../src/modules/dives/dive-buddy.entity';
 import { DiveEvent } from '../../../src/modules/dives/dive-event.entity';
@@ -16,6 +24,10 @@ import {
   NO_PARTICIPATION_DETAIL,
   type DiveWrite,
 } from '../../../src/modules/dives/dive.types';
+
+/** Shape of an Argon2id PHC string; not a real hash (the schema only checks the prefix). */
+export const FAKE_PASSWORD_HASH =
+  '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHRzYWx0$aGFzaGhhc2hoYXNo';
 
 export const SYNC_SETTINGS_90_DAYS: SyncSettings = { purgeHorizonDays: 90 };
 
@@ -47,7 +59,8 @@ export class Fixtures {
     return this.manager.findOneByOrFail(CertificationLevel, { id });
   }
 
-  async diver(values: Partial<Diver> = {}): Promise<Diver> {
+  /** A diver past onboarding (D36): with a level. */
+  async diver(values: Partial<CompleteDiver> = {}): Promise<CompleteDiver> {
     const id = randomUUID();
     await this.manager.insert(Diver, {
       id,
@@ -56,6 +69,21 @@ export class Fixtures {
       certificationLevelId: values.certificationLevelId ?? (await this.levelId()),
       avatarUrl: null,
       ...values,
+    });
+    const diver = await this.manager.findOneByOrFail(Diver, { id });
+    assertCompleteDiver(diver);
+    return diver;
+  }
+
+  /** A diver right after the minimal sign-up (D36): no last name, no level. */
+  async incompleteDiver(): Promise<Diver> {
+    const id = randomUUID();
+    await this.manager.insert(Diver, {
+      id,
+      firstName: 'Alex',
+      lastName: null,
+      certificationLevelId: null,
+      avatarUrl: null,
     });
     return this.manager.findOneByOrFail(Diver, { id });
   }
@@ -151,6 +179,51 @@ export class Fixtures {
       await this.diveBuddy(diverId, participation.id, buddyId);
     }
     return { site, event, participation };
+  }
+
+  /** A diver account (`role = 'diver'`) when `diverId` is given, else a staff account. */
+  async account(diverId: string | null, values: Partial<Account> = {}): Promise<Account> {
+    const id = values.id ?? randomUUID();
+    await this.manager.insert(Account, {
+      diverId,
+      email: `${id}@example.test`,
+      passwordHash: FAKE_PASSWORD_HASH,
+      role: diverId === null ? 'support' : 'diver',
+      ...values,
+      id,
+    });
+    return this.manager.findOneByOrFail(Account, { id });
+  }
+
+  async session(accountId: string, values: Partial<Session> = {}): Promise<Session> {
+    const id = values.id ?? randomUUID();
+    await this.manager.insert(Session, {
+      accountId,
+      tokenHash: randomBytes(32),
+      audience: 'web',
+      expiresAt: new Date(Date.now() + 86_400_000),
+      ...values,
+      id,
+    });
+    return this.manager.findOneByOrFail(Session, { id });
+  }
+
+  async consent(diverId: string, values: Partial<Consent> = {}): Promise<Consent> {
+    const id = values.id ?? randomUUID();
+    await this.manager.insert(Consent, {
+      diverId,
+      purpose: 'health_data_processing',
+      policyVersion: '2026-11',
+      ...values,
+      id,
+    });
+    return this.manager.findOneByOrFail(Consent, { id });
+  }
+
+  async authEvent(accountId: string | null, values: Partial<AuthEvent> = {}): Promise<AuthEvent> {
+    const id = values.id ?? randomUUID();
+    await this.manager.insert(AuthEvent, { accountId, type: 'login_succeeded', ...values, id });
+    return this.manager.findOneByOrFail(AuthEvent, { id });
   }
 
   /** Moves a tombstone back in time, beyond the purge horizon. */
