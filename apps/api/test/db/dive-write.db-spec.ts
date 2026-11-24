@@ -7,6 +7,7 @@ import {
   IdentifierConflictError,
   InvalidReferenceError,
 } from '../../src/common/errors/domain-errors';
+import { asDiverId } from '../../src/common/auth/diver-id';
 import { Buddy } from '../../src/modules/buddies/buddy.entity';
 import { BuddiesService } from '../../src/modules/buddies/buddies.service';
 import { DashboardService } from '../../src/modules/dashboard/dashboard.service';
@@ -96,7 +97,7 @@ describe('DiveWriteService', () => {
       const buddy = newBuddy({ levelCode: 'N3' });
       const request = requestWithNewContacts({ buddies: [buddy] });
 
-      const creation = await service.create(diver.id, request);
+      const creation = await service.create(asDiverId(diver.id), request);
 
       expect(creation).toEqual({
         outcome: 'created',
@@ -126,7 +127,7 @@ describe('DiveWriteService', () => {
       // No snapshot sent: the diver's current level (D-09).
       expect(participation.certificationLevelId).toBe(await fixtures.levelId('N2'));
 
-      const detail = await diveLog.findOne(diver.id, request.event.id);
+      const detail = await diveLog.findOne(asDiverId(diver.id), request.event.id);
       expect(detail).toMatchObject({
         number: 1,
         date: '2026-04-09T10:05:00+02:00',
@@ -141,7 +142,9 @@ describe('DiveWriteService', () => {
       const { diver } = await diverWithSite();
       const request = requestWithNewContacts({ buddies: [newBuddy({ levelCode: 'MF2' })] });
 
-      await expect(service.create(diver.id, request)).rejects.toThrow(InvalidReferenceError);
+      await expect(service.create(asDiverId(diver.id), request)).rejects.toThrow(
+        InvalidReferenceError,
+      );
 
       expect(await counts()).toMatchObject({ sites: 1, buddies: 0, events: 0, participations: 0 });
     });
@@ -163,7 +166,9 @@ describe('DiveWriteService', () => {
         ],
       });
 
-      await expect(service.create(diver.id, request)).rejects.toThrow(InvalidReferenceError);
+      await expect(service.create(asDiverId(diver.id), request)).rejects.toThrow(
+        InvalidReferenceError,
+      );
 
       // The fixture site of the diver and the other diver's buddy only.
       expect(await counts()).toMatchObject({ sites: 1, buddies: 1, events: 0, participations: 0 });
@@ -177,7 +182,9 @@ describe('DiveWriteService', () => {
         buddies: [newBuddy()],
       });
 
-      await expect(service.create(diver.id, request)).rejects.toThrow(InvalidReferenceError);
+      await expect(service.create(asDiverId(diver.id), request)).rejects.toThrow(
+        InvalidReferenceError,
+      );
       expect(await counts()).toMatchObject({ buddies: 0, events: 0 });
     });
 
@@ -189,7 +196,9 @@ describe('DiveWriteService', () => {
         site: { name: 'Mine', isNew: true },
       });
 
-      await expect(service.create(diver.id, request)).rejects.toThrow(InvalidReferenceError);
+      await expect(service.create(asDiverId(diver.id), request)).rejects.toThrow(
+        InvalidReferenceError,
+      );
       expect(
         await dataSource.manager.findOneByOrFail(DiveSite, { id: other.site.id }),
       ).toMatchObject({
@@ -206,7 +215,9 @@ describe('DiveWriteService', () => {
         buddies: [newBuddy({ id: foreignBuddy.id, firstName: 'Mine' })],
       });
 
-      await expect(service.create(diver.id, request)).rejects.toThrow(InvalidReferenceError);
+      await expect(service.create(asDiverId(diver.id), request)).rejects.toThrow(
+        InvalidReferenceError,
+      );
       expect(await counts()).toMatchObject({ sites: 1, buddies: 1, events: 0 });
       expect(
         await dataSource.manager.findOneByOrFail(Buddy, { id: foreignBuddy.id }),
@@ -216,12 +227,12 @@ describe('DiveWriteService', () => {
     it('answers a replayed creation without writing anything', async () => {
       const { diver } = await diverWithSite();
       const request = requestWithNewContacts();
-      const first = await service.create(diver.id, request);
+      const first = await service.create(asDiverId(diver.id), request);
       const before = await counts();
       const eventUpdatedAt = await updatedAtOf(dataSource, 'dive_events', request.event.id);
       const siteUpdatedAt = await updatedAtOf(dataSource, 'dive_sites', request.site.id);
 
-      const replay = await service.create(diver.id, {
+      const replay = await service.create(asDiverId(diver.id), {
         ...request,
         observations: [{ label: 'Mérou brun', count: 2 }],
         buddies: request.buddies.map((buddy) => ({ ...buddy, id: buddy.id.toUpperCase() })),
@@ -236,14 +247,14 @@ describe('DiveWriteService', () => {
     it('does not overwrite a site enriched between a creation and its replay', async () => {
       const { diver } = await diverWithSite();
       const request = requestWithNewContacts();
-      await service.create(diver.id, request);
+      await service.create(asDiverId(diver.id), request);
       await dataSource.manager.update(
         DiveSite,
         { id: request.site.id },
         { region: 'Var', latitude: 43.01, longitude: 6.4 },
       );
 
-      await service.create(diver.id, request);
+      await service.create(asDiverId(diver.id), request);
 
       expect(
         await dataSource.manager.findOneByOrFail(DiveSite, { id: request.site.id }),
@@ -257,15 +268,17 @@ describe('DiveWriteService', () => {
       const { diver, site } = await diverWithSite();
       const other = await diverWithSite();
       const request = diveWriteRequest({ event: { siteId: site.id } });
-      await service.create(diver.id, request);
+      await service.create(asDiverId(diver.id), request);
 
       const changed = { ...request, participation: { ...request.participation, durationMin: 40 } };
-      await expect(service.create(diver.id, changed)).rejects.toThrow(IdentifierConflictError);
+      await expect(service.create(asDiverId(diver.id), changed)).rejects.toThrow(
+        IdentifierConflictError,
+      );
 
       const othersRequest = diveWriteRequest({
         event: { id: request.event.id, siteId: other.site.id },
       });
-      await expect(service.create(other.diver.id, othersRequest)).rejects.toThrow(
+      await expect(service.create(asDiverId(other.diver.id), othersRequest)).rejects.toThrow(
         IdentifierConflictError,
       );
 
@@ -273,7 +286,9 @@ describe('DiveWriteService', () => {
         diver.id,
         request.event.id,
       );
-      await expect(service.create(diver.id, request)).rejects.toThrow(IdentifierConflictError);
+      await expect(service.create(asDiverId(diver.id), request)).rejects.toThrow(
+        IdentifierConflictError,
+      );
 
       expect(await dataSource.manager.findOneByOrFail(DiveParticipation, {})).toMatchObject({
         durationMin: 52,
@@ -285,8 +300,8 @@ describe('DiveWriteService', () => {
       const request = requestWithNewContacts();
 
       const outcomes = await Promise.all([
-        service.create(diver.id, request),
-        service.create(diver.id, request),
+        service.create(asDiverId(diver.id), request),
+        service.create(asDiverId(diver.id), request),
       ]);
 
       expect(outcomes.map(({ outcome }) => outcome).sort()).toEqual(['created', 'replayed']);
@@ -309,8 +324,8 @@ describe('DiveWriteService', () => {
       };
 
       const results = await Promise.allSettled([
-        service.create(diver.id, request),
-        service.create(diver.id, different),
+        service.create(asDiverId(diver.id), request),
+        service.create(asDiverId(diver.id), different),
       ]);
 
       const fulfilled = results.filter((result) => result.status === 'fulfilled');
@@ -340,7 +355,7 @@ describe('DiveWriteService', () => {
       await fixtures.participation(deleted.id, diver.id);
 
       const { saved } = await service.create(
-        diver.id,
+        asDiverId(diver.id),
         diveWriteRequest({ event: { siteId: site.id, startedAt: '2026-04-09T10:05:00+02:00' } }),
       );
 
@@ -352,7 +367,7 @@ describe('DiveWriteService', () => {
     it('replaces the dive, keeping its participation and level snapshot (D-09)', async () => {
       const { diver, site } = await diverWithSite('N1');
       const request = diveWriteRequest({ event: { siteId: site.id } });
-      await service.create(diver.id, request);
+      await service.create(asDiverId(diver.id), request);
       const { id: participationId } = await dataSource.manager.findOneByOrFail(
         DiveParticipation,
         {},
@@ -362,9 +377,9 @@ describe('DiveWriteService', () => {
         { id: diver.id },
         { certificationLevelId: await fixtures.levelId('N4') },
       );
-      const detail = await diveLog.findOne(diver.id, request.event.id);
+      const detail = await diveLog.findOne(asDiverId(diver.id), request.event.id);
 
-      const saved = await service.replace(diver.id, request.event.id, {
+      const saved = await service.replace(asDiverId(diver.id), request.event.id, {
         ...request,
         participation: { ...request.participation, maxDepthM: 40.5, notes: 'Retour au bateau' },
         observations: [{ label: 'Corb', count: null }],
@@ -380,7 +395,7 @@ describe('DiveWriteService', () => {
         notes: 'Retour au bateau',
         certificationLevelId: await fixtures.levelId('N1'),
       });
-      expect((await diveLog.findOne(diver.id, request.event.id)).observations).toEqual([
+      expect((await diveLog.findOne(asDiverId(diver.id), request.event.id)).observations).toEqual([
         { label: 'Corb', count: null },
       ]);
     });
@@ -389,9 +404,9 @@ describe('DiveWriteService', () => {
       const { diver, site } = await diverWithSite();
       const other = await diverWithSite();
       const request = diveWriteRequest({ event: { siteId: site.id } });
-      await service.create(diver.id, request);
+      await service.create(asDiverId(diver.id), request);
       const otherRequest = diveWriteRequest({ event: { siteId: other.site.id } });
-      await service.create(other.diver.id, otherRequest);
+      await service.create(asDiverId(other.diver.id), otherRequest);
       await new DivesService(dataSource, SYNC_SETTINGS_90_DAYS).deleteDive(
         diver.id,
         request.event.id,
@@ -406,7 +421,9 @@ describe('DiveWriteService', () => {
         ],
         [unknown.event.id, unknown],
       ] as const) {
-        await expect(service.replace(diver.id, id, body)).rejects.toThrow(NotFoundException);
+        await expect(service.replace(asDiverId(diver.id), id, body)).rejects.toThrow(
+          NotFoundException,
+        );
       }
 
       expect(
@@ -428,14 +445,17 @@ describe('DiveWriteService', () => {
         isNew: false,
       });
       const request = diveWriteRequest({ event: { siteId: site.id }, buddies: [asMember('N3')] });
-      await service.create(diver.id, request);
+      await service.create(asDiverId(diver.id), request);
 
       expect(await dataSource.manager.findOneByOrFail(Buddy, { id: buddy.id })).toMatchObject({
         firstName: 'Lucas',
         certificationLevelId: await fixtures.levelId('N3'),
       });
 
-      await service.replace(diver.id, request.event.id, { ...request, buddies: [asMember(null)] });
+      await service.replace(asDiverId(diver.id), request.event.id, {
+        ...request,
+        buddies: [asMember(null)],
+      });
 
       expect(await dataSource.manager.findOneByOrFail(Buddy, { id: buddy.id })).toMatchObject({
         certificationLevelId: await fixtures.levelId('N3'),
@@ -457,7 +477,7 @@ describe('DiveWriteService', () => {
         diveWriteRequest({ event: { siteId: site.id } }),
       ] as const;
       for (const request of dives) {
-        await service.create(diver.id, request);
+        await service.create(asDiverId(diver.id), request);
       }
       const levels = ['N1', 'N2', 'N3', 'N4'];
 
@@ -467,11 +487,11 @@ describe('DiveWriteService', () => {
         const one = levels[(2 * round) % levels.length] ?? null;
         const other = levels[(2 * round + 1) % levels.length] ?? null;
         const results = await Promise.allSettled([
-          service.replace(diver.id, dives[0].event.id, {
+          service.replace(asDiverId(diver.id), dives[0].event.id, {
             ...dives[0],
             buddies: [member(first.id, one), member(second.id, one)],
           }),
-          service.replace(diver.id, dives[1].event.id, {
+          service.replace(asDiverId(diver.id), dives[1].event.id, {
             ...dives[1],
             buddies: [member(second.id, other), member(first.id, other)],
           }),
@@ -489,7 +509,7 @@ describe('DiveWriteService', () => {
       const { diver, site } = await diverWithSite();
       const account = await fixtures.diver();
       const request = diveWriteRequest({ event: { siteId: site.id } });
-      await service.create(diver.id, request);
+      await service.create(asDiverId(diver.id), request);
       const deleted = await fixtures.buddy(diver.id, {
         linkedDiverId: account.id,
         deletedAt: new Date(),
@@ -503,7 +523,7 @@ describe('DiveWriteService', () => {
       );
 
       await expect(
-        service.replace(diver.id, request.event.id, {
+        service.replace(asDiverId(diver.id), request.event.id, {
           ...request,
           participation: { ...request.participation, durationMin: 40 },
           buddies: [member(deleted.id, null)],
@@ -524,9 +544,9 @@ describe('DiveWriteService', () => {
 
   it('serves a site without region nor position on the dashboard, out of the main region', async () => {
     const { diver } = await diverWithSite();
-    await service.create(diver.id, requestWithNewContacts());
+    await service.create(asDiverId(diver.id), requestWithNewContacts());
 
-    const dashboard = await new DashboardService(dataSource).getDashboard(diver.id);
+    const dashboard = await new DashboardService(dataSource).getDashboard(asDiverId(diver.id));
 
     expect(dashboard.sites).toEqual([
       expect.objectContaining({ name: 'Tombant des Américains', region: null, latitude: null }),

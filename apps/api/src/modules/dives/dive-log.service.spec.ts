@@ -8,9 +8,10 @@ import type {
   DiveSummaryRow,
   DiveTeamRow,
 } from './dive-contract.mapper';
+import { asDiverId } from '../../common/auth/diver-id';
 import { DIVE_LOG_MAX, DiveLogService } from './dive-log.service';
 
-const DIVER_ID = '01900000-0000-7000-8000-000000000001';
+const DIVER_ID = asDiverId('01900000-0000-7000-8000-000000000001');
 
 const query = jest.fn<Promise<unknown>, [string, unknown[]]>();
 const transaction = jest.fn<

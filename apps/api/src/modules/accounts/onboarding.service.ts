@@ -35,8 +35,8 @@ export interface OnboardingState {
 
 /**
  * Status computed by the API only (the front never recomputes it, §3), per D38:
- * - `profile-required`: no level, or no live consent at all: `/welcome` to do (lot 4 answers
- *   `403 onboarding-required`);
+ * - `profile-required`: no level, or no live consent at all: `/welcome` to do (the `SessionGuard`
+ *   answers `403 onboarding-required` on the dive log);
  * - `consent-required`: a level and a live consent of an outdated policy version: re-consent
  *   through `/me/consents` (`403 consent-required`);
  * - `complete`: a level and a live consent at the current version.
@@ -82,6 +82,24 @@ export class OnboardingService {
     }
     const consent = await this.consentsService.findLive(diverId, HEALTH_DATA);
     return { diver, consent, status: onboardingStatusOf(diver, consent) };
+  }
+
+  /**
+   * The status alone, for the `SessionGuard` on every dive log request: the level id and the live
+   * consent, without loading the level.
+   *
+   * @throws {UnauthenticatedError} when the diver is gone (account deleted during the request).
+   */
+  async statusOf(diverId: string): Promise<OnboardingStatus> {
+    const diver = await this.dataSource.manager.findOne(Diver, {
+      select: { id: true, certificationLevelId: true },
+      where: { id: diverId },
+    });
+    if (diver === null) {
+      throw new UnauthenticatedError();
+    }
+    const consent = await this.consentsService.findLive(diverId, HEALTH_DATA);
+    return onboardingStatusOf(diver, consent);
   }
 
   /**

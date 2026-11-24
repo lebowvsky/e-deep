@@ -2,7 +2,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { toFieldErrors, validationFailed } from './field-errors';
 
 /**
- * Global validation of bodies and parameters: unknown properties are refused (`unknown`), payloads
+ * Global validation of bodies and parameters: unknown properties are refused (`_unknown: ['unknown']`,
+ * never their name), payloads
  * are turned into their DTO class, and a failure answers `400 validation-failed` with field errors.
  * The errors keep neither the target nor the value (GDPR).
  */

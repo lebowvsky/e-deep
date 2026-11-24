@@ -31,6 +31,7 @@ import { DiveSite } from './dive-site.entity';
 import { toSiteResponse } from './site-contract.mapper';
 import { completeTargetDetails } from './site-merge';
 import { isSameSiteWrite, toDiveSiteWrite } from './site-write.mapper';
+import type { DiverId } from '../../common/auth/diver-id';
 
 /**
  * Every field is required, `null` included (D-22): the LWW upsert writes the whole record, so an
@@ -151,7 +152,7 @@ export class DiveSitesService {
    * @returns whether a live site was deleted.
    * @throws {SiteInUseError} when a live dive event still uses the site (RG-37).
    */
-  remove(ownerId: string, siteId: string): Promise<boolean> {
+  remove(ownerId: DiverId, siteId: string): Promise<boolean> {
     return this.dataSource.transaction(async (manager) => {
       const site = await findLiveSiteForWrite(manager, ownerId, siteId);
       if (site === null) {
@@ -172,7 +173,7 @@ export class DiveSitesService {
   }
 
   /** `GET /api/sites`: the live sites of the owner, by name then id. */
-  async list(ownerId: string): Promise<SiteListResponse> {
+  async list(ownerId: DiverId): Promise<SiteListResponse> {
     const sites = await this.dataSource.manager.find(DiveSite, {
       where: { ownerId, deletedAt: IsNull() },
       order: { name: 'ASC', id: 'ASC' },
@@ -186,7 +187,7 @@ export class DiveSitesService {
    * @throws {NotFoundException} when the site is absent, deleted (merged included) or another
    *   diver's: indistinguishable on purpose (ARCHITECTURE §9).
    */
-  async findOne(ownerId: string, siteId: string): Promise<SiteResponse> {
+  async findOne(ownerId: DiverId, siteId: string): Promise<SiteResponse> {
     const site = await this.dataSource.manager.findOneBy(DiveSite, {
       id: siteId,
       ownerId,
@@ -205,7 +206,7 @@ export class DiveSitesService {
    * @throws {IdentifierConflictError} when the id is already taken: different content, a deleted
    *   site or another diver's, indistinguishable on purpose (D-24).
    */
-  create(ownerId: string, request: SiteCreateRequest): Promise<SiteCreation> {
+  create(ownerId: DiverId, request: SiteCreateRequest): Promise<SiteCreation> {
     return this.dataSource.transaction(async (manager): Promise<SiteCreation> => {
       // Two creations of the same new id: the second waits, then sees the first.
       await lockIdForTransaction(manager, request.id);
@@ -232,7 +233,7 @@ export class DiveSitesService {
    *
    * @throws {NotFoundException} when the site is absent, deleted or another diver's.
    */
-  replace(ownerId: string, request: SiteWriteRequest): Promise<SiteResponse> {
+  replace(ownerId: DiverId, request: SiteWriteRequest): Promise<SiteResponse> {
     return this.dataSource.transaction(async (manager) => {
       const site = await findLiveSiteForWrite(manager, ownerId, request.id);
       if (site === null) {
@@ -259,7 +260,7 @@ export class DiveSitesService {
    * @throws {MergeIntoSelfError} when the target is the source.
    * @throws {InvalidReferenceError} when the target is not a live site of the owner.
    */
-  merge(ownerId: string, sourceId: string, targetId: string): Promise<SiteResponse> {
+  merge(ownerId: DiverId, sourceId: string, targetId: string): Promise<SiteResponse> {
     return this.dataSource.transaction(async (manager) => {
       const locked = await lockSitesInIdOrder(manager, ownerId, [sourceId, targetId]);
       const source = locked.get(normalizeUuid(sourceId));

@@ -17,6 +17,8 @@
     "migration:generate": "pnpm --filter @e-deep/api run migration:generate",
     "migration:create": "pnpm --filter @e-deep/api run migration:create",
     "db:seed": "pnpm --filter @e-deep/api run db:seed",
+    "account:create-staff": "pnpm --filter @e-deep/api run account:create-staff",
+    "account:reset-password": "pnpm --filter @e-deep/api run account:reset-password",
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm -r run typecheck",

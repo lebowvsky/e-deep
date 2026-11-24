@@ -19,6 +19,7 @@ import { diveNotFound, DiveLogService } from './dive-log.service';
 import { isSameDiveWrite, toDiveWrite } from './dive-write.mapper';
 import type { Dive, DiveWrite } from './dive.types';
 import { DivesService } from './dives.service';
+import type { DiverId } from '../../common/auth/diver-id';
 
 /**
  * Agency of the level codes the write contract carries (`levelCode: 'N3'`, without agency): the
@@ -60,7 +61,7 @@ export class DiveWriteService {
    *   to create under another diver's id (D-24: indistinguishable).
    * @throws {DomainError} from the services.
    */
-  create(diverId: string, request: DiveWriteRequest): Promise<DiveCreation> {
+  create(diverId: DiverId, request: DiveWriteRequest): Promise<DiveCreation> {
     return this.dataSource.transaction(async (manager): Promise<DiveCreation> => {
       // Two creations of the same new id: the second waits, then sees the first as `own`.
       await lockIdForTransaction(manager, request.event.id);
@@ -100,7 +101,7 @@ export class DiveWriteService {
    * @throws {NotFoundException} when the dive is absent, deleted or another diver's (same 404).
    * @throws {InvalidReferenceError} | {DomainError} from the services.
    */
-  replace(diverId: string, id: string, request: DiveWriteRequest): Promise<DiveWriteResponse> {
+  replace(diverId: DiverId, id: string, request: DiveWriteRequest): Promise<DiveWriteResponse> {
     return this.dataSource.transaction(async (manager) => {
       const siteId = await resolveSiteFirst(manager, diverId, request);
       const lookup = await this.dives.findDiveForWriteIn(manager, diverId, id);

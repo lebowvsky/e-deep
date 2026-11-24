@@ -10,15 +10,13 @@ import {
   Put,
   Req,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { clientIpKey } from '../../common/auth/client-ip';
-import {
-  CurrentDiverSession,
-  WebSessionGuard,
-  type DiverSession,
-} from '../../common/auth/local-session.guard';
+import { AllowIncompleteProfile } from '../../common/auth/allow-incomplete-profile.decorator';
+import { requireSessionId, type AuthContext } from '../../common/auth/auth-context';
+import { CurrentAuth, CurrentDiverId } from '../../common/auth/current-diver-id.decorator';
+import type { DiverId } from '../../common/auth/diver-id';
 import { SessionCookies } from '../../common/auth/session-cookie';
 import { ConsentsService } from '../consents/consents.service';
 import { AccountsService, type AccountCaller } from './accounts.service';
@@ -31,11 +29,12 @@ import { OnboardingService } from './onboarding.service';
 
 /**
  * The signed-in diver's account (§3, D38, D41), reachable before `/welcome` (an incomplete profile
- * is the point of `onboarding`). The diver always comes from the session, never from the request;
- * every answer is `no-store` (set by the guard, errors included).
+ * is the point of `onboarding`): web session, `@AllowIncompleteProfile()`. The diver always comes
+ * from the session (`@CurrentDiverId()`), never from the request; every answer is `no-store` (set
+ * by the `SessionGuard`, errors included).
  */
 @Controller('me')
-@UseGuards(WebSessionGuard)
+@AllowIncompleteProfile()
 export class MeController {
   constructor(
     private readonly me: MeService,
@@ -47,52 +46,57 @@ export class MeController {
 
   /** `GET /api/me`. */
   @Get()
-  describe(@CurrentDiverSession() session: DiverSession): Promise<MeResponse> {
-    return this.me.describe(session.accountId, session.diverId);
+  describe(
+    @CurrentAuth() auth: AuthContext,
+    @CurrentDiverId() diverId: DiverId,
+  ): Promise<MeResponse> {
+    return this.me.describe(auth.accountId, diverId);
   }
 
   /** `POST /api/me/onboarding`: 200, level, last name and consent in one transaction. */
   @Post('onboarding')
   @HttpCode(HttpStatus.OK)
   async completeOnboarding(
-    @CurrentDiverSession() session: DiverSession,
+    @CurrentAuth() auth: AuthContext,
+    @CurrentDiverId() diverId: DiverId,
     @Body() body: OnboardingRequestDto,
   ): Promise<MeResponse> {
     const state = await this.onboarding.complete({
-      accountId: session.accountId,
-      diverId: session.diverId,
+      accountId: auth.accountId,
+      diverId,
       lastName: body.lastName,
       certificationLevelId: body.certificationLevelId,
       policyVersion: body.policyVersion,
     });
-    return this.me.describeWith(session.accountId, state);
+    return this.me.describeWith(auth.accountId, state);
   }
 
   /** `POST /api/me/consents`: 201, consent to the current policy version (re-consent). */
   @Post('consents')
   async grantConsent(
-    @CurrentDiverSession() session: DiverSession,
+    @CurrentAuth() auth: AuthContext,
+    @CurrentDiverId() diverId: DiverId,
     @Body() body: ConsentGrantRequestDto,
   ): Promise<MeResponse> {
     await this.consents.grant({
-      accountId: session.accountId,
-      diverId: session.diverId,
+      accountId: auth.accountId,
+      diverId,
       purpose: body.purpose,
       policyVersion: body.policyVersion,
     });
-    return this.me.describe(session.accountId, session.diverId);
+    return this.me.describe(auth.accountId, diverId);
   }
 
   /** `PUT /api/me/password`: 204, the other sessions revoked, this cookie rotated. */
   @Put('password')
   @HttpCode(HttpStatus.NO_CONTENT)
   async changePassword(
-    @CurrentDiverSession() session: DiverSession,
+    @CurrentAuth() auth: AuthContext,
     @Body() body: ChangePasswordRequestDto,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
-    const rotated = await this.accounts.changePassword(callerOf(session, request), {
+    const rotated = await this.accounts.changePassword(callerOf(auth, request), {
       currentPassword: body.currentPassword,
       newPassword: body.newPassword,
     });
@@ -103,20 +107,21 @@ export class MeController {
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteAccount(
-    @CurrentDiverSession() session: DiverSession,
+    @CurrentAuth() auth: AuthContext,
     @Body() body: DeleteAccountRequestDto,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
-    await this.accounts.deleteAccount(callerOf(session, request), body.password);
+    await this.accounts.deleteAccount(callerOf(auth, request), body.password);
     this.cookies.clear(response, 'web');
   }
 }
 
-function callerOf(session: DiverSession, request: Request): AccountCaller {
+/** The caller of a password-checked account route (`requireSessionId`: never the dev stub). */
+function callerOf(auth: AuthContext, request: Request): AccountCaller {
   return {
-    accountId: session.accountId,
-    sessionId: session.sessionId,
+    accountId: auth.accountId,
+    sessionId: requireSessionId(auth),
     ip: clientIpKey(request.ip),
   };
 }

@@ -12,7 +12,7 @@ const BASE = {
   DATABASE_USER: 'edeep',
   DATABASE_PASSWORD: 'secret',
   DATABASE_NAME: 'edeep',
-  CORS_ORIGINS: 'http://localhost:5173',
+  ALLOWED_ORIGINS: 'http://localhost:5173',
 };
 
 describe('EnvironmentVariables.DEV_AUTH_STUB', () => {
@@ -79,6 +79,35 @@ describe('EnvironmentVariables.NODE_ENV', () => {
     expect(validate).toThrow(/NODE_ENV/);
     expect(validate).not.toThrow(/staging-secret/);
   });
+});
+
+describe('EnvironmentVariables.ALLOWED_ORIGINS', () => {
+  it('splits a comma-separated list of bare origins', () => {
+    expect(
+      validateEnvironment(EnvironmentVariables, {
+        ...BASE,
+        ALLOWED_ORIGINS: 'http://localhost:5173, https://app.example.test',
+      }).ALLOWED_ORIGINS,
+    ).toEqual(['http://localhost:5173', 'https://app.example.test']);
+  });
+
+  it('is required: CORS_ORIGINS no longer stands for it (no CORS, D34)', () => {
+    const { ALLOWED_ORIGINS: _omitted, ...withoutOrigins } = BASE;
+
+    const message = validationMessage({ ...withoutOrigins, CORS_ORIGINS: 'http://localhost:5173' });
+
+    expect(message).toContain('ALLOWED_ORIGINS');
+  });
+
+  it.each(['http://localhost:5173/', 'http://localhost:5173/path', 'localhost:5173'])(
+    'rejects %p, which a browser never sends as an Origin, without echoing it',
+    (value) => {
+      const message = validationMessage({ ...BASE, ALLOWED_ORIGINS: value });
+
+      expect(message).toContain('ALLOWED_ORIGINS');
+      expect(message).not.toContain(value);
+    },
+  );
 });
 
 describe('EnvironmentVariables.TRUST_PROXY', () => {

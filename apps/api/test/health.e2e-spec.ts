@@ -6,8 +6,11 @@ import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { configureApp } from '../src/configure-app';
 import { HealthModule } from '../src/modules/health/health.module';
-
-const WEB_ORIGIN = 'http://localhost:5173';
+import {
+  accessControlProviders,
+  resetAccessControlFakes,
+  sessionFakes,
+} from './support/access-control';
 
 // Typed as `unknown`: Jest asymmetric matchers are untyped.
 const ISO_TIMESTAMP: unknown = expect.stringMatching(
@@ -32,10 +35,12 @@ describe('GET /api/health (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [{ module: FakeDatabaseModule, global: true }, HealthModule],
+      // The real global guards: the route is `@Public()`.
+      providers: accessControlProviders(),
     }).compile();
 
     app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
-    configureApp(app, { corsOrigins: [WEB_ORIGIN], trustProxy: 0 });
+    configureApp(app, { trustProxy: 0 });
     await app.init();
   });
 
@@ -45,14 +50,16 @@ describe('GET /api/health (e2e)', () => {
 
   beforeEach(() => {
     query.mockReset();
+    resetAccessControlFakes();
   });
 
   it('returns ok when the database is up', async () => {
     query.mockResolvedValue([{ '?column?': 1 }]);
 
+    // Public: no cookie, no session read, cacheable (no `no-store`).
     const response = await request(app.getHttpServer())
       .get('/api/health')
-      .set('Origin', WEB_ORIGIN)
+      .set('Origin', 'http://localhost:5173')
       .expect(200);
 
     expect(response.body).toEqual({
@@ -60,7 +67,10 @@ describe('GET /api/health (e2e)', () => {
       database: 'up',
       timestamp: ISO_TIMESTAMP,
     } satisfies HealthResponseMatcher);
-    expect(response.headers['access-control-allow-origin']).toBe(WEB_ORIGIN);
+    expect(sessionFakes.resolve).not.toHaveBeenCalled();
+    expect(response.headers['cache-control']).toBeUndefined();
+    // No CORS any more (D34): same origin only.
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
     expect(response.headers['x-powered-by']).toBeUndefined();
   });
 

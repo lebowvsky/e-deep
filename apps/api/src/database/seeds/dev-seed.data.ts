@@ -1,5 +1,6 @@
 /**
- * Fictitious development data. Marine Rousseau (the diver of the `DEV_AUTH_STUB`) has the dive log
+ * Fictitious development data, one account per diver (`<key>@example.test`, password
+ * `SEED_PASSWORD`). Marine Rousseau (the first diver, the one of the `DEV_AUTH_STUB`) has the dive log
  * of the "Mes plongées" mocks (`dive-log.data.ts`, absolute dates); the two other accounts, linked
  * to two of her buddies, get a few generated dives. Deterministic: a fixed-seed PRNG drives their
  * measures, and their dates are relative to the day the seed runs.
@@ -158,6 +159,7 @@ const DELETED_DIVE: SeedDive = {
 export const SEED_DIVERS: readonly SeedDiver[] = [
   {
     key: 'marine',
+    email: 'marine@example.test',
     firstName: 'Marine',
     lastName: 'Rousseau',
     levelCode: 'N2',
@@ -167,6 +169,7 @@ export const SEED_DIVERS: readonly SeedDiver[] = [
   },
   {
     key: 'lucas',
+    email: 'lucas@example.test',
     firstName: 'Lucas',
     lastName: 'Bernard',
     levelCode: 'N3',
@@ -188,6 +191,7 @@ export const SEED_DIVERS: readonly SeedDiver[] = [
   },
   {
     key: 'thao',
+    email: 'thao@example.test',
     firstName: 'Thao',
     lastName: 'Nguyen',
     levelCode: 'N1',

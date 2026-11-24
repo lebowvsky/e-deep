@@ -1,6 +1,7 @@
 import type { DiveWriteBuddy, DiveWriteRequest, DiveWriteResponse } from '@e-deep/shared';
 import { NotFoundException } from '@nestjs/common';
 import type { DataSource, EntityManager } from 'typeorm';
+import { asDiverId } from '../../common/auth/diver-id';
 import { diveWriteRequest } from '../../../test/support/dive-write-request';
 import { IdentifierConflictError, InvalidReferenceError } from '../../common/errors/domain-errors';
 import { Buddy } from '../buddies/buddy.entity';
@@ -16,7 +17,7 @@ import { DiveWriteService } from './dive-write.service';
 import type { Dive, DiveLookup, DiveWrite } from './dive.types';
 import type { DivesService } from './dives.service';
 
-const DIVER_ID = '01900000-0000-7000-8000-000000000001';
+const DIVER_ID = asDiverId('01900000-0000-7000-8000-000000000001');
 const OTHER_DIVER_ID = '01900000-0000-7000-8000-000000000002';
 const BUDDY_ID = '01900000-0000-7000-8000-0000000000b1';
 const MERGED_SITE_ID = '01900000-0000-7000-8000-0000000000c1';

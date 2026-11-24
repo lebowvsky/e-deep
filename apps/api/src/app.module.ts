@@ -1,20 +1,9 @@
 import { join } from 'node:path';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APPLICATION_MODULES } from './application-modules';
 import { EnvironmentVariables, validateEnvironment } from './config/environment';
-import { SyncModule } from './common/sync/sync.module';
 import { DatabaseModule } from './database/database.module';
-import { AccountsModule } from './modules/accounts/accounts.module';
-import { AuthHttpModule } from './modules/auth/auth-http.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { BuddiesModule } from './modules/buddies/buddies.module';
-import { ConsentsModule } from './modules/consents/consents.module';
-import { DashboardModule } from './modules/dashboard/dashboard.module';
-import { CertificationLevelsModule } from './modules/certification-levels/certification-levels.module';
-import { DiveSitesModule } from './modules/dive-sites/dive-sites.module';
-import { DiversModule } from './modules/divers/divers.module';
-import { DivesModule } from './modules/dives/dives.module';
-import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -26,18 +15,7 @@ import { HealthModule } from './modules/health/health.module';
       validate: (rawEnvironment) => validateEnvironment(EnvironmentVariables, rawEnvironment),
     }),
     DatabaseModule,
-    SyncModule,
-    HealthModule,
-    CertificationLevelsModule,
-    DiversModule,
-    DiveSitesModule,
-    BuddiesModule,
-    DivesModule,
-    DashboardModule,
-    AccountsModule,
-    AuthModule,
-    AuthHttpModule,
-    ConsentsModule,
+    ...APPLICATION_MODULES,
   ],
 })
 export class AppModule {}

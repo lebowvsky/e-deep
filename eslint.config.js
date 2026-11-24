@@ -77,6 +77,45 @@ export default defineConfig([
     },
   },
 
+  // API: `asDiverId` brands an id as the current diver's (D37). In production code, only the auth
+  // context (`common/auth/auth-context.ts`) mints a `DiverId`, from a resolved session; the tests,
+  // the dev seed and the operator commands may build one directly.
+  {
+    files: ['apps/api/src/**/*.ts'],
+    ignores: [
+      'apps/api/src/common/auth/auth-context.ts',
+      'apps/api/src/common/auth/diver-id.ts',
+      'apps/api/src/**/*.spec.ts',
+      'apps/api/src/database/seeds/**',
+      'apps/api/src/cli/**',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '(^|/)diver-id$',
+              importNames: ['asDiverId'],
+              message:
+                'A DiverId comes from @CurrentDiverId() only: asDiverId is reserved to the auth context, tests, seed and CLI.',
+            },
+          ],
+        },
+      ],
+      // Nor by a type assertion, which would bypass the brand as silently.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "TSAsExpression[typeAnnotation.typeName.name='DiverId'], TSTypeAssertion[typeAnnotation.typeName.name='DiverId']",
+          message:
+            'A DiverId comes from @CurrentDiverId() only: no `as DiverId` nor `<DiverId>` assertion.',
+        },
+      ],
+    },
+  },
+
   // React front-ends.
   {
     files: FRONT_FILES,

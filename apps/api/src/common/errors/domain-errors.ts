@@ -188,6 +188,24 @@ export class ForbiddenError extends DomainError {
   }
 }
 
+/** A body that is not JSON on a state-changing request (D34, `JsonBodyGuard`), or that the parser cannot decode. */
+export class UnsupportedMediaTypeError extends DomainError {
+  readonly code = 'unsupported-media-type';
+  constructor() {
+    super('Unsupported media type');
+    this.name = UnsupportedMediaTypeError.name;
+  }
+}
+
+/** A body over the size limit of the parser. */
+export class PayloadTooLargeError extends DomainError {
+  readonly code = 'payload-too-large';
+  constructor() {
+    super('Payload too large');
+    this.name = PayloadTooLargeError.name;
+  }
+}
+
 /**
  * A value refused by a business rule that the DTO cannot check (password policy, email that the
  * database could not store, outdated policy version). Answered like a DTO failure:

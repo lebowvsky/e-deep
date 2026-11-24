@@ -19,16 +19,29 @@ export function IsEmailAddress(): PropertyDecorator {
     ValidateBy({
       name: 'length',
       constraints: [EMAIL_MAX_LENGTH],
-      validator: { validate: (value: unknown) => !isString(value) || isShortEmail(value) },
+      validator: {
+        validate: (value: unknown) => !isString(value) || emailSyntaxError(value) !== 'length',
+      },
     }),
     ValidateBy({
       name: 'format',
       validator: {
-        validate: (value: unknown) =>
-          !isString(value) || !isShortEmail(value) || isEmail(value.trim()),
+        validate: (value: unknown) => !isString(value) || emailSyntaxError(value) !== 'format',
       },
     }),
   );
+}
+
+/**
+ * The syntax rule of `IsEmailAddress` on a string: `length` (over 254 characters), `format` (not
+ * an address once trimmed), or `null` when it passes. Also applied by the operator commands
+ * (`AccountProvisioningService`), so they never create an account the sign-in DTO would refuse.
+ */
+export function emailSyntaxError(value: string): 'length' | 'format' | null {
+  if (!isShortEmail(value)) {
+    return 'length';
+  }
+  return isEmail(value.trim()) ? null : 'format';
 }
 
 /**
@@ -45,7 +58,9 @@ export function IsPasswordInput(): PropertyDecorator {
     ValidateBy({
       name: 'too-long',
       constraints: [PASSWORD_MAX_LENGTH],
-      validator: { validate: (value: unknown) => !isString(value) || isShortPassword(value) },
+      validator: {
+        validate: (value: unknown) => !isString(value) || isWithinPasswordInputBound(value),
+      },
     }),
   );
 }
@@ -54,7 +69,11 @@ function isShortEmail(value: string): boolean {
   return value.length <= EMAIL_MAX_LENGTH;
 }
 
-function isShortPassword(value: string): boolean {
+/**
+ * At most 128 code points as received (`IsPasswordInput`); also applied by the operator commands
+ * (`AccountProvisioningService`) to a password typed on stdin.
+ */
+export function isWithinPasswordInputBound(value: string): boolean {
   // A code point takes at most two UTF-16 units: the bounds avoid spreading a huge string.
   if (value.length <= PASSWORD_MAX_LENGTH) {
     return true;

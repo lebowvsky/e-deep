@@ -93,6 +93,17 @@ export class SessionCookies {
     return distinctTokens(values, MAX_PRESENTED_SESSION_TOKENS);
   }
 
+  /**
+   * Whether the request presents any cookie of `audience`, under either naming convention
+   * (`__Host-` or not) and even empty: the `DEV_AUTH_STUB` fallback never applies then.
+   */
+  presentsAnyCookie(request: Request, audience: SessionAudience): boolean {
+    return [true, false].some(
+      (secure) =>
+        readCookieValues(request.headers.cookie, sessionCookieName(audience, secure)).length > 0,
+    );
+  }
+
   write(response: Response, audience: SessionAudience, session: IssuedSession): void {
     const options = this.baseOptions();
     if (session.persistent) {

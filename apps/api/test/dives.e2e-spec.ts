@@ -1,10 +1,7 @@
 import type { DiveDetail, DiveLogResponse, DiveSummary } from '@e-deep/shared';
-import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import request from 'supertest';
 import { DataSource, type EntityManager } from 'typeorm';
-import { CurrentDiverGuard } from '../src/common/auth/current-diver.guard';
 import { configureApp } from '../src/configure-app';
 import type {
   DiveDetailRow,
@@ -15,6 +12,17 @@ import type {
 import { DIVE_LOG_MAX, DiveLogService } from '../src/modules/dives/dive-log.service';
 import { DiveWriteService } from '../src/modules/dives/dive-write.service';
 import { DivesController } from '../src/modules/dives/dives.controller';
+import {
+  ADMIN_COOKIE,
+  STAFF_SESSION,
+  WEB_COOKIE,
+  accessControlProviders,
+  onboardingFakes,
+  resetAccessControlFakes,
+  sameOrigin,
+  sessionFakes,
+  signIn,
+} from './support/access-control';
 
 const DIVER_ID = '01900000-0000-7000-8000-000000000001';
 const EVENT_ID = '01900000-0000-7000-8000-0000000000aa';
@@ -106,13 +114,11 @@ const SUMMARY: DiveSummary = {
 
 /** Raw queries of `DiveLogService` (through the transaction manager). */
 const query = jest.fn<Promise<unknown>, [string, unknown[]]>();
-/** `CurrentDiverGuard` lookup of the first diver. */
-const find = jest.fn<Promise<{ id: string }[]>, []>();
-let devAuthStub = true;
+/** The session cookie of the request; `undefined`: none (the `DEV_AUTH_STUB` is off). */
+let cookie: string | undefined;
 
-/** Stands in for the database: no connection, the real `DiveLogService` and guard run on it. */
+/** Stands in for the database: no connection, the real `DiveLogService` runs on it. */
 const fakeDataSource = {
-  manager: { find },
   transaction: (_isolation: string, run: (manager: EntityManager) => Promise<unknown>) =>
     run({ query } as unknown as EntityManager),
 };
@@ -125,16 +131,15 @@ describe('/api/dives (e2e)', () => {
       controllers: [DivesController],
       providers: [
         DiveLogService,
-        CurrentDiverGuard,
+        ...accessControlProviders(),
         // The writes have their own suite (`dives-write.e2e-spec.ts`).
         { provide: DiveWriteService, useValue: {} },
         { provide: DataSource, useValue: fakeDataSource },
-        { provide: ConfigService, useValue: { get: () => devAuthStub } },
       ],
     }).compile();
 
     app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
-    configureApp(app, { corsOrigins: ['http://localhost:5173'], trustProxy: 0 });
+    configureApp(app, { trustProxy: 0 });
     await app.init();
   });
 
@@ -143,17 +148,23 @@ describe('/api/dives (e2e)', () => {
   });
 
   beforeEach(() => {
-    devAuthStub = true;
+    cookie = WEB_COOKIE;
     query.mockReset();
-    find.mockReset();
-    find.mockResolvedValue([{ id: DIVER_ID }]);
+    resetAccessControlFakes();
+    signIn();
   });
+
+  /** Same-origin requests, with the web cookie of the signed-in diver unless `cookie` is cleared. */
+  const server = () => {
+    const agent = sameOrigin(app);
+    return cookie === undefined ? agent : agent.set('Cookie', cookie);
+  };
 
   describe('GET /api/dives', () => {
     it('returns the log of the current diver', async () => {
       query.mockResolvedValueOnce([ROW]).mockResolvedValueOnce(TEAM);
 
-      const response = await request(app.getHttpServer()).get('/api/dives').expect(200);
+      const response = await server().get('/api/dives').expect(200);
 
       expect(response.body).toStrictEqual({ dives: [SUMMARY] } satisfies DiveLogResponse);
       expect(response.headers['cache-control']).toBe('no-store');
@@ -164,19 +175,45 @@ describe('/api/dives (e2e)', () => {
     it('returns an empty log', async () => {
       query.mockResolvedValueOnce([]);
 
-      const response = await request(app.getHttpServer()).get('/api/dives').expect(200);
+      const response = await server().get('/api/dives').expect(200);
 
       expect(response.body).toStrictEqual({ dives: [] });
     });
 
-    it('returns 401 when no diver can be resolved (stub disabled)', async () => {
-      devAuthStub = false;
+    it('returns 401 when no diver can be resolved (no session cookie)', async () => {
+      cookie = undefined;
 
-      const response = await request(app.getHttpServer()).get('/api/dives').expect(401);
+      const response = await server().get('/api/dives').expect(401);
 
-      expect(response.body).toStrictEqual({ message: 'Unauthorized', statusCode: 401 });
+      expect(response.body).toStrictEqual({ statusCode: 401, code: 'unauthenticated' });
       expect(response.headers['cache-control']).toBe('no-store');
       expect(query).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('access control (global SessionGuard)', () => {
+    it.each([
+      ['profile-required', 'onboarding-required'],
+      ['consent-required', 'consent-required'],
+    ])('403 %s → %s on the dive log, no-store, without querying', async (status, code) => {
+      onboardingFakes.statusOf.mockResolvedValue(status);
+
+      const response = await server().get('/api/dives').expect(403);
+
+      expect(response.body).toStrictEqual({ statusCode: 403, code });
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(onboardingFakes.statusOf).toHaveBeenCalledWith(DIVER_ID);
+      expect(query).not.toHaveBeenCalled();
+    });
+
+    it('401 with the admin cookie only: a web route reads the web cookie', async () => {
+      cookie = ADMIN_COOKIE;
+      signIn(STAFF_SESSION);
+
+      const response = await server().get('/api/dives').expect(401);
+
+      expect(response.body).toStrictEqual({ statusCode: 401, code: 'unauthenticated' });
+      expect(sessionFakes.resolve).not.toHaveBeenCalled();
     });
   });
 
@@ -187,7 +224,7 @@ describe('/api/dives (e2e)', () => {
         .mockResolvedValueOnce(DETAIL_TEAM)
         .mockResolvedValueOnce(OBSERVATIONS);
 
-      const response = await request(app.getHttpServer()).get(`/api/dives/${EVENT_ID}`).expect(200);
+      const response = await server().get(`/api/dives/${EVENT_ID}`).expect(200);
 
       expect(response.body).toStrictEqual({
         ...SUMMARY,
@@ -237,9 +274,7 @@ describe('/api/dives (e2e)', () => {
     it('returns a generic 404 for a dive that is not a live dive of the diver', async () => {
       query.mockResolvedValueOnce([]);
 
-      const response = await request(app.getHttpServer())
-        .get(`/api/dives/${UNKNOWN_ID}`)
-        .expect(404);
+      const response = await server().get(`/api/dives/${UNKNOWN_ID}`).expect(404);
 
       expect(response.body).toStrictEqual({
         message: 'Dive not found',
@@ -250,18 +285,33 @@ describe('/api/dives (e2e)', () => {
       expect(response.headers['cache-control']).toBe('no-store');
     });
 
+    it('returns a generic 400 for an id that is not valid percent-encoding, never echoing it', async () => {
+      const marker = 'zq-path-marker';
+
+      const response = await server().get(`/api/dives/%FF${marker}`).expect(400);
+
+      expect(response.body).toStrictEqual({
+        statusCode: 400,
+        code: 'validation-failed',
+        fieldErrors: { _path: ['malformed'] },
+      });
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.text).not.toContain(marker);
+      expect(query).not.toHaveBeenCalled();
+    });
+
     it('returns 400 for an id that is not a UUID, without querying', async () => {
-      const response = await request(app.getHttpServer()).get('/api/dives/abc').expect(400);
+      const response = await server().get('/api/dives/abc').expect(400);
 
       expect(response.body).toMatchObject({ statusCode: 400 });
       expect(response.headers['cache-control']).toBe('no-store');
       expect(query).not.toHaveBeenCalled();
     });
 
-    it('returns 401 when no diver can be resolved (stub disabled)', async () => {
-      devAuthStub = false;
+    it('returns 401 when no diver can be resolved (no session cookie)', async () => {
+      cookie = undefined;
 
-      await request(app.getHttpServer()).get(`/api/dives/${EVENT_ID}`).expect(401);
+      await server().get(`/api/dives/${EVENT_ID}`).expect(401);
       expect(query).not.toHaveBeenCalled();
     });
   });
