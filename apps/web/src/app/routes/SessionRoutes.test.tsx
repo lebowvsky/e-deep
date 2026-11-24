@@ -14,7 +14,7 @@ import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { sessionKeys } from '@/shared/session/api/meApi';
 import type { AuthClient } from '@/shared/session/authClient';
 import { createAuthBroadcast } from '@/shared/session/lib/authBroadcast';
-import { createFakeAuthClient } from '@/shared/session/mocks/fakeAuthClient';
+import { createFakeAuthClient, FAKE_CREDENTIALS } from '@/shared/session/mocks/fakeAuthClient';
 import { ME_FIXTURE } from '@/shared/session/mocks/me';
 import { createHttpSitesRepository } from '@/shared/sites/api/httpSitesRepository';
 import { ToastProvider } from '@/shared/ui/Toast';
@@ -392,6 +392,63 @@ describe('logout from the app (route action)', () => {
     expect(queryClient.getQueryData(sessionKeys.me())).toEqual(ME_FIXTURE);
     expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).not.toBeNull();
     expect(told).not.toHaveBeenCalled();
+  });
+});
+
+describe('a visit, from the sign-in to the sign-out (fake server)', () => {
+  it('signs in from a protected page, comes back to it, then signs out to the landing page', async () => {
+    localStorage.clear();
+    const user = userEvent.setup();
+    const authClient = createFakeAuthClient({ session: null });
+    const { router, queryClient, otherTab } = renderApp('/dives', {
+      authClient,
+      get: vi.fn().mockResolvedValue(mockDiveLogResponse),
+    });
+
+    // No session: the sign-in screen, the page kept as next.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' }),
+    ).toBeTruthy();
+    expect(locationOf(router)).toBe('/login?next=%2Fdives');
+
+    await user.type(screen.getByLabelText('E-mail'), FAKE_CREDENTIALS.email);
+    await user.type(
+      screen.getByLabelText('Mot de passe', { selector: 'input' }),
+      `${FAKE_CREDENTIALS.password}{Enter}`,
+    );
+
+    // Signed in: back to the page asked for, without a second sign-in.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mes plongées' })).toBeTruthy();
+    expect(locationOf(router)).toBe('/dives');
+    expect(queryClient.getQueryData(sessionKeys.me())).toEqual(ME_FIXTURE);
+    await createLocalDraftStore(ME_FIXTURE.diver.id).save('new', {
+      values: validValues(),
+      ids: { eventId: 'e1', newSiteId: 's1' },
+      savedAt: Date.now(),
+    });
+    const told = vi.fn();
+    otherTab.onLogout(told);
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', {
+        name: 'Déconnexion',
+      }),
+    );
+
+    // Signed out: the landing page, nothing of the session left here nor on the device.
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Toutes tes plongées, dans un seul carnet.',
+      }),
+    ).toBeTruthy();
+    expect(locationOf(router)).toBe('/');
+    expect(authClient.session).toBeNull();
+    expect(queryClient.getQueryData(sessionKeys.me())).toBeUndefined();
+    expect(queryClient.getQueryCache().find({ queryKey: DIVE_LOG_QUERY_KEY })).toBeUndefined();
+    expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).toBeNull();
+    expect(told).toHaveBeenCalledOnce();
   });
 });
 

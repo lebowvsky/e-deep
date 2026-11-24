@@ -64,10 +64,10 @@ export function AuthCard({ tab, email, onEmailChange, autoFocus = false }: AuthC
 
   return (
     <Card elevation={2} padding="none" className={styles.card}>
-      <header className={styles.header}>
+      <div className={styles.header}>
         <h2 className={styles.title}>{title}</h2>
         <p className={styles.subtitle}>{subtitle}</p>
-      </header>
+      </div>
       {features.signup ? (
         <>
           <AuthTabs tab={shown} onSelect={select} panelId={panelId} idPrefix={idPrefix} />

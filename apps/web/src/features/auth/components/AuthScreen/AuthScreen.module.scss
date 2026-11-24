@@ -70,8 +70,8 @@
   // The way to the other screen — accent, 500.
   a {
     @include focus-ring;
+    @include type($type-body-med);
 
-    font-weight: 500;
     color: $color-accent;
     border-radius: $radius-xs;
   }

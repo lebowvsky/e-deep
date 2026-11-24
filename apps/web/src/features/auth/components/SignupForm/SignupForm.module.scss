@@ -10,8 +10,8 @@
 // « Se connecter » inside the « compte existant » message.
 .inlineLink {
   @include focus-ring;
+  @include type($type-caption);
 
-  font-weight: 500;
   color: $color-accent;
   text-decoration: underline;
   text-underline-offset: $space-1;
