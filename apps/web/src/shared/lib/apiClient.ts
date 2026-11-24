@@ -14,6 +14,8 @@ export interface ApiErrorOptions {
   code?: string | undefined;
   /** Per-field codes of a `validation-failed` body. */
   fieldErrors?: ApiFieldErrorCodes | undefined;
+  /** Seconds to wait before trying again (`Retry-After` of a `429 too-many-attempts`). */
+  retryAfterS?: number | undefined;
   cause?: unknown;
 }
 
@@ -27,6 +29,8 @@ export class ApiError extends Error {
   readonly code: string | undefined;
   /** Only for `http` errors whose body carries them. */
   readonly fieldErrors: ApiFieldErrorCodes | undefined;
+  /** Only for `http` errors whose response carries a readable `Retry-After`. */
+  readonly retryAfterS: number | undefined;
 
   constructor(kind: ApiErrorKind, message: string, options: ApiErrorOptions = {}) {
     super(message, { cause: options.cause });
@@ -34,7 +38,18 @@ export class ApiError extends Error {
     this.status = options.status;
     this.code = options.code;
     this.fieldErrors = options.fieldErrors;
+    this.retryAfterS = options.retryAfterS;
   }
+}
+
+/** An `http` error of `status`, with `code` in its body when one is given. */
+export function isApiHttpError(error: unknown, status: number, code?: string): error is ApiError {
+  return (
+    error instanceof ApiError &&
+    error.kind === 'http' &&
+    error.status === status &&
+    (code === undefined || error.code === code)
+  );
 }
 
 export interface RequestOptions {
@@ -48,6 +63,8 @@ export interface ApiClient {
   post<T>(path: string, body: unknown, guard: TypeGuard<T>, options?: RequestOptions): Promise<T>;
   /** Sends `body` as JSON. */
   put<T>(path: string, body: unknown, guard: TypeGuard<T>, options?: RequestOptions): Promise<T>;
+  /** Sends `body` as JSON (none when `undefined`) and expects an empty answer (`204`). */
+  postNoContent(path: string, body?: unknown, options?: RequestOptions): Promise<void>;
   /** Expects an empty answer (`204`): any body is ignored. */
   delete(path: string, options?: RequestOptions): Promise<void>;
 }
@@ -77,6 +94,43 @@ function readErrorBody(value: unknown): ApiErrorBody {
     ...(isString(value.code) ? { code: value.code } : {}),
     ...(isFieldErrorCodes(value.fieldErrors) ? { fieldErrors: value.fieldErrors } : {}),
   };
+}
+
+/** Longest wait taken from `Retry-After`: a broken or hostile value never locks the form for long. */
+export const MAX_RETRY_AFTER_S = 3600;
+
+/** `delta-seconds`, or an IMF-fixdate (`Sun, 06 Nov 1994 08:49:37 GMT`), RFC 9110 §10.2.3. */
+const DELTA_SECONDS = /^\d{1,10}$/;
+const IMF_FIXDATE =
+  /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+
+/**
+ * `Retry-After` in seconds, at most `MAX_RETRY_AFTER_S`: a delay (`120`) or an IMF-fixdate; a date
+ * already past gives `0`. `undefined` when absent or in any other form (obsolete date formats
+ * included).
+ */
+export function parseRetryAfter(
+  value: string | null,
+  now: number = Date.now(),
+): number | undefined {
+  if (value === null) return undefined;
+  const trimmed = value.trim();
+  let seconds: number;
+  if (DELTA_SECONDS.test(trimmed)) {
+    seconds = Number(trimmed);
+  } else if (IMF_FIXDATE.test(trimmed)) {
+    const date = Date.parse(trimmed);
+    if (Number.isNaN(date)) return undefined;
+    seconds = Math.max(0, Math.ceil((date - now) / 1000));
+  } else {
+    return undefined;
+  }
+  return Math.min(seconds, MAX_RETRY_AFTER_S);
+}
+
+function retryAfterOf(response: Response): { retryAfterS?: number } {
+  const retryAfterS = parseRetryAfter(response.headers.get('Retry-After'));
+  return retryAfterS === undefined ? {} : { retryAfterS };
 }
 
 /** The JSON body of a failed response, `undefined` when there is none or it is not JSON. */
@@ -117,13 +171,15 @@ export function createApiClient({
     const timeoutSignal = timeout.signal;
     const signal = callerSignal ? AbortSignal.any([callerSignal, timeoutSignal]) : timeoutSignal;
     try {
+      // The session cookie (D33) goes with every call: the API is on the front's origin (D34).
       const init: RequestInit =
         body === undefined
-          ? { method, headers: { Accept: 'application/json' }, signal }
+          ? { method, headers: { Accept: 'application/json' }, credentials: 'same-origin', signal }
           : {
               method,
               headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
               body: JSON.stringify(body),
+              credentials: 'same-origin',
               signal,
             };
 
@@ -147,6 +203,7 @@ export function createApiClient({
         throw new ApiError('http', `The API answered with HTTP ${response.status}.`, {
           status: response.status,
           ...readErrorBody(await errorBodyOf(response)),
+          ...retryAfterOf(response),
         });
       }
 
@@ -181,6 +238,8 @@ export function createApiClient({
     get: (path, guard, options) => send('GET', path, readBody(guard), options),
     post: (path, body, guard, options) => send('POST', path, readBody(guard), { ...options, body }),
     put: (path, body, guard, options) => send('PUT', path, readBody(guard), { ...options, body }),
+    postNoContent: (path, body, options) =>
+      send('POST', path, ignoreBody, body === undefined ? options : { ...options, body }),
     delete: (path, options) => send('DELETE', path, ignoreBody, options),
   };
 }

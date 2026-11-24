@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, createApiClient } from './apiClient';
+import { ApiError, createApiClient, isApiHttpError, parseRetryAfter } from './apiClient';
 
 const isNumberBody = (value: unknown): value is { value: number } =>
   typeof value === 'object' &&
@@ -98,6 +98,16 @@ describe('createApiClient — writes', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it('sends a POST without body and resolves on an empty 204', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(new Response(null, { status: 204 })));
+
+    await expect(client.postNoContent('auth/logout')).resolves.toBeUndefined();
+    const init = initOf(fetchMock);
+    expect(init.method).toBe('POST');
+    expect(init.body).toBeUndefined();
+    expect(new Headers(init.headers).has('Content-Type')).toBe(false);
+  });
+
   it('reads the code of a refused DELETE', async () => {
     stubFetch(() =>
       Promise.resolve(Response.json({ statusCode: 409, code: 'site-in-use' }, { status: 409 })),
@@ -192,5 +202,90 @@ describe('createApiClient — timeout', () => {
     const error = await settled;
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ kind: 'timeout' });
+  });
+});
+
+describe('createApiClient — session', () => {
+  it.each(['get', 'delete'] as const)(
+    'sends the session cookie with %s (same origin)',
+    async (method) => {
+      const fetchMock = stubFetch(() =>
+        Promise.resolve(
+          method === 'get' ? Response.json({ value: 1 }) : new Response(null, { status: 204 }),
+        ),
+      );
+
+      await (method === 'get' ? client.get('numbers', isNumberBody) : client.delete('numbers/1'));
+      expect(initOf(fetchMock).credentials).toBe('same-origin');
+    },
+  );
+
+  it('sends the session cookie with a write', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(Response.json({ value: 1 })));
+
+    await client.post('numbers', {}, isNumberBody);
+    expect(initOf(fetchMock).credentials).toBe('same-origin');
+  });
+
+  it.each([
+    [401, 'unauthenticated'],
+    [403, 'consent-required'],
+    [403, 'onboarding-required'],
+  ])('reads the code of a %i %s', async (status, code) => {
+    stubFetch(() => Promise.resolve(Response.json({ statusCode: status, code }, { status })));
+
+    const error: unknown = await client.get('dives', isNumberBody).catch((e: unknown) => e);
+    expect(isApiHttpError(error, status, code)).toBe(true);
+    expect(isApiHttpError(error, status, 'forbidden')).toBe(false);
+  });
+
+  it('reads the Retry-After of a 429', async () => {
+    stubFetch(() =>
+      Promise.resolve(
+        Response.json(
+          { statusCode: 429, code: 'too-many-attempts' },
+          { status: 429, headers: { 'Retry-After': '42' } },
+        ),
+      ),
+    );
+
+    await expect(client.post('auth/login', {}, isNumberBody)).rejects.toMatchObject({
+      status: 429,
+      code: 'too-many-attempts',
+      retryAfterS: 42,
+    });
+  });
+});
+
+describe('parseRetryAfter', () => {
+  const now = Date.parse('2026-11-24T10:00:00Z');
+
+  it.each([
+    ['a delay in seconds', '120', 120],
+    ['a delay with spaces', ' 5 ', 5],
+    ['an HTTP date', 'Tue, 24 Nov 2026 10:01:30 GMT', 90],
+    ['a past date', 'Tue, 24 Nov 2026 09:00:00 GMT', 0],
+  ])('reads %s', (_label, value, expected) => {
+    expect(parseRetryAfter(value, now)).toBe(expected);
+  });
+
+  it.each([
+    ['a long delay', '86400', 3600],
+    ['a far date', 'Wed, 24 Nov 2027 10:00:00 GMT', 3600],
+  ])('caps %s at an hour', (_label, value, expected) => {
+    expect(parseRetryAfter(value, now)).toBe(expected);
+  });
+
+  it.each([
+    ['no header', null],
+    ['garbage', 'soon'],
+    ['a negative delay', '-3'],
+    ['a decimal delay', '1.5'],
+    ['an RFC 850 date', 'Tuesday, 24-Nov-26 10:01:30 GMT'],
+    ['an asctime date', 'Tue Nov 24 10:01:30 2026'],
+    ['an ISO date', '2026-11-24T10:01:30Z'],
+    ['a date with a time zone', 'Tue, 24 Nov 2026 10:01:30 +0100'],
+  ])('gives nothing for %s', (_label, value) => {
+    expect(parseRetryAfter(value, now)).toBeUndefined();
   });
 });

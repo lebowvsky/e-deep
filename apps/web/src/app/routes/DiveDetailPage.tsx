@@ -1,6 +1,5 @@
 import { useRef } from 'react';
 import { useLocation, useParams } from 'react-router';
-import { mockUser } from '@/features/dashboard/mocks/dashboard';
 import { DivesError } from '@/features/dives/components/DivesError';
 import { DiveDetailNav } from '@/features/dives/components/detail/DiveDetailNav';
 import { DiveDetailReady } from '@/features/dives/components/detail/DiveDetailReady';
@@ -16,6 +15,7 @@ import {
 } from '@/features/dives/lib/labels';
 import type { DiveDetailState, DiveNeighbours } from '@/features/dives/types';
 import { pageTitle } from '@/shared/config/app';
+import { useCurrentDiver } from '@/shared/session/hooks/useCurrentDiver';
 import styles from './DiveDetailPage.module.scss';
 
 /** Logbook number of the dive, once the detail or the cached log knows it. */
@@ -51,8 +51,7 @@ export function DiveDetailPage() {
   // The route always has the segment; an empty one would only reach a 404 (not-found).
   const { diveId = '' } = useParams();
   const location = useLocation();
-  // TODO(auth): the user will come from the session, as in AppShell.
-  const state = useDive(diveId, mockUser);
+  const state = useDive(diveId, useCurrentDiver());
   const contentRef = useRef<HTMLDivElement>(null);
   const backHref = backToLogHref(location.state);
   const linkState = forwardLinkState(location.state);

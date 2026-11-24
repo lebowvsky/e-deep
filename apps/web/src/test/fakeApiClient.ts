@@ -11,6 +11,7 @@ export function fakeApiClient(methods: Partial<ApiClient>): ApiClient {
     get: unexpected('GET'),
     post: unexpected('POST'),
     put: unexpected('PUT'),
+    postNoContent: unexpected('POST'),
     delete: unexpected('DELETE'),
     ...methods,
   };

@@ -1,4 +1,4 @@
-import type { User } from '@/features/dashboard/types';
+import type { CurrentDiver } from '@/shared/session/types';
 import { Overline } from '@/shared/ui/Overline';
 import { Brand } from '../Brand';
 import { MAIN_NAV_LABEL, NAV_ENTRIES } from '../navigation';
@@ -7,7 +7,7 @@ import { UserCard } from '../UserCard';
 import styles from './Sidebar.module.scss';
 
 export interface SidebarProps {
-  user: User;
+  user: CurrentDiver;
 }
 
 /** Fixed 240px sidebar (≥ 768px): brand, main navigation, collapsed user menu. */

@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
@@ -27,12 +27,14 @@ const at = (path: string, client: ApiClient) =>
 describe('useDashboard', () => {
   it.each(['loading', 'empty', 'ready'] as const)(
     'forces the %s state with ?state= in dev, without calling the API',
-    (state) => {
+    async (state) => {
       const get = vi.fn();
       const { result } = renderHook(() => useDashboard(), {
         wrapper: at(`/dashboard?state=${state}`, fakeClient(get)),
       });
-      expect(result.current.status).toBe(state);
+      // The mocks are loaded on demand (kept out of the production bundle): loading meanwhile.
+      expect(result.current.status).toBe('loading');
+      await waitFor(() => expect(result.current.status).toBe(state));
       expect(get).not.toHaveBeenCalled();
     },
   );

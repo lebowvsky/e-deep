@@ -1,10 +1,10 @@
 import { render, screen } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
-import { routes } from '@/app/routes';
 import { dashboardResponse } from '@/features/dashboard/api/dashboardResponse.fixture';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import type { MapViewProps } from '@/shared/ui/MapView';
+import { createTestAppRouter } from '@/test/appRouter';
 import { TestProviders } from '@/test/TestProviders';
 import { fakeApiClient } from '@/test/fakeApiClient';
 
@@ -13,18 +13,25 @@ vi.mock('@/shared/ui/MapView', () => ({
   MapView: ({ label }: MapViewProps) => <div role="img" aria-label={label} />,
 }));
 
-const renderAt = (path: string, get: ApiClient['get'] = vi.fn()) =>
-  render(
-    <TestProviders client={fakeApiClient({ get })}>
-      <RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />
+function renderAt(path: string, get: ApiClient['get'] = vi.fn()) {
+  const { router, queryClient, authClient } = createTestAppRouter(path);
+  return render(
+    <TestProviders
+      client={fakeApiClient({ get })}
+      queryClient={queryClient}
+      authClient={authClient}
+    >
+      <RouterProvider router={router} />
     </TestProviders>,
   );
+}
 
 describe('DashboardPage', () => {
   it('shows the skeleton while loading', async () => {
     renderAt('/dashboard?state=loading');
-    const status = await screen.findByRole('status');
-    expect(status.textContent).toBe('Chargement du tableau de bord');
+    // The page's own live region, once the session loader has let the page in.
+    const status = await screen.findByText('Chargement du tableau de bord');
+    expect(status.getAttribute('role')).toBe('status');
     // The live region must stay outside the busy container, which could silence it.
     expect(status.closest('[aria-busy="true"]')).toBeNull();
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();

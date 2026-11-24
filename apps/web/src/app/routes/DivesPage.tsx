@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { mockUser } from '@/features/dashboard/mocks/dashboard';
 import { DivesEmpty } from '@/features/dives/components/DivesEmpty';
 import { DivesError } from '@/features/dives/components/DivesError';
 import { DivesHeader } from '@/features/dives/components/DivesHeader';
@@ -10,6 +9,7 @@ import { useDivesQuery } from '@/features/dives/hooks/useDivesQuery';
 import { stateAnnouncement } from '@/features/dives/lib/labels';
 import type { DivesQuery, DivesState } from '@/features/dives/types';
 import { pageTitle } from '@/shared/config/app';
+import { useCurrentDiver } from '@/shared/session/hooks/useCurrentDiver';
 import { useToast } from '@/shared/ui/Toast';
 import styles from './DivesPage.module.scss';
 
@@ -19,11 +19,10 @@ const COMING_SOON = 'Bientôt disponible';
 export function DivesPage() {
   const [query, updateQuery] = useDivesQuery();
   const [now] = useState(() => new Date());
-  // TODO(auth): the user (identity, level) will come from the session, as in AppShell.
-  const state = useDives(query, now, mockUser);
+  const diver = useCurrentDiver();
+  const state = useDives(query, now, diver);
   const { notify } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
-  const { level, federation } = mockUser;
   const comingSoon = () => notify(COMING_SOON);
 
   // The retry button is about to be replaced by the skeleton: focus its persistent container
@@ -37,8 +36,7 @@ export function DivesPage() {
     <div className={styles.page}>
       <title>{pageTitle('Mes plongées')}</title>
       <DivesHeader
-        level={level}
-        federation={federation}
+        level={diver.level}
         log={state.status === 'ready' ? state.log : null}
         showActions={state.status !== 'empty'}
         onExport={comingSoon}

@@ -2,7 +2,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { dashboardKeys } from '@/features/dashboard/api/queryKeys';
-import { mockUser } from '@/features/dashboard/mocks/dashboard';
 import { DivesError } from '@/features/dives/components/DivesError';
 import { DiveNotFound } from '@/features/dives/components/detail/DiveNotFound';
 import {
@@ -32,18 +31,15 @@ import type { DiveDetailView, LoggedDive } from '@/features/dives/types';
 import { DiveFormTopBar } from '@/features/dives/components/form/DiveFormTopBar';
 import { pageTitle } from '@/shared/config/app';
 import type { SiteDraft } from '@/shared/model/site';
+import { useCurrentDiver } from '@/shared/session/hooks/useCurrentDiver';
 import { useSiteCommands } from '@/shared/sites/hooks/useSiteCommands';
 import { useToast } from '@/shared/ui/Toast';
 
-// TODO(auth): the diver will come from the session, as in AppShell.
-const DIVER = mockUser;
-const SELF = { firstName: DIVER.firstName, lastName: DIVER.lastName, level: DIVER.level };
 /**
  * V1: every diver creates their own dives, so the shared event of an edited dive is theirs to edit.
  * Club use will check who created the dive.
  */
 const CAN_EDIT_EVENT = true;
-const draftStore = createLocalDraftStore();
 
 /** `/dives/:diveId/edit`, `/dives/new?from=:id`, or `/dives/new`. */
 function useDiveFormMode(): DiveFormMode {
@@ -91,7 +87,7 @@ function PendingTopBar({ mode }: { mode: DiveFormMode }) {
  */
 export function DiveFormPage({ canEditEvent = CAN_EDIT_EVENT }: DiveFormPageProps) {
   const mode = useDiveFormMode();
-  const sources = useDiveFormSources(DIVER);
+  const sources = useDiveFormSources(useCurrentDiver());
   const title = titleOf(mode);
 
   return (
@@ -199,7 +195,7 @@ interface SourceLoaderProps {
 
 /** The dive to duplicate or edit: loading, not found and error states of the detail. */
 function SourceLoader({ id, mode, children }: SourceLoaderProps) {
-  const state = useDive(id, DIVER);
+  const state = useDive(id, useCurrentDiver());
   switch (state.status) {
     case 'loading':
       return (
@@ -246,7 +242,7 @@ interface SharedFormProps {
 
 /** A new dive whose suggestion (latest dive, < 48 h) is offered once its detail is loaded. */
 function SuggestedDiveForm({ suggestionId, ...props }: SharedFormProps & { suggestionId: string }) {
-  const state = useDive(suggestionId, DIVER);
+  const state = useDive(suggestionId, useCurrentDiver());
   const prefill: DiveFormPrefill =
     state.status === 'ready' ? { kind: 'suggestion', source: state.dive } : { kind: 'none' };
   return <PageDiveForm {...props} prefill={prefill} />;
@@ -262,8 +258,17 @@ function PageDiveForm({ today, ...props }: SharedFormProps & Pick<DiveFormProps,
   const queryClient = useQueryClient();
   const saveDive = useSaveDive();
   const { create } = useSiteCommands();
-  // Read once per form: the memoised actions of the form depend on it.
-  const [context] = useState(() => ({ today, diverLevel: DIVER.level }));
+  const diver = useCurrentDiver();
+  // Read once per form: the memoised actions of the form depend on them. The diver does not change
+  // under a mounted form (another session goes through the login page).
+  const [context] = useState(() => ({ today, diverLevel: diver.level.code }));
+  const [self] = useState(() => ({
+    firstName: diver.firstName,
+    lastName: diver.lastName,
+    level: diver.level.code,
+  }));
+  // The diver's own drafts (D41): another account on this device never sees them.
+  const [draftStore] = useState(() => createLocalDraftStore(diver.id));
   // Stable: the site section skips the renders caused by the other sections.
   const createSite = useCallback((draft: SiteDraft) => create(draft, 'quick'), [create]);
 
@@ -271,7 +276,7 @@ function PageDiveForm({ today, ...props }: SharedFormProps & Pick<DiveFormProps,
     <DiveForm
       {...props}
       context={context}
-      self={SELF}
+      self={self}
       saveDive={saveDive}
       draftStore={draftStore}
       onCreateSite={createSite}

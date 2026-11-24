@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Outlet, useLocation, useMatch, useMatches } from 'react-router';
 import { breakpoint } from '@/design/tokens';
-import type { User } from '@/features/dashboard/types';
 import { cx } from '@/shared/lib/classNames';
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
+import { useCurrentDiver } from '@/shared/session/hooks/useCurrentDiver';
 import { Drawer } from '../Drawer';
 import { Fab } from '../Fab';
 import { hasHandleFlag } from '../routeHandle';
@@ -11,17 +11,14 @@ import { Sidebar } from '../Sidebar';
 import { TopBar } from '../TopBar';
 import styles from './AppShell.module.scss';
 
-export interface AppShellProps {
-  user: User;
-}
-
 const TABLET_UP = `(min-width: ${breakpoint.tablet}px)`;
 
 /**
  * Application frame. ≥ 768px: sticky sidebar. Below: top bar + drawer + FAB. The swap is the only
  * JS-driven responsive switch (apps/web/CLAUDE.md); everything else is SCSS.
  */
-export function AppShell({ user }: AppShellProps) {
+export function AppShell() {
+  const user = useCurrentDiver();
   const isTabletUp = useMediaQuery(TABLET_UP);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerId = useId();

@@ -1,4 +1,4 @@
-import type { UserLevel, Federation } from '@e-deep/shared';
+import type { CertificationLevelRef } from '@e-deep/shared';
 import {
   formatDiveCount,
   formatDiverCount,
@@ -12,8 +12,8 @@ import type { DiveLogOverview } from '../../types';
 import styles from './DivesHeader.module.scss';
 
 export interface DivesHeaderProps {
-  level: UserLevel;
-  federation: Federation;
+  /** The diver's level (eyebrow « Carnet de plongée · N2 FFESSM »). */
+  level: CertificationLevelRef;
   /** Whole log; `null` hides the subtitle (empty log). */
   log: DiveLogOverview | null;
   /** Export and New dive; hidden on the empty log, whose card holds the CTAs. Default true. */
@@ -22,20 +22,14 @@ export interface DivesHeaderProps {
 }
 
 /** Page header: eyebrow, h1, log subtitle, Export and New dive (≥ 768px; FAB below). */
-export function DivesHeader({
-  level,
-  federation,
-  log,
-  showActions = true,
-  onExport,
-}: DivesHeaderProps) {
+export function DivesHeader({ level, log, showActions = true, onExport }: DivesHeaderProps) {
   const firstDive = log?.firstDiveDate;
   return (
     <header className={styles.header}>
       <div className={styles.heading}>
         <Overline tone="accent" as="p" className={styles.eyebrow}>
           <span className={styles.eyebrowLong}>
-            Carnet de plongée · {formatDiverLevel(level, federation, ' ')}
+            Carnet de plongée · {formatDiverLevel(level.code, level.agency, ' ')}
           </span>
           <span className={styles.eyebrowShort}>
             Carnet{log && ` · ${formatDiveCount(log.totalDives)}`}

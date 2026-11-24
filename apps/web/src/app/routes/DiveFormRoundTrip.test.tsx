@@ -1,13 +1,12 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeDiveApi, type FakeDiveApi } from '@/features/dives/mocks/fakeDiveApi';
-import { ApiClientContext } from '@/shared/lib/apiClientContext';
 import { createHttpSitesRepository } from '@/shared/sites/api/httpSitesRepository';
-import { SitesRepositoryContext } from '@/shared/sites/repository/sitesRepositoryContext';
 import { ToastProvider } from '@/shared/ui/Toast';
+import { TestProviders } from '@/test/TestProviders';
 import { DiveDetailPage } from './DiveDetailPage';
 import { DiveFormPage } from './DiveFormPage';
 
@@ -27,15 +26,15 @@ function renderApp(api: FakeDiveApi) {
     defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: Infinity } },
   });
   render(
-    <ApiClientContext value={api.client}>
-      <SitesRepositoryContext value={createHttpSitesRepository(api.client)}>
-        <QueryClientProvider client={queryClient}>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
-        </QueryClientProvider>
-      </SitesRepositoryContext>
-    </ApiClientContext>,
+    <TestProviders
+      client={api.client}
+      sitesRepository={createHttpSitesRepository(api.client)}
+      queryClient={queryClient}
+    >
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
+    </TestProviders>,
   );
   return router;
 }

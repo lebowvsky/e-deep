@@ -274,6 +274,10 @@ export function createFakeDiveApi({
         ? attempt(() => write(body), guard)
         : Promise.reject(notFound());
     },
+    postNoContent(path, body) {
+      requests.push({ method: 'POST', path, body });
+      return Promise.reject(notFound());
+    },
     delete(path) {
       requests.push({ method: 'DELETE', path });
       if (!sitesApi.handles(path)) return Promise.reject(notFound());
