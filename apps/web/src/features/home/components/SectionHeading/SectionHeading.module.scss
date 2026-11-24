@@ -1,6 +1,8 @@
 @use '@/styles/tokens' as *;
 
 // welcome.jsx · SectionTitle — overline, h2 32/38 10 under it, subtitle 16 10 under, 40 above content.
+// Phones and tablets (WelcomeMobile): the overline alone shows; the title stays for screen readers
+// and the outline of the page.
 .heading {
   display: flex;
   flex-direction: column;
@@ -20,13 +22,13 @@
 }
 
 .title {
-  @include type($type-h-2);
+  @include type($type-section-title);
 
   margin: 0;
   color: $color-text-high;
 
-  @include from($bp-desktop) {
-    @include type($type-section-title);
+  @include until($bp-desktop) {
+    @include visually-hidden;
   }
 }
 
@@ -36,4 +38,8 @@
   max-width: $layout-hero-text-max;
   margin: 0;
   color: $color-text-med;
+
+  @include until($bp-desktop) {
+    @include visually-hidden;
+  }
 }

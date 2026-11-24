@@ -4,7 +4,7 @@ import { Icon, type IconName } from '@/shared/ui/Icon';
 import styles from './Button.module.scss';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'md' | 'lg';
+export type ButtonSize = 'md' | 'lg' | 'xl';
 
 export interface ButtonProps extends ComponentProps<'button'> {
   /**
@@ -12,7 +12,7 @@ export interface ButtonProps extends ComponentProps<'button'> {
    * action (merge, delete). Default `secondary`.
    */
   variant?: ButtonVariant;
-  /** md 40px (default) · lg 48px (single hero CTA, e.g. empty state) */
+  /** md 40px (default) · lg 48px (single hero CTA, e.g. empty state) · xl 52px (landing, phones) */
   size?: ButtonSize;
   /** Leading icon (decorative). */
   icon?: IconName;

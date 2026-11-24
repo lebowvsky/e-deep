@@ -4,6 +4,7 @@
 // desktop: padding 0 80 80, panel 40 48 (radius xl), text and buttons side by side.
 .section {
   @include page-gutter;
+  @include landing-column;
 
   padding-top: $space-8;
 
@@ -69,5 +70,21 @@
 
   @include from($bp-desktop) {
     display: inline-flex;
+  }
+}
+
+// Phones and tablets: 52px, 16px label (welcome.jsx · WelcomeMobile), over `ButtonLink`'s size.
+.actions .action {
+  @include until($bp-desktop) {
+    @include type($type-button-xl);
+
+    min-height: $layout-cta-height-xl;
+  }
+}
+
+// The open sign-up's subtitle: desktop only (welcome.jsx · WelcomeMobile has none).
+.subtitleDesktop {
+  @include until($bp-desktop) {
+    display: none;
   }
 }

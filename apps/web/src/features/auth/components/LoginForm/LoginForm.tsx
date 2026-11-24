@@ -46,7 +46,11 @@ export function LoginForm({ email, onEmailChange, autoFocus = false }: LoginForm
       await navigate(safeNext(searchParams.get('next')), { replace: true });
     },
     onFailure: (failure) => {
-      if (failure.code === 'invalid-credentials') setPassword('');
+      if (failure.code !== 'invalid-credentials') return;
+      // A fresh try: the emptied password is not « missing » until it is left empty again.
+      setPassword('');
+      setIsSubmitted(false);
+      setTouched(({ email: emailTouched }) => (emailTouched ? { email: emailTouched } : {}));
     },
   });
   const { failure } = attempt;

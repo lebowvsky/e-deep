@@ -109,8 +109,8 @@ describe('dedicated screens (< 1024px)', () => {
     ).toBeTruthy();
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.getByRole('link', { name: 'Accueil' }).getAttribute('href')).toBe('/');
-    // No focus moved on a phone: the keyboard would hide the screen.
-    expect(document.activeElement).toBe(document.body);
+    // On a phone the page takes the focus, not a field: the keyboard would hide the screen.
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('main')));
 
     await user.type(screen.getByLabelText('E-mail'), 'marine@exemple.fr');
     await user.click(screen.getByRole('link', { name: 'Créer mon carnet' }));

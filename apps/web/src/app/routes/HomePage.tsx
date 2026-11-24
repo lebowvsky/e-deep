@@ -86,15 +86,15 @@ export function HomePage() {
           !isDesktop &&
           (features.signup ? (
             <>
-              <ButtonLink to="/signup" variant="primary" size="lg">
+              <ButtonLink to="/signup" variant="primary" size="xl">
                 Créer mon carnet
               </ButtonLink>
-              <ButtonLink to="/login" size="lg">
+              <ButtonLink to="/login" size="xl">
                 J’ai déjà un compte
               </ButtonLink>
             </>
           ) : (
-            <ButtonLink to="/login" variant="primary" size="lg">
+            <ButtonLink to="/login" variant="primary" size="xl">
               Se connecter
             </ButtonLink>
           ))

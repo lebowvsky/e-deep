@@ -3,7 +3,7 @@
 .screen {
   min-height: 100dvh;
   background-color: $color-abyss;
-  background-image: $gradient-page-mobile;
+  background-image: $gradient-public-mobile;
   background-repeat: no-repeat;
 }
 
@@ -35,6 +35,11 @@
   max-width: $layout-auth-card-width;
   padding: $space-4 $space-5 $space-8;
   margin-inline: auto;
+
+  // Focused on arrival only to start reading there: no ring around the whole page.
+  &:focus {
+    outline: none;
+  }
 }
 
 .title {

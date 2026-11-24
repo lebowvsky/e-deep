@@ -4,6 +4,7 @@
 // desktop: padding 24 80 96, cells (padding 28) on surface0, separated by 1px hairlines.
 .section {
   @include page-gutter;
+  @include landing-column;
 
   padding-top: $space-7;
   scroll-margin-top: $space-6;
@@ -21,8 +22,19 @@
   margin: 0;
   list-style: none;
 
-  @include from($bp-desktop) {
+  // Tablets: the phone cards, two by two; an odd last one takes the whole row.
+  @include from($bp-tablet) {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    @include until($bp-desktop) {
+      .cell:last-child:nth-child(odd) {
+        grid-column: span 2;
+      }
+    }
+  }
+
+  @include from($bp-desktop) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1px;
     overflow: hidden;

@@ -177,4 +177,24 @@ describe('landing page (< 1024px)', () => {
         .map((link) => link.getAttribute('href')),
     ).toEqual(['/signup', '/signup']);
   });
+  it('offers only the sign-in while the beta is closed', async () => {
+    renderPublicRoute('/', { signup: false });
+    await screen.findByRole('heading', { level: 1 });
+
+    expect(screen.queryByRole('link', { name: 'Créer mon carnet' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'J’ai déjà un compte' })).toBeNull();
+    expect(screen.getByText('Les inscriptions ouvrent bientôt.')).toBeTruthy();
+  });
+
+  it('keeps the section titles for screen readers, only the eyebrows showing', async () => {
+    renderPublicRoute('/');
+    await screen.findByRole('heading', { level: 1 });
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Trois gestes, un carnet toujours à jour' }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Pensé par et pour des plongeurs' }),
+    ).toBeTruthy();
+  });
 });

@@ -39,11 +39,13 @@ export function FinalCta({ onChoose }: FinalCtaProps) {
           <h2 id={titleId} className={styles.title}>
             Ta prochaine plongée mérite mieux qu’un post-it.
           </h2>
-          <p className={styles.subtitle}>
-            {features.signup
-              ? 'Crée ton carnet, et reporte tes anciennes plongées à ton rythme.'
-              : 'Les inscriptions ouvrent bientôt.'}
-          </p>
+          {features.signup ? (
+            <p className={cx(styles.subtitle, styles.subtitleDesktop)}>
+              Crée ton carnet, et reporte tes anciennes plongées à ton rythme.
+            </p>
+          ) : (
+            <p className={styles.subtitle}>Les inscriptions ouvrent bientôt.</p>
+          )}
         </div>
         <div className={styles.actions}>
           {features.signup ? (

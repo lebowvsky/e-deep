@@ -215,3 +215,14 @@
     padding-inline: $space-11;
   }
 }
+
+// Landing sections on tablets (768–1023, not mocked up): the phone layout, centred on a 640px
+// column (`contentMaxWidth`, plus its 32px gutters) instead of stretched to the screen.
+@mixin landing-column {
+  @include from($bp-tablet) {
+    @include until($bp-desktop) {
+      max-width: calc(#{$layout-content-max-width} + 2 * #{$space-7});
+      margin-inline: auto;
+    }
+  }
+}

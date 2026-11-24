@@ -93,6 +93,7 @@ export const type = {
   bodyMed: { size: 14, lh: 20, w: 500, ls: 0 },
   button: { size: 14, lh: 20, w: 500, ls: -0.1 },
   buttonLg: { size: 15, lh: 20, w: 500, ls: -0.1 },
+  buttonXl: { size: 16, lh: 20, w: 500, ls: -0.1 }, // full-width calls to action on phones (welcome.jsx)
   bodyLoose: { size: 14, lh: 22, w: 400, ls: 0 }, // empty-state explanations
   bodyXl: { size: 16, lh: 24, w: 400, ls: 0 },
   bodySm: { size: 13, lh: 18, w: 500, ls: 0 }, // compact labels (buddy names, avatar initials)
@@ -398,6 +399,7 @@ export const layout = {
   previewPhoneWidthSm: 270, // 375 × 0.72, alone on phones
   previewPhoneOverlapX: 110,
   previewPhoneOverlapY: 40,
+  ctaHeightXl: 52, // full-width calls to action of the landing page on phones
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.

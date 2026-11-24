@@ -116,6 +116,8 @@ describe('LoginForm — refusals', () => {
     expect(emailInput().getAttribute('aria-invalid')).toBe('true');
     expect(passwordInput().getAttribute('aria-invalid')).toBe('true');
     expect(passwordInput().value).toBe('');
+    // Emptied for the next try, not reported as missing.
+    expect(screen.queryByText('Saisis ton mot de passe.')).toBeNull();
     expect(emailInput().value).toBe(FAKE_CREDENTIALS.email);
     await waitFor(() => expect(document.activeElement).toBe(passwordInput()));
   });

@@ -4,6 +4,7 @@
 // phone overlapping the browser at the bottom right (−110, −40).
 .preview {
   @include page-gutter;
+  @include landing-column;
 
   display: flex;
   align-items: flex-end;
