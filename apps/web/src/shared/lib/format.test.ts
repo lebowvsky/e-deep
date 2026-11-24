@@ -11,6 +11,7 @@ import {
   formatDiveDate,
   formatDiverLevel,
   formatHeaderDate,
+  formatFullName,
   formatInitials,
   formatMeasure,
   placeLabel,
@@ -60,6 +61,12 @@ describe('format', () => {
   it('builds initials', () => {
     expect(formatInitials('Marine', 'Rousseau')).toBe('MR');
     expect(formatInitials('élise', 'marchand')).toBe('ÉM');
+    expect(formatInitials('marine', null)).toBe('M');
+  });
+
+  it('builds the full name, the first name alone without last name', () => {
+    expect(formatFullName('Marine', 'Rousseau')).toBe('Marine Rousseau');
+    expect(formatFullName('Marine', null)).toBe('Marine');
   });
 
   it('formats the diver level with the federation', () => {

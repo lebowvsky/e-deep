@@ -6,6 +6,7 @@ import {
   InvalidReferenceError,
   SiteInUseError,
 } from '../../src/common/errors/domain-errors';
+import { asDiverId } from '../../src/common/auth/diver-id';
 import type { SyncCursor } from '../../src/common/sync/sync.types';
 import { Buddy } from '../../src/modules/buddies/buddy.entity';
 import { BuddiesService } from '../../src/modules/buddies/buddies.service';
@@ -94,7 +95,7 @@ describe('DiveSitesService and BuddiesService', () => {
       const diver = await fixtures.diver();
       const write = siteWrite();
       const created = await sites.upsert(diver.id, write, recentPull());
-      await sites.remove(diver.id, write.id);
+      await sites.remove(asDiverId(diver.id), write.id);
       const tombstone = await dataSource.manager.findOneByOrFail(DiveSite, { id: write.id });
 
       const late = await sites.upsert(
@@ -145,7 +146,7 @@ describe('DiveSitesService and BuddiesService', () => {
       const diver = await fixtures.diver();
       const { site } = await fixtures.dive(diver.id);
 
-      await expect(sites.remove(diver.id, site.id)).rejects.toThrow(SiteInUseError);
+      await expect(sites.remove(asDiverId(diver.id), site.id)).rejects.toThrow(SiteInUseError);
       await expect(
         sites.upsert(
           diver.id,
@@ -163,7 +164,7 @@ describe('DiveSitesService and BuddiesService', () => {
       const site = await fixtures.site(diver.id);
       await fixtures.event(diver.id, site.id, { deletedAt: new Date() });
 
-      await sites.remove(diver.id, site.id);
+      await sites.remove(asDiverId(diver.id), site.id);
 
       const stored = await dataSource.manager.findOneByOrFail(DiveSite, { id: site.id });
       expect(stored.deletedAt).toBeInstanceOf(Date);
@@ -284,7 +285,7 @@ describe('DiveSitesService and BuddiesService', () => {
     for (let index = 0; index < 5; index += 1) {
       ids.push((await sites.upsert(diver.id, siteWrite(), recentPull())).current.id);
     }
-    await sites.remove(diver.id, ids[1] ?? '');
+    await sites.remove(asDiverId(diver.id), ids[1] ?? '');
 
     const seen: string[] = [];
     let cursor: SyncCursor | null = null;

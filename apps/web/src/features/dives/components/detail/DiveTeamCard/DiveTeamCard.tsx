@@ -1,4 +1,4 @@
-import { formatDiverLevel } from '@/shared/lib/format';
+import { formatDiverLevel, formatFullName } from '@/shared/lib/format';
 import { selfFirst } from '@/shared/model/dive';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Badge } from '@/shared/ui/Badge';
@@ -41,7 +41,7 @@ export function DiveTeamCard({ team, sharedDives, className }: DiveTeamCardProps
               />
               <span className={styles.identity}>
                 <span className={styles.name}>
-                  {member.firstName} {member.lastName}
+                  {formatFullName(member.firstName, member.lastName)}
                   {member.isSelf && <span className={styles.self}> · toi</span>}
                 </span>
                 {member.isSelf && level !== null && (

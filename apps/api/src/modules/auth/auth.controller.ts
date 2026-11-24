@@ -2,12 +2,11 @@ import type { MeResponse } from '@e-deep/shared';
 import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { clientIpKey } from '../../common/auth/client-ip';
-import {
-  CurrentDiverSession,
-  WebSessionGuard,
-  type DiverSession,
-} from '../../common/auth/local-session.guard';
+import { AllowIncompleteProfile } from '../../common/auth/allow-incomplete-profile.decorator';
+import { requireSessionId, type AuthContext } from '../../common/auth/auth-context';
+import { CurrentAuth } from '../../common/auth/current-diver-id.decorator';
 import { NoStoreGuard } from '../../common/auth/no-store.guard';
+import { Public } from '../../common/auth/public.decorator';
 import { SessionCookies } from '../../common/auth/session-cookie';
 import { MeService } from '../accounts/me.service';
 import type { AuthenticatedAccount } from './authenticated-account';
@@ -20,8 +19,8 @@ import { RegistrationService } from './registration.service';
  * Sign-up, sign-in and sign-out of the divers (§3, D33, D39). Every answer is `no-store`. The
  * cookie is the only carrier of the token: the body never contains it.
  *
- * `register`, `login` and `logout` are public (`@Public` with lot 4, as is the `OriginGuard`);
- * `logout-all` needs a web session.
+ * `register`, `login` and `logout` are `@Public` (the `OriginGuard` still applies); `logout-all`
+ * needs a web session, even before `/welcome`.
  */
 @Controller('auth')
 @UseGuards(NoStoreGuard)
@@ -38,6 +37,7 @@ export class AuthController {
    * cookie already presented is revoked (rotation, like a login).
    */
   @Post('register')
+  @Public()
   async register(
     @Body() body: RegisterRequestDto,
     @Req() request: Request,
@@ -58,6 +58,7 @@ export class AuthController {
 
   /** `POST /api/auth/login`: 200; the cookie already presented is revoked (rotation). */
   @Post('login')
+  @Public()
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() body: LoginRequestDto,
@@ -79,6 +80,7 @@ export class AuthController {
 
   /** `POST /api/auth/logout`: 204, idempotent; the cookie is cleared in every case. */
   @Post('logout')
+  @Public()
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
     @Req() request: Request,
@@ -92,13 +94,15 @@ export class AuthController {
   /** `POST /api/auth/logout-all`: 204, every session of the account ended, this one included. */
   @Post('logout-all')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(WebSessionGuard)
+  @AllowIncompleteProfile()
   async logoutAll(
-    @CurrentDiverSession() session: DiverSession,
+    @CurrentAuth() auth: AuthContext,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
+    // The dev stub has no session to end: 401, like the other session routes.
+    requireSessionId(auth);
     // Revoked first: on a failure, the 500 keeps the cookie of the sessions still alive.
-    await this.authentication.signOutEverywhere(session.accountId);
+    await this.authentication.signOutEverywhere(auth.accountId);
     this.cookies.clear(response, 'web');
   }
 }

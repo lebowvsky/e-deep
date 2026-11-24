@@ -377,9 +377,9 @@ describe('DiveWriteRequestDto', () => {
     (body['participation'] as Record<string, unknown>)['participationId'] = 'x';
     body['deletedAt'] = null;
 
+    // Grouped under one fixed key: the names are the client's, never echoed.
     expect(await fieldErrorsOf(body)).toEqual({
-      deletedAt: ['unknown'],
-      'participation.participationId': ['unknown'],
+      _unknown: ['unknown'],
     });
   });
 

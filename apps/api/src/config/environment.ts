@@ -79,7 +79,11 @@ export class EnvironmentVariables extends DatabaseEnvironment {
   @Max(MAX_PORT)
   PORT: number = 3000;
 
-  /** Comma-separated list in the environment, e.g. `http://localhost:5173,http://localhost:5174`. */
+  /**
+   * Browser origins accepted by the `OriginGuard` on unsafe methods when the request has no
+   * `Sec-Fetch-Site: same-origin` (D34). Comma-separated list in the environment, e.g.
+   * `http://localhost:5173,http://localhost:5174`. Replaces `CORS_ORIGINS`: there is no CORS.
+   */
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? splitCommaSeparatedList(value) : value,
   )
@@ -88,9 +92,9 @@ export class EnvironmentVariables extends DatabaseEnvironment {
     { require_tld: false, require_protocol: true, protocols: ['http', 'https'] },
     { each: true },
   )
-  // The browser `Origin` header never has a path or a trailing slash: `cors` compares strings exactly.
+  // The browser `Origin` header never has a path or a trailing slash: compared as exact strings.
   @Matches(/^https?:\/\/[^/?#]+$/, { each: true, message: 'each entry must be a bare origin' })
-  CORS_ORIGINS: string[];
+  ALLOWED_ORIGINS: string[];
 
   /** Purge horizon of the sync tombstones, in days (D-12). Optional. */
   @IsInt()
@@ -132,9 +136,9 @@ export class EnvironmentVariables extends DatabaseEnvironment {
   REGISTRATION_ENABLED: boolean = false;
 
   /**
-   * DEVELOPMENT ONLY, until authentication exists: when `true`, the current diver is the first one
-   * created (see `CurrentDiverGuard`). Any other value, or no value, disables it. Refused when
-   * `NODE_ENV=production`.
+   * DEVELOPMENT ONLY, removed in auth lot 6 (D44): when `true`, a web request without any session
+   * cookie acts for the first diver created (`SessionGuard`, `DevAuthStub`), onboarding checks
+   * included. Any other value, or no value, disables it. Refused when `NODE_ENV=production`.
    */
   @Transform(({ obj }: { obj: Record<string, unknown> }) => {
     const raw = obj['DEV_AUTH_STUB'];

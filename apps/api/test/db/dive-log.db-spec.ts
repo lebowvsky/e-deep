@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
+import { asDiverId } from '../../src/common/auth/diver-id';
 import { DiveSite } from '../../src/modules/dive-sites/dive-site.entity';
 import { DiveSitesService } from '../../src/modules/dive-sites/dive-sites.service';
 import { DiveEvent } from '../../src/modules/dives/dive-event.entity';
@@ -78,7 +79,7 @@ describe('DiveLogService', () => {
       });
       await fixtures.dive(other.id);
 
-      const { dives } = await diveLog.findAll(diver.id);
+      const { dives } = await diveLog.findAll(asDiverId(diver.id));
 
       expect(dives.map((entry) => [entry.id, entry.number])).toStrictEqual([
         [third.id, 3],
@@ -110,7 +111,7 @@ describe('DiveLogService', () => {
       const site = await fixtures.site(diver.id);
       await dive(diver.id, site.id, '2026-06-01T08:00:00.000Z', { deleted: 'event' });
 
-      await expect(diveLog.findAll(diver.id)).resolves.toStrictEqual({ dives: [] });
+      await expect(diveLog.findAll(asDiverId(diver.id))).resolves.toStrictEqual({ dives: [] });
     });
   });
 
@@ -121,7 +122,7 @@ describe('DiveLogService', () => {
       await dive(diver.id, site.id, '2026-06-01T08:00:00.000Z');
       const latest = await dive(diver.id, site.id, '2026-07-01T08:00:00.000Z');
 
-      const detail = await diveLog.findOne(diver.id, latest.id);
+      const detail = await diveLog.findOne(asDiverId(diver.id), latest.id);
 
       expect(detail).toMatchObject({
         id: latest.id,
@@ -143,9 +144,9 @@ describe('DiveLogService', () => {
       });
 
       for (const id of [foreign.id, deleted.id, '01900000-0000-7000-8000-0000000000ff']) {
-        await expect(diveLog.findOne(diver.id, id)).rejects.toThrow(NotFoundException);
+        await expect(diveLog.findOne(asDiverId(diver.id), id)).rejects.toThrow(NotFoundException);
       }
-      await expect(diveLog.findOne(other.id, foreign.id)).resolves.toMatchObject({
+      await expect(diveLog.findOne(asDiverId(other.id), foreign.id)).resolves.toMatchObject({
         id: foreign.id,
       });
     });
@@ -207,7 +208,7 @@ describe('DiveLogService', () => {
       await fixtures.observation(participation.id, 1, 'Barracudas');
       await fixtures.observation(participation.id, 0, 'Mérou brun', 2);
 
-      const detail = await diveLog.findOne(diver.id, event.id);
+      const detail = await diveLog.findOne(asDiverId(diver.id), event.id);
 
       expect(detail).toMatchObject({
         site: { area: 'Méditerranée' },
@@ -254,7 +255,7 @@ describe('DiveLogService', () => {
       const { event, participation } = await fixtures.dive(diver.id);
       await fixtures.diveBuddy(diver.id, participation.id, buddy.id);
 
-      const detail = await diveLog.findOne(diver.id, event.id);
+      const detail = await diveLog.findOne(asDiverId(diver.id), event.id);
 
       expect(detail.buddies).toStrictEqual([
         { id: buddy.id, firstName: buddy.firstName, lastName: buddy.lastName, level: null },
@@ -266,7 +267,7 @@ describe('DiveLogService', () => {
       const site = await fixtures.site(diver.id);
       const event = await dive(diver.id, site.id, '2026-06-01T08:00:00.000Z');
 
-      const detail = await diveLog.findOne(diver.id, event.id);
+      const detail = await diveLog.findOne(asDiverId(diver.id), event.id);
 
       expect(detail).toMatchObject({
         site: { area: null },
@@ -309,13 +310,13 @@ describe('DiveLogService', () => {
       };
 
       await dataSource.manager.update(DiveEvent, { id: event.id }, { weather: 'RAIN' });
-      const afterEvent = await diveLog.findOne(diver.id, event.id);
+      const afterEvent = await diveLog.findOne(asDiverId(diver.id), event.id);
       const event2 = await dataSource.manager.findOneByOrFail(DiveEvent, { id: event.id });
       expect(afterEvent.updatedAt).toBe(event2.updatedAt.toISOString());
       expect(afterEvent.updatedAt).toBe(await latestOf());
 
       await dataSource.manager.update(DiveParticipation, { id: participation.id }, { weightKg: 5 });
-      const afterParticipation = await diveLog.findOne(diver.id, event.id);
+      const afterParticipation = await diveLog.findOne(asDiverId(diver.id), event.id);
       const participation2 = await dataSource.manager.findOneByOrFail(DiveParticipation, {
         id: participation.id,
       });
@@ -333,7 +334,7 @@ describe('DiveLogService', () => {
         { entryType: 'SHORE', diveCenter: 'Calvi Plongée', weather: 'SUNNY' },
       );
 
-      const { dives } = await diveLog.findAll(diver.id);
+      const { dives } = await diveLog.findAll(asDiverId(diver.id));
 
       expect(dives[0]).toMatchObject({ entryType: 'SHORE', diveCenter: 'Calvi Plongée' });
       expect(Object.keys(dives[0] ?? {}).sort()).toStrictEqual(
@@ -374,7 +375,7 @@ describe('DiveLogService', () => {
       expect(withLocality.current.locality).toBe('Porquerolles');
       expect(without.current.locality).toBeNull();
       await dive(diver.id, withLocality.current.id, '2026-06-01T08:00:00.000Z');
-      const { dives } = await diveLog.findAll(diver.id);
+      const { dives } = await diveLog.findAll(asDiverId(diver.id));
       expect(dives[0]?.site.locality).toBe('Porquerolles');
     });
 

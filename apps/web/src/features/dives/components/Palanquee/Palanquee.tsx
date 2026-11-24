@@ -1,4 +1,5 @@
 import { cx } from '@/shared/lib/classNames';
+import { formatFullName } from '@/shared/lib/format';
 import { selfFirst, type DiveMember } from '@/shared/model/dive';
 import { Avatar } from '@/shared/ui/Avatar';
 import styles from './Palanquee.module.scss';
@@ -13,7 +14,7 @@ export interface PalanqueeProps {
 }
 
 const fullName = (member: DiveMember) =>
-  `${member.firstName} ${member.lastName}${member.isSelf ? ' (toi)' : ''}`;
+  `${formatFullName(member.firstName, member.lastName)}${member.isSelf ? ' (toi)' : ''}`;
 
 /**
  * The whole dive team, the user first (neutral avatar). Beyond `max` avatars the last ones are

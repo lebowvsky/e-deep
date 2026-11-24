@@ -4,12 +4,8 @@ import type {
   SiteListResponse,
   SiteResponse,
 } from '@e-deep/shared';
-import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import request from 'supertest';
-import { DataSource } from 'typeorm';
-import { CurrentDiverGuard } from '../src/common/auth/current-diver.guard';
 import {
   IdentifierConflictError,
   InvalidReferenceError,
@@ -20,6 +16,13 @@ import { configureApp } from '../src/configure-app';
 import { DiveSitesController } from '../src/modules/dive-sites/dive-sites.controller';
 import { DiveSitesService, siteNotFound } from '../src/modules/dive-sites/dive-sites.service';
 import { siteCreateRequest } from './support/site-request';
+import {
+  WEB_COOKIE,
+  accessControlProviders,
+  resetAccessControlFakes,
+  sameOrigin,
+  signIn,
+} from './support/access-control';
 
 const DIVER_ID = '01900000-0000-7000-8000-000000000001';
 const SITE_ID = '01900000-0000-7000-8000-0000000000a1';
@@ -51,9 +54,8 @@ const sites = {
   merge: jest.fn(),
   remove: jest.fn(),
 };
-/** `CurrentDiverGuard` lookup of the first diver. */
-const find = jest.fn<Promise<{ id: string }[]>, []>();
-let devAuthStub = true;
+/** The session cookie of the request; `undefined`: none (the `DEV_AUTH_STUB` is off). */
+let cookie: string | undefined;
 
 const NOT_FOUND = { message: 'Site not found', error: 'Not Found', statusCode: 404 };
 
@@ -63,16 +65,11 @@ describe('/api/sites (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [DiveSitesController],
-      providers: [
-        CurrentDiverGuard,
-        { provide: DiveSitesService, useValue: sites },
-        { provide: DataSource, useValue: { manager: { find } } },
-        { provide: ConfigService, useValue: { get: () => devAuthStub } },
-      ],
+      providers: [...accessControlProviders(), { provide: DiveSitesService, useValue: sites }],
     }).compile();
 
     app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
-    configureApp(app, { corsOrigins: ['http://localhost:5173'], trustProxy: 0 });
+    configureApp(app, { trustProxy: 0 });
     await app.init();
   });
 
@@ -81,12 +78,18 @@ describe('/api/sites (e2e)', () => {
   });
 
   beforeEach(() => {
-    devAuthStub = true;
+    cookie = WEB_COOKIE;
     jest.resetAllMocks();
-    find.mockResolvedValue([{ id: DIVER_ID }]);
+    resetAccessControlFakes();
+    signIn();
   });
 
-  const server = () => request(app.getHttpServer());
+  /** Same-origin requests, with the web cookie of the signed-in diver unless `cookie` is cleared. */
+  const server = () => {
+    const agent = sameOrigin(app);
+    return cookie === undefined ? agent : agent.set('Cookie', cookie);
+  };
+
   const { createdVia: _origin, ...replacement } = siteCreateRequest({ id: SITE_ID });
   const creation = siteCreateRequest({ id: SITE_ID });
 
@@ -102,8 +105,8 @@ describe('/api/sites (e2e)', () => {
       expect(sites.list).toHaveBeenCalledWith(DIVER_ID);
     });
 
-    it('answers 401 without a current diver (stub disabled)', async () => {
-      devAuthStub = false;
+    it('answers 401 without a current diver (no session cookie)', async () => {
+      cookie = undefined;
 
       const response = await server().get('/api/sites').expect(401);
 
@@ -197,8 +200,8 @@ describe('/api/sites (e2e)', () => {
       } satisfies ApiDomainErrorResponse);
     });
 
-    it('answers 401 without a current diver (stub disabled)', async () => {
-      devAuthStub = false;
+    it('answers 401 without a current diver (no session cookie)', async () => {
+      cookie = undefined;
 
       await server().post('/api/sites').send(creation).expect(401);
       expect(sites.create).not.toHaveBeenCalled();
@@ -246,7 +249,7 @@ describe('/api/sites (e2e)', () => {
     it('refuses an origin: it cannot change (RG-34)', async () => {
       const response = await server().put(`/api/sites/${SITE_ID}`).send(creation).expect(400);
 
-      expect(response.body).toMatchObject({ fieldErrors: { createdVia: ['unknown'] } });
+      expect(response.body).toMatchObject({ fieldErrors: { _unknown: ['unknown'] } });
     });
 
     it('answers the generic 404 for a site that is not a live one of the diver', async () => {
@@ -333,8 +336,8 @@ describe('/api/sites (e2e)', () => {
       expect(response.body).toStrictEqual({ statusCode: 409, code: 'site-in-use' });
     });
 
-    it('answers 401 without a current diver (stub disabled)', async () => {
-      devAuthStub = false;
+    it('answers 401 without a current diver (no session cookie)', async () => {
+      cookie = undefined;
 
       await server().delete(`/api/sites/${SITE_ID}`).expect(401);
       expect(sites.remove).not.toHaveBeenCalled();

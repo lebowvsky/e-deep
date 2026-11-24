@@ -17,6 +17,7 @@ import {
 } from '../src/common/errors/domain-errors';
 import {
   ACCOUNT_ID,
+  ADMIN_COOKIE,
   COMPLETE,
   DIVER_ID,
   DIVER_SESSION,
@@ -34,14 +35,14 @@ import {
   STAFF_EMAIL,
   STAFF_SESSION,
   TOKEN,
+  WEB_COOKIE,
   createAuthTestApp,
+  sameOrigin,
   fakes,
   resetFakes,
   singleSetCookie,
 } from './support/auth-app';
 
-const WEB_COOKIE = `edeep_sid=${TOKEN}`;
-const ADMIN_COOKIE = `edeep_admin_sid=${TOKEN}`;
 const PASSWORD = 'coral reef at dawn, twice';
 const NEW_PASSWORD = 'night dive under the full moon';
 /** Planted in refused bodies: no error body may echo it (D-26). */
@@ -96,7 +97,7 @@ describe('/api/me and /api/admin/me (e2e)', () => {
 
   beforeEach(resetFakes);
 
-  const server = () => request(app.getHttpServer());
+  const server = () => sameOrigin(app);
   const signedIn = () => fakes.sessions.resolve.mockResolvedValue(DIVER_SESSION);
   const call = (method: Method, path: string, cookie?: string) => {
     const test = server()[method](path);
@@ -309,7 +310,7 @@ describe('/api/me and /api/admin/me (e2e)', () => {
       ],
       ['a consent box as a string', { healthDataConsent: 'true' }, { healthDataConsent: ['type'] }],
       ['an unknown policy version', { policyVersion: MARKER }, { policyVersion: ['in'] }],
-      ['an unknown property', { diverId: DIVER_ID }, { diverId: ['unknown'] }],
+      ['an unknown property', { diverId: DIVER_ID }, { _unknown: ['unknown'] }],
     ])('400 for %s, without calling the service', async (_case, patch, fieldErrors) => {
       signedIn();
 

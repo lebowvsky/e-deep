@@ -4,8 +4,8 @@ import type {
   ApiValidationErrorResponse,
   MeResponse,
 } from '@e-deep/shared';
+import { NotFoundException } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import request from 'supertest';
 import {
   DomainValidationError,
   EmailTakenError,
@@ -29,11 +29,13 @@ import {
   STAFF_EMAIL,
   TOKEN,
   createAuthTestApp,
+  sameOrigin,
   fakes,
   resetFakes,
   setCookies,
   singleSetCookie,
 } from './support/auth-app';
+import { WEB_COOKIE, devAuthStubFake, signIn } from './support/access-control';
 
 const PASSWORD = 'coral reef at dawn, twice';
 /** Planted in refused bodies: no error body may echo it (D-26). */
@@ -92,7 +94,7 @@ describe.each([
 
   beforeEach(resetFakes);
 
-  const server = () => request(app.getHttpServer());
+  const server = () => sameOrigin(app);
 
   /** Attributes every session cookie carries, set or cleared. */
   function expectSessionAttributes(header: string | string[] | undefined, name: string) {
@@ -228,7 +230,7 @@ describe('/api/auth and /api/admin/auth (e2e)', () => {
 
   beforeEach(resetFakes);
 
-  const server = () => request(app.getHttpServer());
+  const server = () => sameOrigin(app);
 
   describe('POST /api/auth/register', () => {
     it('201: signs the diver up and in, MeResponse with onboarding profile-required', async () => {
@@ -356,7 +358,12 @@ describe('/api/auth and /api/admin/auth (e2e)', () => {
         { password: ['too-long'] },
       ],
       ['a mistyped password', { ...REGISTER, password: 123 }, { password: ['type'] }],
-      ['an unknown property', { ...REGISTER, role: 'admin' }, { role: ['unknown'] }],
+      ['an unknown property', { ...REGISTER, role: 'admin' }, { _unknown: ['unknown'] }],
+      [
+        'unknown properties named by the client, never echoed',
+        { ...REGISTER, [MARKER]: 1, [`${MARKER}-2`]: { nested: true } },
+        { _unknown: ['unknown'] },
+      ],
     ])(
       '400 for %s, without calling the service nor echoing a value',
       async (_case, body, fieldErrors) => {
@@ -510,8 +517,54 @@ describe('/api/auth and /api/admin/auth (e2e)', () => {
         .send(`{"email": "${MARKER}", `)
         .expect(400);
 
+      // Generic: no `JSON.parse` message, which would quote a slice of the body.
+      expect(response.body).toStrictEqual(validationFailed({ _body: ['malformed'] }));
+      expect(response.headers['cache-control']).toBe('no-store');
       expect(response.text).not.toContain(MARKER);
       expect(fakes.authentication.loginDiver).not.toHaveBeenCalled();
+    });
+
+    it('415 for an unsupported charset, with the reason phrase only (never the charset)', async () => {
+      const response = await server()
+        .post('/api/auth/login')
+        .set('Content-Type', `application/json; charset=${MARKER}`)
+        .send(JSON.stringify(LOGIN))
+        .expect(415);
+
+      expect(response.body).toStrictEqual({ statusCode: 415, code: 'unsupported-media-type' });
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.text.toLowerCase()).not.toContain(MARKER);
+    });
+
+    it('413 payload-too-large over the parser limit, never echoing the body', async () => {
+      const response = await server()
+        .post('/api/auth/login')
+        .set('Content-Type', 'application/json')
+        .send(JSON.stringify({ email: `${MARKER}${'x'.repeat(200_000)}`, password: 'x' }))
+        .expect(413);
+
+      expect(response.body).toStrictEqual({ statusCode: 413, code: 'payload-too-large' });
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.text).not.toContain(MARKER);
+    });
+  });
+
+  describe('Express errors outside any handler', () => {
+    it('404 for an unknown route, without its URL', async () => {
+      const response = await server().get(`/api/${MARKER}`).expect(404);
+
+      expect(response.body).toStrictEqual({ statusCode: 404, message: 'Not Found' });
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.text).not.toContain(MARKER);
+    });
+
+    it('keeps the 404 a handler raises (route matched)', async () => {
+      signIn();
+      fakes.onboarding.stateOf.mockRejectedValue(new NotFoundException('Kept message'));
+
+      const response = await server().get('/api/me').set('Cookie', WEB_COOKIE).expect(404);
+
+      expect(response.body).toMatchObject({ message: 'Kept message' });
     });
   });
 
@@ -630,7 +683,7 @@ describe('/api/auth and /api/admin/auth (e2e)', () => {
       [
         'a rememberMe (staff sessions are always short)',
         { rememberMe: true },
-        { rememberMe: ['unknown'] },
+        { _unknown: ['unknown'] },
       ],
       ['an email that is not one', { email: MARKER }, { email: ['format'] }],
       ['a password of 129 characters', { password: 'p'.repeat(129) }, { password: ['too-long'] }],
@@ -683,7 +736,7 @@ describe('client IP key behind a trusted proxy (trustProxy: 1)', () => {
   ])('the throttle receives the normalised key of %s', async (_case, forwarded, key) => {
     fakes.authentication.loginDiver.mockRejectedValue(new InvalidCredentialsError());
 
-    await request(app.getHttpServer())
+    await sameOrigin(app)
       .post('/api/auth/login')
       .set('X-Forwarded-For', `203.0.113.99, ${forwarded}`)
       .send(LOGIN)
@@ -692,5 +745,42 @@ describe('client IP key behind a trusted proxy (trustProxy: 1)', () => {
     expect(fakes.authentication.loginDiver).toHaveBeenCalledWith(
       expect.objectContaining({ ip: key }),
     );
+  });
+});
+
+describe('DEV_AUTH_STUB fallback on the session-ending routes (until lot 6)', () => {
+  let app: NestExpressApplication;
+
+  beforeAll(async () => {
+    app = await createAuthTestApp({ secureCookies: false, devAuthStub: true });
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    resetFakes();
+    devAuthStubFake.firstDiverAccount.mockResolvedValue({
+      accountId: ACCOUNT_ID,
+      diverId: DIVER_ID,
+    });
+  });
+
+  it('acts for the first diver without a cookie (GET /api/me)', async () => {
+    await sameOrigin(app).get('/api/me').expect(200);
+  });
+
+  it.each<['post' | 'put' | 'delete', string, object]>([
+    ['post', '/api/auth/logout-all', {}],
+    ['put', '/api/me/password', { currentPassword: 'x', newPassword: 'y' }],
+    ['delete', '/api/me', { password: 'x' }],
+  ])('%s %s: 401, there is no session to end', async (method, path, body) => {
+    const response = await sameOrigin(app)[method](path).send(body).expect(401);
+
+    expect(response.body).toStrictEqual({ statusCode: 401, code: 'unauthenticated' });
+    expect(fakes.authentication.signOutEverywhere).not.toHaveBeenCalled();
+    expect(fakes.accounts.changePassword).not.toHaveBeenCalled();
+    expect(fakes.accounts.deleteAccount).not.toHaveBeenCalled();
   });
 });

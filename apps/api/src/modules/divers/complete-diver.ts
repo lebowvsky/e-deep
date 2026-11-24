@@ -14,9 +14,9 @@ export interface CompleteDiver extends Diver {
 /**
  * Narrows the current diver to a complete profile, for the readers of the dive log.
  *
- * Invariant rather than a domain error: from lot 4 of docs/plans/auth.md the `onboarding-required`
- * guard refuses every dive log route to an incomplete profile, so this never throws there. Until
- * then (and should a route forget the guard), a plain `Error` ends in a generic 500. Its message
+ * Invariant rather than a domain error: the `SessionGuard` answers `403 onboarding-required` on
+ * every dive log route to an incomplete profile, so this never throws there. Should a route ever
+ * skip that check (`@AllowIncompleteProfile()`), a plain `Error` ends in a generic 500. Its message
  * carries neither id nor name (GDPR, ARCHITECTURE §9).
  *
  * @throws {Error} when the diver has no certification level.

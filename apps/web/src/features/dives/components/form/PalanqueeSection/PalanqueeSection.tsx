@@ -1,5 +1,5 @@
 import { memo, useId, useState } from 'react';
-import { formatDiveCount, formatInitials } from '@/shared/lib/format';
+import { formatDiveCount, formatFullName, formatInitials } from '@/shared/lib/format';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Badge } from '@/shared/ui/Badge';
 import { Chip } from '@/shared/ui/Chip';
@@ -21,7 +21,8 @@ import styles from './PalanqueeSection.module.scss';
 /** The diver filling the form: listed first, never removable. */
 export interface PalanqueeSelf {
   firstName: string;
-  lastName: string;
+  /** `null` when the diver has not entered it (optional at onboarding). */
+  lastName: string | null;
   /** Level code (`N2`), `null` when unknown. */
   level: string | null;
 }
@@ -109,7 +110,7 @@ export const PalanqueeSection = memo(
               size="sm"
             />
             <span className={styles.name}>
-              {fullName(self)}
+              {formatFullName(self.firstName, self.lastName)}
               <span className={styles.self}> · toi</span>
             </span>
             {self.level !== null && <Badge>{self.level}</Badge>}

@@ -54,7 +54,7 @@ describe('toDomainErrorResponse', () => {
   });
 
   it('maps every code', () => {
-    expect(Object.keys(DOMAIN_ERROR_STATUS)).toHaveLength(19);
+    expect(Object.keys(DOMAIN_ERROR_STATUS)).toHaveLength(21);
   });
 
   it('keeps the retry delay out of the body, rounded up to a whole second', () => {

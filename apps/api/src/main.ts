@@ -9,10 +9,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get<AppConfigService>(ConfigService);
 
-  configureApp(app, {
-    corsOrigins: config.get('CORS_ORIGINS', { infer: true }),
-    trustProxy: config.get('TRUST_PROXY', { infer: true }),
-  });
+  configureApp(app, { trustProxy: config.get('TRUST_PROXY', { infer: true }) });
   // Closes the database pool cleanly on SIGTERM / SIGINT.
   app.enableShutdownHooks();
 

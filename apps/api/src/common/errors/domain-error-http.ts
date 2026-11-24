@@ -30,6 +30,8 @@ export const DOMAIN_ERROR_STATUS = {
   forbidden: HttpStatus.FORBIDDEN,
   'email-taken': HttpStatus.CONFLICT,
   'onboarding-complete': HttpStatus.CONFLICT,
+  'payload-too-large': HttpStatus.PAYLOAD_TOO_LARGE,
+  'unsupported-media-type': HttpStatus.UNSUPPORTED_MEDIA_TYPE,
   // With a `Retry-After` header (`domainErrorHeaders`).
   'too-many-attempts': HttpStatus.TOO_MANY_REQUESTS,
   // The server failed to map one of its own values: a bug, not a client error.

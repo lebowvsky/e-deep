@@ -14,14 +14,29 @@ describe('toFieldErrors', () => {
     const errors = [
       error('participation', {}, [error('maxDepthM', { max: 'm', isPositive: 'm' })]),
       error('observations', {}, [error('3', {}, [error('label', { length: 'm' })])]),
-      error('extra', { whitelistValidation: 'm' }),
     ];
 
     expect(toFieldErrors(errors)).toEqual({
       'participation.maxDepthM': ['max', 'min'],
       'observations.3.label': ['length'],
-      extra: ['unknown'],
     });
+  });
+
+  it('groups every unknown property, nested or not, under `_unknown`, never by its name', () => {
+    const marker = 'zq-marker';
+    const errors = [
+      error(marker, { whitelistValidation: 'm' }),
+      error('participation', {}, [error(`${marker}-2`, { whitelistValidation: 'm' })]),
+      error('observations', {}, [
+        error('0', {}, [error(`${marker}-3`, { whitelistValidation: 'm' })]),
+      ]),
+      error('durationMin', { isInt: 'm' }),
+    ];
+
+    const fieldErrors = toFieldErrors(errors);
+
+    expect(fieldErrors).toEqual({ _unknown: ['unknown'], durationMin: ['integer'] });
+    expect(JSON.stringify(fieldErrors)).not.toContain(marker);
   });
 
   it('keeps required alone, then type alone, and skips the content of such a field', () => {

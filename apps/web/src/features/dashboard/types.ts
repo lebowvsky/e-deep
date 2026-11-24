@@ -9,7 +9,8 @@ export type { UserLevel };
 export interface User {
   id: string;
   firstName: string;
-  lastName: string;
+  /** `null` when not entered: the last name is optional at onboarding (D36). */
+  lastName: string | null;
   level: UserLevel;
   federation: Federation;
   avatarUrl?: string;

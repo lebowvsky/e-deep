@@ -9,6 +9,13 @@ describe('isDashboardResponse', () => {
     expect(isDashboardResponse(dashboardResponse({ lastDive: null, sites: [] }))).toBe(true);
   });
 
+  it('accepts a user without last name (optional at onboarding, D36)', () => {
+    const response = dashboardResponse();
+    expect(isDashboardResponse({ ...response, user: { ...response.user, lastName: null } })).toBe(
+      true,
+    );
+  });
+
   it('accepts a site without region nor position (created by its name, D-23)', () => {
     const response = dashboardResponse();
     const lastDive = response.lastDive && {
@@ -95,6 +102,21 @@ describe('toDashboardState', () => {
     expect(state.data.frequentBuddies).toEqual([
       { id: 'b1', initials: 'LB', firstName: 'Lucas', lastName: 'Bernard', sharedDives: 17 },
     ]);
+  });
+
+  it('maps a user without last name: first-name initials, no last name', () => {
+    const response = dashboardResponse();
+    const state = toDashboardState({ ...response, user: { ...response.user, lastName: null } });
+    if (state.status !== 'ready') throw new Error(`Unexpected ${state.status}`);
+
+    expect(state.data.user).toMatchObject({ firstName: 'Marine', lastName: null });
+    expect(state.data.lastDive?.team[0]).toEqual({
+      id: 'u1',
+      firstName: 'Marine',
+      lastName: '',
+      initials: 'M',
+      isSelf: true,
+    });
   });
 
   it('maps the position of each site, `null` when not entered', () => {

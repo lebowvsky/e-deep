@@ -1,48 +1,57 @@
-import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import { SessionCookies } from '../../src/common/auth/session-cookie';
-import { CLOCK, type Clock } from '../../src/common/time/clock';
 import { configureApp } from '../../src/configure-app';
 import { AccountsService } from '../../src/modules/accounts/accounts.service';
 import { AdminMeController } from '../../src/modules/accounts/admin-me.controller';
 import { MeController } from '../../src/modules/accounts/me.controller';
 import { MeService } from '../../src/modules/accounts/me.service';
-import {
-  OnboardingService,
-  type OnboardingState,
-} from '../../src/modules/accounts/onboarding.service';
+import type { OnboardingState } from '../../src/modules/accounts/onboarding.service';
 import { AdminAuthController } from '../../src/modules/auth/admin-auth.controller';
 import { AuthController } from '../../src/modules/auth/auth.controller';
 import { AuthenticationService } from '../../src/modules/auth/authentication.service';
 import { RegistrationService } from '../../src/modules/auth/registration.service';
-import {
-  SessionService,
-  type IssuedSession,
-  type ResolvedSession,
-} from '../../src/modules/auth/session.service';
+import type { IssuedSession } from '../../src/modules/auth/session.service';
 import { CertificationLevel } from '../../src/modules/certification-levels/certification-level.entity';
 import { CertificationLevelsController } from '../../src/modules/certification-levels/certification-levels.controller';
 import { CertificationLevelsService } from '../../src/modules/certification-levels/certification-levels.service';
 import { Consent } from '../../src/modules/consents/consent.entity';
 import { ConsentsService } from '../../src/modules/consents/consents.service';
 import { Diver } from '../../src/modules/divers/diver.entity';
+import {
+  ACCOUNT_ID,
+  DIVER_ID,
+  NOW,
+  SESSION_ID,
+  STAFF_ACCOUNT_ID,
+  accessControlProviders,
+  onboardingFakes,
+  resetAccessControlFakes,
+  sessionFakes,
+} from './access-control';
 
-// E2e harness of the authentication routes (auth lot 3): the real controllers, guards, DTOs,
-// cookie writer, `MeService` and HTTP pipeline (`configureApp`); every service that touches the
-// database is a fake (no database, docs/plans/auth.md §4 lot 3).
+export {
+  ACCOUNT_ID,
+  ADMIN_COOKIE,
+  DIVER_ID,
+  DIVER_SESSION,
+  NOW,
+  SESSION_ID,
+  STAFF_ACCOUNT_ID,
+  STAFF_SESSION,
+  TOKEN,
+  WEB_COOKIE,
+  sameOrigin,
+} from './access-control';
 
-export const NOW = new Date('2026-11-24T10:00:00.000Z');
+// E2e harness of the authentication routes (auth lots 3 and 4): the real controllers, global
+// guards, DTOs, cookie writer, `MeService` and HTTP pipeline (`configureApp`); every service that
+// touches the database is a fake (no database, docs/plans/auth.md §4 lot 3, D44).
+
 const DAY_MS = 86_400_000;
 
-export const TOKEN = 'Tk1aW1pKUq1Gk0pXs0cH3xqzU8wQe6R2yQm4vN9bL7s';
 export const OTHER_TOKEN = 'Zz9yX8wV7uT6sR5qP4oN3mL2kJ1iH0gF9eD8cB7aA6b';
 export const NEW_TOKEN = 'Nw3wT0k3nR0t4t3dAbCdEfGhIjKlMnOpQrStUvWxYz0';
 
-export const ACCOUNT_ID = '01900000-0000-7000-8000-0000000000c1';
-export const DIVER_ID = '01900000-0000-7000-8000-000000000001';
-export const SESSION_ID = '01900000-0000-7000-8000-0000000000e1';
-export const STAFF_ACCOUNT_ID = '01900000-0000-7000-8000-0000000000c2';
 export const LEVEL_ID = '01900000-0000-7000-8000-0000000000b2';
 export const EMAIL = 'marine@example.test';
 export const STAFF_EMAIL = 'support@example.test';
@@ -62,26 +71,6 @@ export const SHORT: IssuedSession = {
   token: NEW_TOKEN,
   expiresAt: new Date(NOW.getTime() + DAY_MS),
   persistent: false,
-};
-
-export const DIVER_SESSION: ResolvedSession = {
-  sessionId: SESSION_ID,
-  accountId: ACCOUNT_ID,
-  diverId: DIVER_ID,
-  role: 'diver',
-  audience: 'web',
-  lastSeenAt: NOW,
-  expiresAt: PERSISTENT.expiresAt,
-};
-
-export const STAFF_SESSION: ResolvedSession = {
-  sessionId: SESSION_ID,
-  accountId: STAFF_ACCOUNT_ID,
-  diverId: null,
-  role: 'support',
-  audience: 'admin',
-  lastSeenAt: NOW,
-  expiresAt: SHORT.expiresAt,
 };
 
 export const DIVER_ACCOUNT = {
@@ -140,7 +129,7 @@ export const COMPLETE: OnboardingState = {
 
 /** Every faked service; reset before each test with `resetFakes`. */
 export const fakes = {
-  sessions: { resolve: jest.fn(), touch: jest.fn() },
+  sessions: sessionFakes,
   authentication: {
     loginDiver: jest.fn(),
     loginStaff: jest.fn(),
@@ -149,16 +138,15 @@ export const fakes = {
   },
   registration: { register: jest.fn() },
   accounts: { identityOf: jest.fn(), changePassword: jest.fn(), deleteAccount: jest.fn() },
-  onboarding: { stateOf: jest.fn(), complete: jest.fn() },
+  onboarding: onboardingFakes,
   consents: { grant: jest.fn() },
   levels: { findActive: jest.fn() },
 };
 
-/** Defaults: no live session, the diver's identity and a complete profile. */
+/** Defaults: no live session, the diver's identity and a complete profile (`resetAccessControlFakes`). */
 export function resetFakes(): void {
   jest.resetAllMocks();
-  fakes.sessions.resolve.mockResolvedValue(null);
-  fakes.sessions.touch.mockResolvedValue(false);
+  resetAccessControlFakes();
   fakes.authentication.signOut.mockResolvedValue(undefined);
   fakes.authentication.signOutEverywhere.mockResolvedValue(undefined);
   fakes.accounts.identityOf.mockResolvedValue({ email: EMAIL, role: 'diver' });
@@ -168,14 +156,13 @@ export function resetFakes(): void {
 export async function createAuthTestApp({
   secureCookies,
   trustProxy = 0,
+  devAuthStub = false,
 }: {
   secureCookies: boolean;
   trustProxy?: number;
+  /** The `DEV_AUTH_STUB` fallback (`NODE_ENV=test`), answered by `devAuthStubFake`. */
+  devAuthStub?: boolean;
 }): Promise<NestExpressApplication> {
-  const clock: Clock = { now: () => NOW };
-  const config = {
-    get: (key: string): unknown => (key === 'SESSION_COOKIE_SECURE' ? secureCookies : undefined),
-  };
   const moduleRef = await Test.createTestingModule({
     controllers: [
       AuthController,
@@ -185,22 +172,18 @@ export async function createAuthTestApp({
       CertificationLevelsController,
     ],
     providers: [
-      SessionCookies,
+      ...accessControlProviders({ secureCookies, devAuthStub }),
       MeService,
-      { provide: CLOCK, useValue: clock },
-      { provide: ConfigService, useValue: config },
-      { provide: SessionService, useValue: fakes.sessions },
       { provide: AuthenticationService, useValue: fakes.authentication },
       { provide: RegistrationService, useValue: fakes.registration },
       { provide: AccountsService, useValue: fakes.accounts },
-      { provide: OnboardingService, useValue: fakes.onboarding },
       { provide: ConsentsService, useValue: fakes.consents },
       { provide: CertificationLevelsService, useValue: fakes.levels },
     ],
   }).compile();
 
   const app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
-  configureApp(app, { corsOrigins: ['http://localhost:5173'], trustProxy });
+  configureApp(app, { trustProxy });
   await app.init();
   return app;
 }

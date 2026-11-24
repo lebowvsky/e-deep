@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CurrentDiverGuard } from '../../common/auth/current-diver.guard';
 import { BuddiesModule } from '../buddies/buddies.module';
 import { DiveSitesModule } from '../dive-sites/dive-sites.module';
 import { DiveBuddy } from './dive-buddy.entity';
@@ -26,7 +25,7 @@ import { PurgeService } from './purge.service';
     BuddiesModule,
   ],
   controllers: [DivesController],
-  providers: [DivesService, DiveWriteService, PurgeService, DiveLogService, CurrentDiverGuard],
+  providers: [DivesService, DiveWriteService, PurgeService, DiveLogService],
   exports: [DivesService, PurgeService],
 })
 export class DivesModule {}

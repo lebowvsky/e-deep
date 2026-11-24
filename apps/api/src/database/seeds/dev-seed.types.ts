@@ -69,6 +69,8 @@ export interface SeedDive {
 
 export interface SeedDiver {
   readonly key: string;
+  /** Email of the diver's account (`@example.test`, a reserved domain: never a real address). */
+  readonly email: string;
   readonly firstName: string;
   readonly lastName: string;
   readonly levelCode: LevelCode;

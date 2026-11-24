@@ -3,6 +3,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UseGuards } fro
 import type { Request, Response } from 'express';
 import { clientIpKey } from '../../common/auth/client-ip';
 import { NoStoreGuard } from '../../common/auth/no-store.guard';
+import { Public } from '../../common/auth/public.decorator';
 import { SessionCookies } from '../../common/auth/session-cookie';
 import { isStaffRole } from '../accounts/account-lists';
 import { toAdminMeResponse } from '../accounts/me-contract.mapper';
@@ -11,12 +12,13 @@ import { AdminLoginRequestDto } from './dto/admin-login-request.dto';
 
 /**
  * Sign-in and sign-out of the staff on the back office (§3, D42), with the admin cookie only.
- * Public routes (`@Public` with lot 4), every answer `no-store`.
+ * Public routes (the `OriginGuard` still applies), every answer `no-store`.
  *
  * The TOTP code is required and format-checked but NOT verified yet: lot 7 (see the `TODO(lot 7)`
  * of `AuthenticationService`).
  */
 @Controller('admin/auth')
+@Public()
 @UseGuards(NoStoreGuard)
 export class AdminAuthController {
   constructor(

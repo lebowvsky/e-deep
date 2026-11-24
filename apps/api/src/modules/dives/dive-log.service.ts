@@ -13,6 +13,7 @@ import {
   type DiveSummaryRow,
   type DiveTeamRow,
 } from './dive-contract.mapper';
+import type { DiverId } from '../../common/auth/diver-id';
 
 /**
  * Server cap of `GET /api/dives`: the whole log is returned (the selection is done by the front),
@@ -96,7 +97,7 @@ export class DiveLogService {
   constructor(private readonly dataSource: DataSource) {}
 
   /** Every live dive of the diver (up to `DIVE_LOG_MAX`), latest first. */
-  findAll(diverId: string): Promise<DiveLogResponse> {
+  findAll(diverId: DiverId): Promise<DiveLogResponse> {
     // One snapshot for both queries, so the teams match the dives.
     return this.dataSource.transaction('REPEATABLE READ', async (manager) => {
       const rows = await queryRows<DiveSummaryRow>(
@@ -127,7 +128,7 @@ export class DiveLogService {
    * @throws {NotFoundException} when the dive does not exist, is deleted or belongs to another
    *   diver: the three cases are indistinguishable on purpose.
    */
-  findOne(diverId: string, eventId: string): Promise<DiveDetail> {
+  findOne(diverId: DiverId, eventId: string): Promise<DiveDetail> {
     return this.dataSource.transaction('REPEATABLE READ', async (manager) => {
       const [row] = await queryRows<DiveDetailRow>(
         manager,

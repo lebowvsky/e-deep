@@ -142,7 +142,9 @@ describe('SiteCreateRequestDto', () => {
   });
 
   it('refuses an unknown field', async () => {
-    expect(await fieldErrorsOf(withField('zone', 'mediterranee'))).toEqual({ zone: ['unknown'] });
+    expect(await fieldErrorsOf(withField('zone', 'mediterranee'))).toEqual({
+      _unknown: ['unknown'],
+    });
   });
 
   it('never echoes the values received', async () => {
@@ -164,7 +166,7 @@ describe('SiteWriteRequestDto', () => {
     const { createdVia: _origin, ...replacement } = siteCreateRequest();
     expect(await fieldErrorsOf(replacement, SiteWriteRequestDto)).toEqual({});
     expect(await fieldErrorsOf(siteCreateRequest(), SiteWriteRequestDto)).toEqual({
-      createdVia: ['unknown'],
+      _unknown: ['unknown'],
     });
   });
 });

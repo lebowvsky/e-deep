@@ -8,6 +8,7 @@ import {
   MergeIntoSelfError,
   SiteInUseError,
 } from '../../src/common/errors/domain-errors';
+import { asDiverId } from '../../src/common/auth/diver-id';
 import { BuddiesService } from '../../src/modules/buddies/buddies.service';
 import { DiveSite } from '../../src/modules/dive-sites/dive-site.entity';
 import { DiveSitesService } from '../../src/modules/dive-sites/dive-sites.service';
@@ -89,7 +90,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       });
       await fixtures.site(other.id, { name: 'Autre plongeur' });
 
-      const { sites: listed } = await sites.list(diver.id);
+      const { sites: listed } = await sites.list(asDiverId(diver.id));
 
       expect(listed.map((site) => site.name)).toEqual(['Aiguilles', 'Bibliothèque']);
       expect(listed[0]).toEqual({
@@ -108,7 +109,7 @@ describe('DiveSitesService: online API (D-33)', () => {
         createdAt: expect.any(String) as unknown,
         updatedAt: expect.any(String) as unknown,
       });
-      expect(await sites.list(randomUUID())).toEqual({ sites: [] });
+      expect(await sites.list(asDiverId(randomUUID()))).toEqual({ sites: [] });
     });
 
     it("refuses another diver's site, a deleted, a merged and an unknown one alike", async () => {
@@ -122,9 +123,11 @@ describe('DiveSitesService: online API (D-33)', () => {
       });
       const othersSite = await fixtures.site(other.id);
 
-      await expect(sites.findOne(diver.id, own.id)).resolves.toMatchObject({ id: own.id });
+      await expect(sites.findOne(asDiverId(diver.id), own.id)).resolves.toMatchObject({
+        id: own.id,
+      });
       for (const id of [deleted.id, merged.id, othersSite.id, randomUUID()]) {
-        await expect(sites.findOne(diver.id, id)).rejects.toThrow(NotFoundException);
+        await expect(sites.findOne(asDiverId(diver.id), id)).rejects.toThrow(NotFoundException);
       }
     });
   });
@@ -134,9 +137,9 @@ describe('DiveSitesService: online API (D-33)', () => {
       const diver = await fixtures.diver();
       const request = siteCreateRequest({ createdVia: 'quick', latitude: null, longitude: null });
 
-      const created = await sites.create(diver.id, request);
+      const created = await sites.create(asDiverId(diver.id), request);
       const updatedAt = await updatedAtOf(dataSource, 'dive_sites', request.id);
-      const replayed = await sites.create(diver.id, request);
+      const replayed = await sites.create(asDiverId(diver.id), request);
 
       expect(created).toMatchObject({
         outcome: 'created',
@@ -151,8 +154,8 @@ describe('DiveSitesService: online API (D-33)', () => {
       const request = siteCreateRequest();
 
       const outcomes = await Promise.all([
-        sites.create(diver.id, request),
-        sites.create(diver.id, request),
+        sites.create(asDiverId(diver.id), request),
+        sites.create(asDiverId(diver.id), request),
       ]);
 
       expect(outcomes.map(({ outcome }) => outcome).sort()).toEqual(['created', 'replayed']);
@@ -162,21 +165,24 @@ describe('DiveSitesService: online API (D-33)', () => {
       const diver = await fixtures.diver();
       const other = await fixtures.diver();
       const request = siteCreateRequest();
-      await sites.create(diver.id, request);
+      await sites.create(asDiverId(diver.id), request);
       const deleted = await fixtures.site(diver.id, { deletedAt: new Date() });
       const othersSite = await fixtures.site(other.id, { name: 'Le sien' });
 
       await expect(
-        sites.create(diver.id, { ...request, accessNotes: 'Autre accès.' }),
-      ).rejects.toThrow(IdentifierConflictError);
-      await expect(sites.create(diver.id, { ...request, createdVia: 'quick' })).rejects.toThrow(
-        IdentifierConflictError,
-      );
-      await expect(
-        sites.create(diver.id, siteCreateRequest({ id: deleted.id, name: deleted.name })),
+        sites.create(asDiverId(diver.id), { ...request, accessNotes: 'Autre accès.' }),
       ).rejects.toThrow(IdentifierConflictError);
       await expect(
-        sites.create(diver.id, siteCreateRequest({ id: othersSite.id })),
+        sites.create(asDiverId(diver.id), { ...request, createdVia: 'quick' }),
+      ).rejects.toThrow(IdentifierConflictError);
+      await expect(
+        sites.create(
+          asDiverId(diver.id),
+          siteCreateRequest({ id: deleted.id, name: deleted.name }),
+        ),
+      ).rejects.toThrow(IdentifierConflictError);
+      await expect(
+        sites.create(asDiverId(diver.id), siteCreateRequest({ id: othersSite.id })),
       ).rejects.toThrow(IdentifierConflictError);
       expect(await siteRow(othersSite.id)).toMatchObject({ ownerId: other.id, name: 'Le sien' });
     });
@@ -188,7 +194,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       const site = await fixtures.site(diver.id, { createdVia: 'quick', type: 'sec' });
 
       const replaced = await sites.replace(
-        diver.id,
+        asDiverId(diver.id),
         replacementOf({
           id: site.id,
           name: 'Sec du Sarranier',
@@ -227,7 +233,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       const othersSite = await fixtures.site(other.id, { name: 'Le sien' });
 
       for (const id of [randomUUID(), deleted.id, merged.id, othersSite.id]) {
-        await expect(sites.replace(diver.id, replacementOf({ id }))).rejects.toThrow(
+        await expect(sites.replace(asDiverId(diver.id), replacementOf({ id }))).rejects.toThrow(
           NotFoundException,
         );
       }
@@ -276,7 +282,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       const { diver, target, source, live, tombstoned, earlier } = await mergeScenario();
       const eventUpdatedAt = await updatedAtOf(dataSource, 'dive_events', live.id);
 
-      const merged = await sites.merge(diver.id, source.id, target.id);
+      const merged = await sites.merge(asDiverId(diver.id), source.id, target.id);
 
       expect(merged).toMatchObject({
         id: target.id,
@@ -293,7 +299,7 @@ describe('DiveSitesService: online API (D-33)', () => {
         latitude: 42.583,
         longitude: 8.725,
       });
-      expect(await sites.findOne(diver.id, target.id)).toEqual(merged);
+      expect(await sites.findOne(asDiverId(diver.id), target.id)).toEqual(merged);
       for (const event of [live, tombstoned]) {
         expect(await dataSource.manager.findOneByOrFail(DiveEvent, { id: event.id })).toMatchObject(
           { siteId: target.id },
@@ -305,15 +311,17 @@ describe('DiveSitesService: online API (D-33)', () => {
         mergedIntoId: target.id,
       });
       expect(await siteRow(earlier.id)).toMatchObject({ mergedIntoId: target.id });
-      await expect(sites.findOne(diver.id, source.id)).rejects.toThrow(NotFoundException);
+      await expect(sites.findOne(asDiverId(diver.id), source.id)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('lets the name of the site follow the merge in the dive log', async () => {
       const { diver, target, source, live } = await mergeScenario();
 
-      await sites.merge(diver.id, source.id, target.id);
+      await sites.merge(asDiverId(diver.id), source.id, target.id);
 
-      const { dives: log } = await diveLog.findAll(diver.id);
+      const { dives: log } = await diveLog.findAll(asDiverId(diver.id));
       expect(log).toEqual([
         expect.objectContaining({
           id: live.id,
@@ -332,7 +340,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       const target = await fixtures.site(diver.id, { depthMinM: 40, depthMaxM: null });
       const source = await fixtures.site(diver.id, { depthMinM: 5, depthMaxM: 20 });
 
-      const merged = await sites.merge(diver.id, source.id, target.id);
+      const merged = await sites.merge(asDiverId(diver.id), source.id, target.id);
 
       expect(merged).toMatchObject({ depthMinM: 40, depthMaxM: null });
     });
@@ -341,7 +349,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       const { diver, target, source } = await mergeScenario();
 
       await expect(
-        sites.merge(diver.id, source.id.toUpperCase(), target.id.toUpperCase()),
+        sites.merge(asDiverId(diver.id), source.id.toUpperCase(), target.id.toUpperCase()),
       ).resolves.toMatchObject({ id: target.id });
     });
 
@@ -351,15 +359,15 @@ describe('DiveSitesService: online API (D-33)', () => {
       const second = await fixtures.site(diver.id);
 
       const results = await Promise.allSettled([
-        sites.merge(diver.id, first.id, second.id),
-        sites.merge(diver.id, second.id, first.id),
+        sites.merge(asDiverId(diver.id), first.id, second.id),
+        sites.merge(asDiverId(diver.id), second.id, first.id),
       ]);
 
       // The second one waits, then finds its target deleted (merged) by the first one.
       expect(results.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
       const rejected = results.find((result) => result.status === 'rejected');
       expect(rejected?.reason).toBeInstanceOf(InvalidReferenceError);
-      expect(await sites.list(diver.id)).toEqual({ sites: [expect.anything()] });
+      expect(await sites.list(asDiverId(diver.id))).toEqual({ sites: [expect.anything()] });
     });
 
     it('refuses a source or a target that is not a live site of the diver, without writing', async () => {
@@ -369,20 +377,26 @@ describe('DiveSitesService: online API (D-33)', () => {
       const deleted = await fixtures.site(diver.id, { deletedAt: new Date() });
 
       for (const sourceId of [randomUUID(), deleted.id, othersSite.id]) {
-        await expect(sites.merge(diver.id, sourceId, target.id)).rejects.toThrow(NotFoundException);
+        await expect(sites.merge(asDiverId(diver.id), sourceId, target.id)).rejects.toThrow(
+          NotFoundException,
+        );
       }
-      await expect(sites.merge(diver.id, source.id, source.id)).rejects.toThrow(MergeIntoSelfError);
-      await expect(sites.merge(diver.id, deleted.id, deleted.id)).rejects.toThrow(
+      await expect(sites.merge(asDiverId(diver.id), source.id, source.id)).rejects.toThrow(
+        MergeIntoSelfError,
+      );
+      await expect(sites.merge(asDiverId(diver.id), deleted.id, deleted.id)).rejects.toThrow(
         NotFoundException,
       );
       for (const targetId of [randomUUID(), deleted.id, othersSite.id]) {
-        await expect(sites.merge(diver.id, source.id, targetId)).rejects.toThrow(
+        await expect(sites.merge(asDiverId(diver.id), source.id, targetId)).rejects.toThrow(
           InvalidReferenceError,
         );
       }
       // Another diver can neither merge these sites nor merge into them.
-      await expect(sites.merge(other.id, source.id, target.id)).rejects.toThrow(NotFoundException);
-      await expect(sites.merge(other.id, othersSite.id, target.id)).rejects.toThrow(
+      await expect(sites.merge(asDiverId(other.id), source.id, target.id)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(sites.merge(asDiverId(other.id), othersSite.id, target.id)).rejects.toThrow(
         InvalidReferenceError,
       );
 
@@ -405,7 +419,9 @@ describe('DiveSitesService: online API (D-33)', () => {
         WHEN (NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL)
         EXECUTE FUNCTION test_fail_merge()`);
       try {
-        await expect(sites.merge(diver.id, source.id, target.id)).rejects.toThrow('merge failure');
+        await expect(sites.merge(asDiverId(diver.id), source.id, target.id)).rejects.toThrow(
+          'merge failure',
+        );
       } finally {
         await dataSource.query('DROP TRIGGER trg_test_fail_merge ON dive_sites');
         await dataSource.query('DROP FUNCTION test_fail_merge()');
@@ -426,7 +442,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       const site = await fixtures.site(diver.id);
       await diveOn(diver.id, site.id);
 
-      await expect(sites.remove(diver.id, site.id)).rejects.toThrow(SiteInUseError);
+      await expect(sites.remove(asDiverId(diver.id), site.id)).rejects.toThrow(SiteInUseError);
       expect(await siteRow(site.id)).toMatchObject({ deletedAt: null });
     });
 
@@ -435,7 +451,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       const site = await fixtures.site(diver.id);
       await diveOn(diver.id, site.id, new Date());
 
-      await expect(sites.remove(diver.id, site.id)).resolves.toBe(true);
+      await expect(sites.remove(asDiverId(diver.id), site.id)).resolves.toBe(true);
       expect(await siteRow(site.id)).toMatchObject({
         deletedAt: expect.any(Date) as unknown,
         mergedIntoId: null,
@@ -449,7 +465,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       const othersSite = await fixtures.site(other.id);
 
       for (const id of [randomUUID(), deleted.id, othersSite.id]) {
-        await expect(sites.remove(diver.id, id)).resolves.toBe(false);
+        await expect(sites.remove(asDiverId(diver.id), id)).resolves.toBe(false);
       }
       expect(await siteRow(othersSite.id)).toMatchObject({ deletedAt: null });
     });
@@ -494,7 +510,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       const diver = await fixtures.diver();
       const target = await fixtures.site(diver.id);
       const source = await fixtures.site(diver.id);
-      await sites.merge(diver.id, source.id, target.id);
+      await sites.merge(asDiverId(diver.id), source.id, target.id);
 
       const page = await sites.pull(diver.id, null);
 
@@ -509,7 +525,7 @@ describe('DiveSitesService: online API (D-33)', () => {
       const diver = await fixtures.diver();
       const target = await fixtures.site(diver.id, { name: 'Cible' });
       const source = await fixtures.site(diver.id, { name: 'Source' });
-      await sites.merge(diver.id, source.id, target.id);
+      await sites.merge(asDiverId(diver.id), source.id, target.id);
       return { diver, target, source };
     }
 
@@ -517,8 +533,8 @@ describe('DiveSitesService: online API (D-33)', () => {
       const { diver, target, source } = await mergedSites();
       const request = diveWriteRequest({ site: { id: source.id, name: 'Source', isNew: true } });
 
-      await diveWrites.create(diver.id, request);
-      const replay = await diveWrites.create(diver.id, request);
+      await diveWrites.create(asDiverId(diver.id), request);
+      const replay = await diveWrites.create(asDiverId(diver.id), request);
 
       expect(replay.outcome).toBe('replayed');
       expect(
@@ -528,7 +544,7 @@ describe('DiveSitesService: online API (D-33)', () => {
         deletedAt: expect.any(Date) as unknown,
         mergedIntoId: target.id,
       });
-      expect(await diveLog.findOne(diver.id, request.event.id)).toMatchObject({
+      expect(await diveLog.findOne(asDiverId(diver.id), request.event.id)).toMatchObject({
         site: { id: target.id, name: 'Cible' },
       });
     });
@@ -537,9 +553,9 @@ describe('DiveSitesService: online API (D-33)', () => {
       const { diver, target, source } = await mergedSites();
       const other = await fixtures.site(diver.id);
       const request = diveWriteRequest({ site: { id: other.id } });
-      await diveWrites.create(diver.id, request);
+      await diveWrites.create(asDiverId(diver.id), request);
 
-      await diveWrites.replace(diver.id, request.event.id, {
+      await diveWrites.replace(asDiverId(diver.id), request.event.id, {
         ...request,
         event: { ...request.event, siteId: source.id },
         site: { id: source.id, name: 'Source', isNew: false },

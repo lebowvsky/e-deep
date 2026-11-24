@@ -1,7 +1,6 @@
-import { UnauthorizedException, type ExecutionContext } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
-import { CurrentDiverGuard } from '../../src/common/auth/current-diver.guard';
-import type { AppConfigService } from '../../src/config/app-config.service';
+import { DevAuthStub } from '../../src/common/auth/dev-auth-stub';
+import { asDiverId } from '../../src/common/auth/diver-id';
 import { DiveEvent } from '../../src/modules/dives/dive-event.entity';
 import { DashboardService } from '../../src/modules/dashboard/dashboard.service';
 import { Fixtures } from './support/fixtures';
@@ -69,7 +68,7 @@ describe('dashboard', () => {
     await dive(corse.id, '2026-11-05T08:00:00.000Z', 60, [thao.id], true);
     await fixtures.dive(other.id);
 
-    const result = await dashboard.getDashboard(diver.id, NOW);
+    const result = await dashboard.getDashboard(asDiverId(diver.id), NOW);
 
     expect(result.user).toEqual({
       id: diver.id,
@@ -121,7 +120,7 @@ describe('dashboard', () => {
     await fixtures.participation(event.id, diver.id);
     await dataSource.manager.update(DiveEvent, { id: event.id }, { deletedAt: new Date() });
 
-    const result = await dashboard.getDashboard(diver.id, NOW);
+    const result = await dashboard.getDashboard(asDiverId(diver.id), NOW);
 
     expect(result.stats).toMatchObject({
       totalDives: 0,
@@ -138,55 +137,48 @@ describe('dashboard', () => {
   it('refuses an incomplete profile (invariant, until the onboarding guard of lot 4)', async () => {
     const diver = await fixtures.incompleteDiver();
 
-    await expect(dashboard.getDashboard(diver.id, NOW)).rejects.toThrow(
+    await expect(dashboard.getDashboard(asDiverId(diver.id), NOW)).rejects.toThrow(
       'Incomplete diver profile: no certification level',
     );
   });
 
-  it('refuses a diver without last name while the contract requires one (temporary)', async () => {
+  it('answers a null last name: it is optional at /welcome (D36)', async () => {
     const diver = await fixtures.diver({ lastName: null });
 
-    await expect(dashboard.getDashboard(diver.id, NOW)).rejects.toThrow(
-      'Incomplete diver profile: no last name for the dashboard contract',
-    );
+    const result = await dashboard.getDashboard(asDiverId(diver.id), NOW);
+
+    expect(result.user.lastName).toBeNull();
   });
 
-  describe('CurrentDiverGuard (development stub)', () => {
-    const request: { currentDiverId?: string } = {};
-    const context = {
-      // The guard marks every response `no-store` (D28): the response only needs `setHeader`.
-      switchToHttp: () => ({
-        getRequest: () => request,
-        getResponse: () => ({ setHeader: () => undefined }),
-      }),
-    } as unknown as ExecutionContext;
-    const config = (stub: boolean) => ({ get: () => stub }) as unknown as AppConfigService;
+  describe('DevAuthStub (development fallback of the SessionGuard)', () => {
+    let stub: DevAuthStub;
 
-    beforeEach(() => {
-      delete request.currentDiverId;
+    beforeAll(() => {
+      stub = new DevAuthStub(dataSource);
     });
 
-    it('acts for the first diver created when the stub is enabled', async () => {
+    it('finds the account of the first diver created', async () => {
       const first = await fixtures.diver();
-      await fixtures.diver();
+      const second = await fixtures.diver();
+      await fixtures.account(second.id, { email: 'second@example.test' });
+      const account = await fixtures.account(first.id, { email: 'first@example.test' });
 
-      await expect(
-        new CurrentDiverGuard(config(true), dataSource).canActivate(context),
-      ).resolves.toBe(true);
-      expect(request.currentDiverId).toBe(first.id);
+      await expect(stub.firstDiverAccount()).resolves.toEqual({
+        accountId: account.id,
+        diverId: first.id,
+      });
     });
 
-    it('refuses every request when the stub is disabled', async () => {
+    it('finds nothing when the first diver has no account', async () => {
       await fixtures.diver();
-      await expect(
-        new CurrentDiverGuard(config(false), dataSource).canActivate(context),
-      ).rejects.toThrow(UnauthorizedException);
+      const second = await fixtures.diver();
+      await fixtures.account(second.id);
+
+      await expect(stub.firstDiverAccount()).resolves.toBeNull();
     });
 
-    it('refuses when there is no diver', async () => {
-      await expect(
-        new CurrentDiverGuard(config(true), dataSource).canActivate(context),
-      ).rejects.toThrow(UnauthorizedException);
+    it('finds nothing when there is no diver', async () => {
+      await expect(stub.firstDiverAccount()).resolves.toBeNull();
     });
   });
 });
