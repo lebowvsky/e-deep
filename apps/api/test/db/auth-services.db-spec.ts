@@ -229,6 +229,105 @@ describe('authentication and account services', () => {
     });
   });
 
+  describe('rotation and sign-out', () => {
+    it('a login revokes the presented session of its audience in the same transaction', async () => {
+      const { session: presented } = await register();
+
+      const { session: fresh } = await authentication.loginDiver({
+        email: 'lou@example.test',
+        password: PASSWORD,
+        rememberMe: true,
+        ip: IP,
+        replacedTokens: [presented.token],
+      });
+
+      await expect(sessions.resolve(presented.token, 'web')).resolves.toBeNull();
+      await expect(sessions.resolve(fresh.token, 'web')).resolves.not.toBeNull();
+      expect(await dataSource.manager.count(Session)).toBe(1);
+    });
+
+    it('a sign-up revokes the presented web session in the same transaction', async () => {
+      const { session: presented } = await register('first@example.test');
+
+      const { session: fresh } = await registration.register({
+        firstName: 'Lou',
+        email: 'second@example.test',
+        password: PASSWORD,
+        ip: IP,
+        replacedTokens: [presented.token],
+      });
+
+      await expect(sessions.resolve(presented.token, 'web')).resolves.toBeNull();
+      await expect(sessions.resolve(fresh.token, 'web')).resolves.not.toBeNull();
+      expect(await dataSource.manager.count(Session)).toBe(1);
+    });
+
+    it('a failed sign-up keeps the presented session (rolled back)', async () => {
+      const { session: presented } = await register('first@example.test');
+
+      await expect(
+        registration.register({
+          firstName: 'Lou',
+          email: 'FIRST@example.test',
+          password: PASSWORD,
+          ip: IP,
+          replacedTokens: [presented.token],
+        }),
+      ).rejects.toThrow(EmailTakenError);
+
+      await expect(sessions.resolve(presented.token, 'web')).resolves.not.toBeNull();
+    });
+
+    it('signOut ends the presented session and traces logout once', async () => {
+      const { session } = await register();
+
+      await authentication.signOut([session.token, 'A'.repeat(43)], 'web');
+      await authentication.signOut([session.token], 'web');
+
+      expect(await dataSource.manager.count(Session)).toBe(0);
+      expect(await eventTypes()).toEqual(['account_created', 'logout']);
+    });
+
+    it('two concurrent logouts of the same token trace a single logout', async () => {
+      const { session } = await register();
+
+      await Promise.all([
+        authentication.signOut([session.token], 'web'),
+        authentication.signOut([session.token], 'web'),
+      ]);
+
+      expect(await dataSource.manager.count(Session)).toBe(0);
+      expect(await eventTypes()).toEqual(['account_created', 'logout']);
+    });
+
+    it('revoke returns the account of the deleted session, then null', async () => {
+      const { account, session } = await register();
+
+      await expect(sessions.revoke(session.token, 'admin')).resolves.toBeNull();
+      await expect(sessions.revoke(session.token, 'web')).resolves.toBe(account.id);
+      await expect(sessions.revoke(session.token, 'web')).resolves.toBeNull();
+    });
+
+    it('signOutEverywhere ends every session and traces sessions_revoked', async () => {
+      const { account } = await register();
+      await authentication.loginDiver({
+        email: account.email,
+        password: PASSWORD,
+        rememberMe: false,
+        ip: IP,
+      });
+
+      await authentication.signOutEverywhere(account.id);
+
+      expect(await dataSource.manager.count(Session)).toBe(0);
+      expect(await eventTypes()).toEqual([
+        'account_created',
+        'login_succeeded',
+        'sessions_revoked',
+      ]);
+    });
+  });
+
   describe('sessions', () => {
     it('revokeAll deletes every session of the account but the kept one', async () => {
       const { account, session: kept } = await register();

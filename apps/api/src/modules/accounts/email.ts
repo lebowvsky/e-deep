@@ -16,7 +16,7 @@ const PRINTABLE_ASCII = /^[\x21-\x7e]+$/;
  * a malformed email is a `400`, never a 500. Internationalised emails (EAI, IDN in Unicode form)
  * are refused until a later lot decides their normalisation.
  *
- * Only what the database needs is checked here; the full email syntax is the DTO's (lot 3).
+ * Only what the database needs is checked here; the full email syntax is the DTO's (`IsEmailAddress`).
  *
  * @throws {DomainValidationError} `fieldErrors.email`: `invalid-character` (non-ASCII, space or
  *   control character), `length` (3 to 254) or `format` (no `@` after the first character).

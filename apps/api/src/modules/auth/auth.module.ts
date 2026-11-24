@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { SessionCookies } from '../../common/auth/session-cookie';
 import { CLOCK, systemClock } from '../../common/time/clock';
 import type { AppConfigService } from '../../config/app-config.service';
 import { DiversModule } from '../divers/divers.module';
@@ -18,7 +19,9 @@ import { SessionService } from './session.service';
 
 /**
  * Sessions, sign-in and sign-up (D33 to D35, D39). The password hasher (dummy hash) and the policy
- * (compromised list) are built once at boot by async factories. No controller until lot 3.
+ * (compromised list) are built once at boot by async factories. No controller here: answering the
+ * routes needs the account's `MeResponse` (`AccountsModule`, which depends on this module), so the
+ * controllers live in `AuthHttpModule`.
  */
 @Module({
   imports: [TypeOrmModule.forFeature([Session, AuthEvent]), DiversModule],
@@ -42,6 +45,7 @@ import { SessionService } from './session.service';
     AuthEventsService,
     AuthenticationService,
     RegistrationService,
+    SessionCookies,
   ],
   exports: [
     CLOCK,
@@ -52,6 +56,7 @@ import { SessionService } from './session.service';
     AuthEventsService,
     AuthenticationService,
     RegistrationService,
+    SessionCookies,
   ],
 })
 export class AuthModule {}

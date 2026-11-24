@@ -59,7 +59,12 @@ function setup({
     hash: jest.fn().mockResolvedValue('rehashed'),
   };
   const throttle = { consume: jest.fn().mockReturnValue(decision) };
-  const sessions = { createIn: jest.fn().mockResolvedValue(ISSUED) };
+  const sessions = {
+    createIn: jest.fn().mockResolvedValue(ISSUED),
+    revokeIn: jest.fn().mockResolvedValue(null),
+    revoke: jest.fn().mockResolvedValue(null),
+    revokeAllIn: jest.fn().mockResolvedValue(2),
+  };
   const authEvents = {
     record: jest.fn().mockResolvedValue(undefined),
     recordIn: jest.fn().mockResolvedValue(undefined),
@@ -151,7 +156,12 @@ describe('AuthenticationService', () => {
     const { service, sessions, hasher } = setup();
 
     await expect(
-      service.loginStaff({ email: DIVER.email, password: PASSWORD, ip: '203.0.113.7' }),
+      service.loginStaff({
+        email: DIVER.email,
+        password: PASSWORD,
+        totpCode: '123456',
+        ip: '203.0.113.7',
+      }),
     ).rejects.toThrow(InvalidCredentialsError);
     expect(hasher.check).toHaveBeenCalledWith(PASSWORD, 'stored-diver-hash');
     expect(sessions.createIn).not.toHaveBeenCalled();
@@ -168,7 +178,12 @@ describe('AuthenticationService', () => {
   it('signs staff in on the admin with a short session', async () => {
     const { service, sessions } = setup();
 
-    await service.loginStaff({ email: STAFF.email, password: PASSWORD, ip: '203.0.113.7' });
+    await service.loginStaff({
+      email: STAFF.email,
+      password: PASSWORD,
+      totpCode: '123456',
+      ip: '203.0.113.7',
+    });
 
     expect(sessions.createIn).toHaveBeenCalledWith(expect.anything(), STAFF.id, 'admin', {
       rememberMe: false,
@@ -209,5 +224,76 @@ describe('AuthenticationService', () => {
 
     await expect(service.loginDiver(web(DIVER.email))).rejects.toThrow(TooManyAttemptsError);
     expect(authEvents.record).not.toHaveBeenCalled();
+  });
+
+  describe('session rotation', () => {
+    it('revokes the presented cookies of the audience with the new session', async () => {
+      const { service, sessions } = setup();
+
+      await service.loginDiver({ ...web(DIVER.email), replacedTokens: ['old-1', 'old-2'] });
+
+      expect(sessions.revokeIn).toHaveBeenCalledTimes(2);
+      expect(sessions.revokeIn).toHaveBeenCalledWith(expect.anything(), 'old-1', 'web');
+      expect(sessions.revokeIn).toHaveBeenCalledWith(expect.anything(), 'old-2', 'web');
+    });
+
+    it('revokes an admin cookie on an admin login', async () => {
+      const { service, sessions } = setup();
+
+      await service.loginStaff({
+        email: STAFF.email,
+        password: PASSWORD,
+        totpCode: '123456',
+        ip: '203.0.113.7',
+        replacedTokens: ['old-admin'],
+      });
+
+      expect(sessions.revokeIn).toHaveBeenCalledWith(expect.anything(), 'old-admin', 'admin');
+    });
+
+    it('keeps the presented session when the login fails', async () => {
+      const { service, sessions } = setup({ check: 'mismatch' });
+
+      await expect(
+        service.loginDiver({ ...web(DIVER.email), replacedTokens: ['old-1'] }),
+      ).rejects.toThrow(InvalidCredentialsError);
+      expect(sessions.revokeIn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('signOut', () => {
+    it('revokes each token and traces logout for a deleted session only', async () => {
+      const { service, sessions, authEvents } = setup();
+      sessions.revoke.mockResolvedValueOnce(DIVER.id).mockResolvedValueOnce(null);
+
+      await service.signOut(['live', 'unknown'], 'web');
+
+      expect(sessions.revoke).toHaveBeenCalledWith('live', 'web');
+      expect(sessions.revoke).toHaveBeenCalledWith('unknown', 'web');
+      expect(authEvents.record).toHaveBeenCalledTimes(1);
+      expect(authEvents.record).toHaveBeenCalledWith(DIVER.id, 'logout');
+    });
+
+    it('does nothing without a token', async () => {
+      const { service, sessions, authEvents } = setup();
+
+      await service.signOut([], 'admin');
+
+      expect(sessions.revoke).not.toHaveBeenCalled();
+      expect(authEvents.record).not.toHaveBeenCalled();
+    });
+  });
+
+  it('signOutEverywhere revokes every session and traces sessions_revoked', async () => {
+    const { service, sessions, authEvents } = setup();
+
+    await service.signOutEverywhere(DIVER.id);
+
+    expect(sessions.revokeAllIn).toHaveBeenCalledWith(expect.anything(), DIVER.id);
+    expect(authEvents.recordIn).toHaveBeenCalledWith(
+      expect.anything(),
+      DIVER.id,
+      'sessions_revoked',
+    );
   });
 });

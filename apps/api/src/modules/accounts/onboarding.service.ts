@@ -1,7 +1,7 @@
 import type { OnboardingStatus } from '@e-deep/shared';
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { OnboardingCompleteError } from '../../common/errors/domain-errors';
+import { OnboardingCompleteError, UnauthenticatedError } from '../../common/errors/domain-errors';
 import type { Consent } from '../consents/consent.entity';
 import { ConsentsService } from '../consents/consents.service';
 import {
@@ -24,7 +24,7 @@ export interface OnboardingInput {
   readonly policyVersion: string;
 }
 
-/** What `GET /me` needs about the profile (lot 3). */
+/** What `GET /me` needs about the profile (`MeService`). */
 export interface OnboardingState {
   /** With its `certificationLevel` relation (`null` before onboarding). */
   readonly diver: Diver;
@@ -68,11 +68,18 @@ export class OnboardingService {
     private readonly consentsService: ConsentsService,
   ) {}
 
+  /**
+   * @throws {UnauthenticatedError} when the diver is gone (account deleted during the request): the
+   *   session it came from no longer exists.
+   */
   async stateOf(diverId: string): Promise<OnboardingState> {
-    const diver = await this.dataSource.manager.findOneOrFail(Diver, {
+    const diver = await this.dataSource.manager.findOne(Diver, {
       where: { id: diverId },
       relations: { certificationLevel: true },
     });
+    if (diver === null) {
+      throw new UnauthenticatedError();
+    }
     const consent = await this.consentsService.findLive(diverId, HEALTH_DATA);
     return { diver, consent, status: onboardingStatusOf(diver, consent) };
   }

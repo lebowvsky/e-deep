@@ -1,5 +1,9 @@
 import type { DataSource, EntityManager } from 'typeorm';
-import { DomainValidationError, OnboardingCompleteError } from '../../common/errors/domain-errors';
+import {
+  DomainValidationError,
+  OnboardingCompleteError,
+  UnauthenticatedError,
+} from '../../common/errors/domain-errors';
 import type { AuthEventsService } from '../auth/auth-events.service';
 import { ConsentsService } from '../consents/consents.service';
 import type { DiversService } from '../divers/divers.service';
@@ -88,5 +92,18 @@ describe('OnboardingService.complete', () => {
       lastName: null,
       certificationLevelId: 'level-n1',
     });
+  });
+});
+
+describe('OnboardingService.stateOf', () => {
+  it('answers unauthenticated when the diver was deleted meanwhile (not a 500)', async () => {
+    const manager = { findOne: jest.fn().mockResolvedValue(null) };
+    const service = new OnboardingService(
+      { manager } as unknown as DataSource,
+      {} as DiversService,
+      {} as ConsentsService,
+    );
+
+    await expect(service.stateOf('diver-1')).rejects.toThrow(UnauthenticatedError);
   });
 });

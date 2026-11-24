@@ -5,6 +5,7 @@ import { EnvironmentVariables, validateEnvironment } from './config/environment'
 import { SyncModule } from './common/sync/sync.module';
 import { DatabaseModule } from './database/database.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
+import { AuthHttpModule } from './modules/auth/auth-http.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BuddiesModule } from './modules/buddies/buddies.module';
 import { ConsentsModule } from './modules/consents/consents.module';
@@ -35,6 +36,7 @@ import { HealthModule } from './modules/health/health.module';
     DashboardModule,
     AccountsModule,
     AuthModule,
+    AuthHttpModule,
     ConsentsModule,
   ],
 })

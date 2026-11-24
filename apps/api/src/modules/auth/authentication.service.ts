@@ -11,19 +11,33 @@ import { PasswordHasher } from './password/password-hasher';
 import type { SessionAudience } from './session-audiences';
 import { SessionService, type IssuedSession } from './session.service';
 
-/** Body of a web login, plus the client IP for the rate limit (lot 3 reads `req.ip`). */
-export interface DiverLoginInput {
+/** What every login carries besides its body. */
+interface LoginContext {
+  /** Rate-limit key of the client IP (`clientIpKey(req.ip)`). Never logged. */
+  readonly ip: string;
+  /**
+   * Tokens of the session cookies of the audience the browser already presents: they are revoked
+   * with the login (rotation, no session fixation). Absent or empty: nothing to revoke.
+   */
+  readonly replacedTokens?: readonly string[];
+}
+
+/** Body of a web login (`LoginRequest`). */
+export interface DiverLoginInput extends LoginContext {
   readonly email: string;
   readonly password: string;
   readonly rememberMe: boolean;
-  readonly ip: string;
 }
 
-/** Body of an admin login. The TOTP code joins it with lot 7 (D42). */
-export interface StaffLoginInput {
+/** Body of an admin login (`AdminLoginRequest`). */
+export interface StaffLoginInput extends LoginContext {
   readonly email: string;
   readonly password: string;
-  readonly ip: string;
+  /**
+   * Six digits, format checked by the DTO only. NOT verified until lot 7 (D42): see the
+   * `TODO(lot 7)` in `login`.
+   */
+  readonly totpCode: string;
 }
 
 export interface LoginResult {
@@ -43,7 +57,8 @@ interface AudienceRule {
 }
 
 /**
- * Sign-in of the two audiences (D33, D35, D42). Every failure is the same `invalid-credentials`:
+ * Sign-in and sign-out of the two audiences (D33, D35, D42). A login rotates the session: the
+ * cookies already presented are revoked with it. Every failure is the same `invalid-credentials`:
  * unknown email, wrong password, or an account of the other audience (a staff account on the web,
  * a diver on the admin). The work is the same too: an unknown email still costs a full Argon2id
  * verification, against the boot-time dummy hash.
@@ -87,8 +102,36 @@ export class AuthenticationService {
     });
   }
 
+  /**
+   * Logout (§3): deletes the sessions of the presented tokens of `audience`, and records one
+   * `logout` per session actually deleted (one query per token; a concurrent logout of the same
+   * token records nothing more). Idempotent: no token, or an unknown one, is a no-op. A session
+   * expired but not purged yet is deleted and traced too.
+   */
+  async signOut(tokens: readonly string[], audience: SessionAudience): Promise<void> {
+    for (const token of tokens) {
+      const accountId = await this.sessions.revoke(token, audience);
+      if (accountId !== null) {
+        await this.authEvents.record(accountId, 'logout');
+        this.logger.log('logout');
+      }
+    }
+  }
+
+  /** `logout-all`: ends every session of the account, the caller's included (`sessions_revoked`). */
+  async signOutEverywhere(accountId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      await this.sessions.revokeAllIn(manager, accountId);
+      await this.authEvents.recordIn(manager, accountId, 'sessions_revoked');
+    });
+    this.logger.log('sessions_revoked');
+  }
+
   private async login(
-    input: { readonly email: string; readonly password: string; readonly ip: string },
+    input: {
+      readonly email: string;
+      readonly password: string;
+    } & LoginContext,
     rule: AudienceRule,
   ): Promise<LoginResult> {
     const email = normalizeEmail(input.email);
@@ -120,8 +163,10 @@ export class AuthenticationService {
       return this.fail(account.id, 'wrong-password');
     }
 
-    // Lot 7 (D42): the staff TOTP code is checked here, before any session is created; a wrong or
-    // replayed code ends in `this.fail(account.id, …)` with a new `LoginFailureReason`.
+    // TODO(lot 7, D42): verify the staff TOTP code (`StaffLoginInput.totpCode`) here, before any
+    // session is created; a wrong or replayed code ends in `this.fail(account.id, …)` with a new
+    // `LoginFailureReason`. Until then the code is only format-checked by the DTO: an admin login
+    // is password-only. No staff account exists before lot 4's `account:create-staff`.
 
     // Hashed before the transaction: no connection is held during the Argon2id work.
     const rehashed = this.hasher.needsRehash(account.passwordHash)
@@ -130,6 +175,9 @@ export class AuthenticationService {
     const session = await this.dataSource.transaction(async (manager) => {
       if (rehashed !== null) {
         await manager.update(Account, { id: account.id }, { passwordHash: rehashed });
+      }
+      for (const token of input.replacedTokens ?? []) {
+        await this.sessions.revokeIn(manager, token, rule.audience);
       }
       const issued = await this.sessions.createIn(manager, account.id, rule.audience, {
         rememberMe: rule.rememberMe,

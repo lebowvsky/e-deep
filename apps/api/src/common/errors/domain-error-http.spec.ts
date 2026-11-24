@@ -1,5 +1,6 @@
 import {
   DOMAIN_ERROR_STATUS,
+  domainErrorHeaders,
   toDomainErrorResponse,
   toValidationFailedException,
 } from './domain-error-http';
@@ -80,5 +81,17 @@ describe('toValidationFailedException', () => {
       code: 'validation-failed',
       fieldErrors: { password: ['too-short', 'contains-identity'] },
     });
+  });
+});
+
+describe('domainErrorHeaders', () => {
+  it('gives a 429 its Retry-After in whole seconds', () => {
+    expect(domainErrorHeaders(new TooManyAttemptsError(12.2))).toStrictEqual({
+      'Retry-After': '13',
+    });
+  });
+
+  it('adds nothing to the other business errors', () => {
+    expect(domainErrorHeaders(new InvalidCredentialsError())).toStrictEqual({});
   });
 });
