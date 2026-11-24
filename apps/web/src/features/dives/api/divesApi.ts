@@ -128,15 +128,20 @@ export function isDiveNotFound(error: unknown): boolean {
 
 // ── Contract → view model ─────────────────────────────────────────────────────────────────────
 
-/** Who the user is: the contract leaves them out of the dive teams. */
-export type DiveLogOwner = Pick<DiveMember, 'id' | 'firstName' | 'lastName'>;
+/**
+ * Who the user is: the contract leaves them out of the dive teams. The last name is `null` when
+ * not entered (optional at onboarding, D36).
+ */
+export interface DiveLogOwner extends Pick<DiveMember, 'id' | 'firstName'> {
+  lastName: string | null;
+}
 
-/** The user: neutral avatar, no colour (`Palanquee`). */
+/** The user: neutral avatar, no colour (`Palanquee`); empty last name when they have none. */
 export function toSelfMember(owner: DiveLogOwner): DiveMember {
   return {
     id: owner.id,
     firstName: owner.firstName,
-    lastName: owner.lastName,
+    lastName: owner.lastName ?? '',
     initials: formatInitials(owner.firstName, owner.lastName),
     isSelf: true,
   };

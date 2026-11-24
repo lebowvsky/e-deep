@@ -32,13 +32,24 @@ function toBuddy(buddy: DashboardBuddy): Buddy {
   };
 }
 
-function toMember(person: DashboardUser | DashboardBuddy, isSelf: boolean): DiveMember {
+function toBuddyMember(buddy: DashboardBuddy): DiveMember {
   return {
-    id: person.id,
-    firstName: person.firstName,
-    lastName: person.lastName,
-    initials: formatInitials(person.firstName, person.lastName),
-    isSelf,
+    id: buddy.id,
+    firstName: buddy.firstName,
+    lastName: buddy.lastName,
+    initials: formatInitials(buddy.firstName, buddy.lastName),
+    isSelf: false,
+  };
+}
+
+/** `DiveMember.lastName` is a string: empty when the user has none (the team never shows it). */
+function toSelfMember(user: DashboardUser): DiveMember {
+  return {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName ?? '',
+    initials: formatInitials(user.firstName, user.lastName),
+    isSelf: true,
   };
 }
 
@@ -59,7 +70,7 @@ function toDive(dive: DashboardDive, user: DashboardUser): Dive {
     gasMix: dive.gasMix,
     hadDecompression: dive.hadDecompression,
     stopsOk: dive.stopsOk,
-    team: [toMember(user, true), ...dive.buddies.map((buddy) => toMember(buddy, false))],
+    team: [toSelfMember(user), ...dive.buddies.map(toBuddyMember)],
     ...(dive.notes === null ? {} : { notes: dive.notes }),
   };
 }

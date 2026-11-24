@@ -424,6 +424,18 @@ describe('avatarColorOf', () => {
   });
 });
 
+describe('toSelfMember', () => {
+  it('keeps the first name alone when the user has no last name', () => {
+    expect(toSelfMember({ ...mockOwner, lastName: null })).toStrictEqual({
+      id: mockOwner.id,
+      firstName: mockOwner.firstName,
+      lastName: '',
+      initials: mockOwner.firstName.charAt(0).toUpperCase(),
+      isSelf: true,
+    });
+  });
+});
+
 describe('toLoggedDive', () => {
   const self = toSelfMember(mockOwner);
 

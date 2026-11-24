@@ -45,7 +45,7 @@ function isUser(value: unknown): value is DashboardUser {
     isRecord(value) &&
     isString(value.id) &&
     isString(value.firstName) &&
-    isString(value.lastName) &&
+    isNullable(isString)(value.lastName) &&
     isOneOf(value.level, USER_LEVELS) &&
     isOneOf(value.federation, FEDERATIONS) &&
     isNullable(isString)(value.avatarUrl)

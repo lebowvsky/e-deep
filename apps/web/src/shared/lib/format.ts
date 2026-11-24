@@ -40,9 +40,14 @@ export function formatSinceLastDive(days: number): string {
   return `${formatDayCount(days)} depuis ta dernière plongée.`;
 }
 
-/** ("Marine", "Rousseau") → "MR" */
-export function formatInitials(firstName: string, lastName: string): string {
-  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+/** ("Marine", "Rousseau") → "MR" · ("Marine", null) → "M" */
+export function formatInitials(firstName: string, lastName: string | null): string {
+  return `${firstName.charAt(0)}${lastName?.charAt(0) ?? ''}`.toUpperCase();
+}
+
+/** ("Marine", "Rousseau") → "Marine Rousseau" · ("Marine", null) → "Marine" */
+export function formatFullName(firstName: string, lastName: string | null): string {
+  return lastName ? `${firstName} ${lastName}` : firstName;
 }
 
 /** ("N2", "FFESSM") → "N2 · FFESSM" · ("N1", "OTHER") → "N1 · Autre" · (…, " ") → "N2 FFESSM" */

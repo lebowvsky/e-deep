@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type FocusEvent } from 'react';
 import { Link } from 'react-router';
 import type { User } from '@/features/dashboard/types';
-import { formatDiverLevel, formatInitials } from '@/shared/lib/format';
+import { formatDiverLevel, formatFullName, formatInitials } from '@/shared/lib/format';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Icon } from '@/shared/ui/Icon';
 import styles from './UserCard.module.scss';
@@ -15,7 +15,7 @@ export interface UserCardProps {
 
 /** Signed-in diver: avatar, name, level, and the account action. */
 export function UserCard({ user, action = 'menu', onNavigate }: UserCardProps) {
-  const fullName = `${user.firstName} ${user.lastName}`;
+  const fullName = formatFullName(user.firstName, user.lastName);
 
   return (
     <div className={styles.card}>
