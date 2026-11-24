@@ -31,10 +31,7 @@
     background-color $dur-fast $ease-out,
     box-shadow $dur-fast $ease-out;
 
-  &:focus-visible {
-    outline: 2px solid $color-accent;
-    outline-offset: 2px;
-  }
+  @include focus-ring;
 
   &:checked {
     background: $color-accent;
