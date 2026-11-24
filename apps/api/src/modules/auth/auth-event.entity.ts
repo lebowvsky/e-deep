@@ -22,7 +22,7 @@ import type { AuthEventType } from './auth-event-types';
 @Index('idx_auth_events__occurred_at', ['occurredAt'])
 @Check(
   'ck_auth_events__type',
-  "type IN ('login_succeeded', 'login_failed', 'login_throttled', 'logout', 'sessions_revoked', 'password_changed', 'password_reset_by_operator', 'consent_granted', 'account_deleted')",
+  "type IN ('login_succeeded', 'login_failed', 'login_throttled', 'logout', 'sessions_revoked', 'password_changed', 'password_reset_by_operator', 'consent_granted', 'account_deleted', 'account_created')",
 )
 export class AuthEvent {
   @PrimaryColumn('uuid', {

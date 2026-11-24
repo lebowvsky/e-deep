@@ -18,6 +18,13 @@ export type ConsentPurpose = 'health_data_processing';
  */
 export type HealthPolicyVersion = '2026-11';
 
+/**
+ * Codes of `fieldErrors.password` (`fieldErrors.newPassword` on `PUT /api/me/password`) when the
+ * password policy refuses a password (D35): 15 to 128 characters after NFKC normalisation, not in
+ * the compromised list, not containing the email nor the name. The value is never echoed.
+ */
+export type PasswordPolicyFailure = 'too-short' | 'too-long' | 'compromised' | 'contains-identity';
+
 /** Body of `POST /api/auth/register`: the minimal sign-up of the landing page. */
 export interface RegisterRequest {
   /** 1 to 40 characters. */

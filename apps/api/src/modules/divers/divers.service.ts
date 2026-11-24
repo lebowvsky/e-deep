@@ -14,6 +14,17 @@ export interface CreateDiverInput {
   readonly avatarUrl: string | null;
 }
 
+/** The minimal sign-up (D36): first name only, no last name nor level until `/welcome`. */
+export interface CreateIncompleteDiverInput {
+  readonly firstName: string;
+}
+
+/** What `/welcome` writes on the profile (D38). */
+export interface CompleteProfileInput {
+  readonly lastName: string | null;
+  readonly certificationLevelId: string;
+}
+
 @Injectable()
 export class DiversService {
   constructor(private readonly dataSource: DataSource) {}
@@ -34,6 +45,49 @@ export class DiversService {
       }
       return manager.findOneByOrFail(Diver, { id });
     });
+  }
+
+  /**
+   * Inserts the diver of a minimal sign-up, inside the caller's transaction (`RegistrationService`).
+   * `create` keeps requiring a level (seed, tests).
+   */
+  async createIncompleteIn(
+    manager: EntityManager,
+    input: CreateIncompleteDiverInput,
+  ): Promise<Diver> {
+    const result = await manager.insert(Diver, {
+      firstName: input.firstName.trim(),
+      lastName: null,
+      certificationLevelId: null,
+      avatarUrl: null,
+    });
+    const id: unknown = result.identifiers[0]?.['id'];
+    if (typeof id !== 'string') {
+      throw new Error('Diver insert returned no id');
+    }
+    return manager.findOneByOrFail(Diver, { id });
+  }
+
+  /**
+   * Writes the level (selectable: existing and active) and the optional last name of `/welcome`,
+   * inside the caller's transaction (`OnboardingService`).
+   *
+   * @throws {InactiveCertificationLevelError} | {InvalidReferenceError}
+   */
+  async completeProfileIn(
+    manager: EntityManager,
+    diverId: string,
+    input: CompleteProfileInput,
+  ): Promise<void> {
+    await assertSelectableLevel(manager, input.certificationLevelId);
+    const result = await manager.update(
+      Diver,
+      { id: diverId },
+      { certificationLevelId: input.certificationLevelId, lastName: input.lastName },
+    );
+    if (result.affected === 0) {
+      throw new InvalidReferenceError();
+    }
   }
 
   /**
@@ -62,10 +116,13 @@ export class DiversService {
    * before the DELETE.
    */
   async deleteAccount(diverId: string): Promise<void> {
-    await this.dataSource.transaction(async (manager) => {
-      // (Sharing, D-08) transfer of the shared events goes here.
-      await manager.delete(Diver, { id: diverId });
-    });
+    await this.dataSource.transaction((manager) => this.deleteAccountIn(manager, diverId));
+  }
+
+  /** Same as `deleteAccount`, inside the caller's transaction (`AccountsService`). */
+  async deleteAccountIn(manager: EntityManager, diverId: string): Promise<void> {
+    // (Sharing, D-08) transfer of the shared events goes here.
+    await manager.delete(Diver, { id: diverId });
   }
 }
 

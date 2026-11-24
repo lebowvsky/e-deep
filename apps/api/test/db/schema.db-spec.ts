@@ -120,6 +120,7 @@ const MIGRATIONS = [
   'AddDiveSiteDetails1795125645653',
   'CreateAuthSchema1795191490987',
   'AllowIncompleteDiverProfile1795191584720',
+  'AddAccountCreatedAuthEvent1795505541116',
 ];
 
 const INDEXES: Record<string, string> = {

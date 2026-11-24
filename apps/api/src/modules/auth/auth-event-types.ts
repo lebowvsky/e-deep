@@ -12,5 +12,7 @@ export const AUTH_EVENT_TYPES = [
   'password_reset_by_operator',
   'consent_granted',
   'account_deleted',
+  // The minimal sign-up (`RegistrationService`), migration `AddAccountCreatedAuthEvent`.
+  'account_created',
 ] as const;
 export type AuthEventType = (typeof AUTH_EVENT_TYPES)[number];

@@ -243,6 +243,12 @@ describe('auth schema', () => {
       ).rejects.toEqual(violating('ck_auth_events__type'));
     });
 
+    it('accepts account_created (AddAccountCreatedAuthEvent)', async () => {
+      const account = await fixtures.account((await fixtures.diver()).id);
+      const event = await fixtures.authEvent(account.id, { type: 'account_created' });
+      expect(event).toMatchObject({ accountId: account.id, type: 'account_created' });
+    });
+
     it('records account_deleted without account', async () => {
       const event = await fixtures.authEvent(null, { type: 'account_deleted' });
       expect(event).toMatchObject({ accountId: null, type: 'account_deleted' });
@@ -340,7 +346,42 @@ describe('auth schema', () => {
       return row?.definition;
     }
 
+    async function authEventTypeCheck(): Promise<string | undefined> {
+      const [row] = await selectRows<{ definition: string }>(
+        dataSource,
+        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = 'ck_auth_events__type'",
+      );
+      return row?.definition;
+    }
+
+    it('reverts AddAccountCreatedAuthEvent only once no account_created event is left, then migrates again', async () => {
+      expect(await lastMigration()).toBe('AddAccountCreatedAuthEvent1795505541116');
+      const account = await fixtures.account((await fixtures.diver()).id);
+      const created = await fixtures.authEvent(account.id, { type: 'account_created' });
+      await fixtures.authEvent(account.id, { type: 'login_succeeded' });
+
+      await expect(dataSource.undoLastMigration({ transaction: 'all' })).rejects.toThrow(
+        'some auth events are account_created',
+      );
+      expect(await lastMigration()).toBe('AddAccountCreatedAuthEvent1795505541116');
+      expect(await authEventTypeCheck()).toContain("'account_created'");
+
+      await dataSource.query('DELETE FROM auth_events WHERE id = $1', [created.id]);
+      await dataSource.undoLastMigration({ transaction: 'all' });
+      expect(await lastMigration()).toBe('AllowIncompleteDiverProfile1795191584720');
+      expect(await authEventTypeCheck()).not.toContain('account_created');
+      await expect(fixtures.authEvent(account.id, { type: 'account_created' })).rejects.toEqual(
+        violating('ck_auth_events__type'),
+      );
+      expect(await count('auth_events')).toBe(1);
+
+      await dataSource.runMigrations({ transaction: 'each' });
+      expect(await lastMigration()).toBe('AddAccountCreatedAuthEvent1795505541116');
+      expect(await authEventTypeCheck()).toContain("'account_created'");
+    });
+
     it('reverts AllowIncompleteDiverProfile only once every profile is complete, then migrates again', async () => {
+      await dataSource.undoLastMigration({ transaction: 'all' });
       expect(await lastMigration()).toBe('AllowIncompleteDiverProfile1795191584720');
       const incomplete = await fixtures.incompleteDiver();
 
@@ -371,6 +412,7 @@ describe('auth schema', () => {
       const diver = await fixtures.diver();
       await fixtures.account(diver.id);
       await dataSource.undoLastMigration({ transaction: 'all' });
+      await dataSource.undoLastMigration({ transaction: 'all' });
 
       await dataSource.undoLastMigration({ transaction: 'all' });
 
@@ -392,7 +434,7 @@ describe('auth schema', () => {
       expect(await count('divers')).toBe(1);
 
       await dataSource.runMigrations({ transaction: 'each' });
-      expect(await lastMigration()).toBe('AllowIncompleteDiverProfile1795191584720');
+      expect(await lastMigration()).toBe('AddAccountCreatedAuthEvent1795505541116');
       expect(
         await names(
           "SELECT tablename AS name FROM pg_tables WHERE schemaname = 'public' AND tablename = ANY($1)",

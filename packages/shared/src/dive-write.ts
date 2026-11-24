@@ -123,9 +123,22 @@ export type ApiDomainErrorCode =
   | 'unsupported-contract-value'
   | 'duplicate-observation'
   | 'too-many-observations'
-  | 'merge-into-self';
+  | 'merge-into-self'
+  // Authentication, account and onboarding (D37 to D39, docs/plans/auth.md §3).
+  | 'unauthenticated'
+  | 'invalid-credentials'
+  | 'too-many-attempts'
+  | 'registration-closed'
+  | 'email-taken'
+  | 'onboarding-required'
+  | 'onboarding-complete'
+  | 'consent-required'
+  | 'forbidden';
 
-/** Business error (D-26): `400`, `409`, `422` or `500` depending on the code. */
+/**
+ * Business error (D-26): `400`, `401`, `403`, `409`, `422`, `429` or `500` depending on the code.
+ * A `429 too-many-attempts` also carries a `Retry-After` header (seconds).
+ */
 export interface ApiDomainErrorResponse {
   statusCode: number;
   code: ApiDomainErrorCode;

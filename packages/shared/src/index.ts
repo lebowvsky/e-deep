@@ -13,6 +13,7 @@ export type {
   MeResponse,
   OnboardingRequest,
   OnboardingStatus,
+  PasswordPolicyFailure,
   RegisterRequest,
   StaffRole,
 } from './auth.js';

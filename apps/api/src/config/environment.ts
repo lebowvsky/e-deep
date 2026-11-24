@@ -120,6 +120,18 @@ export class EnvironmentVariables extends DatabaseEnvironment {
   SESSION_COOKIE_SECURE: boolean = true;
 
   /**
+   * Opens the sign-up (`POST /api/auth/register`, D39). Closed beta: disabled by default, and
+   * fail-safe: only the exact value `true` enables it. Must stay `false` in production until the
+   * email lot (verification, reset, non-enumerating sign-up) is delivered.
+   */
+  @Transform(({ obj }: { obj: Record<string, unknown> }) => {
+    const raw = obj['REGISTRATION_ENABLED'];
+    return raw === true || raw === 'true';
+  })
+  @IsBoolean()
+  REGISTRATION_ENABLED: boolean = false;
+
+  /**
    * DEVELOPMENT ONLY, until authentication exists: when `true`, the current diver is the first one
    * created (see `CurrentDiverGuard`). Any other value, or no value, disables it. Refused when
    * `NODE_ENV=production`.
