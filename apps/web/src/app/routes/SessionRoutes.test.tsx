@@ -1,14 +1,11 @@
 import type { DataRouter } from 'react-router';
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import {
-  createLocalDraftStore,
-  purgeAllDrafts,
-  storageKeyOf,
-} from '@/features/dives/form/draftStore';
+import { purgeAllDrafts } from '@/features/dives/form/draftPurge';
+import { createLocalDraftStore, storageKeyOf } from '@/features/dives/form/draftStore';
 import { validValues } from '@/features/dives/mocks/diveFormFixture';
 import { createFakeDiveApi } from '@/features/dives/mocks/fakeDiveApi';
 import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
@@ -61,7 +58,10 @@ function renderApp(
     },
   });
   const { queryClient } = app;
-  const { router } = createTestAppRouter(path, { queryClient, authClient });
+  const { router } = createTestAppRouter(path, {
+    queryClient,
+    authServices: app.authServices,
+  });
   holder.router = router;
   render(
     <TestProviders
@@ -297,6 +297,95 @@ describe('logout wiring of the app', () => {
 
     expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).toBeNull();
     expect(told).toHaveBeenCalledOnce();
+  });
+});
+
+describe('logout from the app (route action)', () => {
+  const draft = () => ({
+    values: validValues(),
+    ids: { eventId: 'e1', newSiteId: 's1' },
+    savedAt: Date.now(),
+  });
+
+  /** The dashboard's calls hang while signed in, and answer 401 once the session is closed. */
+  function closingApi(authClient: ReturnType<typeof createFakeAuthClient>) {
+    return vi.fn(() =>
+      authClient.session === null
+        ? Promise.reject(new ApiError('http', 'HTTP 401', { status: 401, code: 'unauthenticated' }))
+        : new Promise<never>(() => undefined),
+    );
+  }
+
+  it('signs out from the drawer: cache, drafts and other tabs cleared, then the landing page', async () => {
+    localStorage.clear();
+    const user = userEvent.setup();
+    const authClient = createFakeAuthClient();
+    const { router, queryClient, otherTab } = renderApp('/dashboard', {
+      authClient,
+      get: closingApi(authClient),
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Tableau de bord' });
+    await createLocalDraftStore(ME_FIXTURE.diver.id).save('new', draft());
+    const told = vi.fn();
+    otherTab.onLogout(told);
+    const navigate = vi.spyOn(router, 'navigate');
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', {
+        name: 'Déconnexion',
+      }),
+    );
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Toutes tes plongées, dans un seul carnet.',
+      }),
+    ).toBeTruthy();
+    expect(locationOf(router)).toBe('/');
+    expect(authClient.session).toBeNull();
+    expect(queryClient.getQueryData(sessionKeys.me())).toBeUndefined();
+    expect(queryClient.getQueryCache().find({ queryKey: ['dashboard'] })).toBeUndefined();
+    expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).toBeNull();
+    expect(told).toHaveBeenCalledOnce();
+    // Straight to the landing page: the dashboard's 401 never sent the diver to the login page.
+    const toLogin = navigate.mock.calls.some(
+      ([to]) => typeof to === 'string' && to.startsWith('/login'),
+    );
+    expect(toLogin).toBe(false);
+  });
+
+  it('keeps everything and says so when the API cannot be reached', async () => {
+    localStorage.clear();
+    const user = userEvent.setup();
+    const authClient = createFakeAuthClient();
+    vi.spyOn(authClient, 'logout').mockRejectedValue(
+      new ApiError('network', 'The API is unreachable.'),
+    );
+    const { router, queryClient, otherTab } = renderApp('/dashboard', {
+      authClient,
+      get: () => new Promise<never>(() => undefined),
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Tableau de bord' });
+    await createLocalDraftStore(ME_FIXTURE.diver.id).save('new', draft());
+    const told = vi.fn();
+    otherTab.onLogout(told);
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', {
+        name: 'Déconnexion',
+      }),
+    );
+
+    expect(
+      await screen.findByText('La déconnexion n’a pas abouti. Vérifie ton réseau et réessaie.'),
+    ).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/dashboard');
+    expect(queryClient.getQueryData(sessionKeys.me())).toEqual(ME_FIXTURE);
+    expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).not.toBeNull();
+    expect(told).not.toHaveBeenCalled();
   });
 });
 

@@ -1,6 +1,6 @@
 import type { CurrentDiver } from '@/shared/session/types';
 import { Overline } from '@/shared/ui/Overline';
-import { Brand } from '../Brand';
+import { Brand } from '@/shared/ui/Brand';
 import { MAIN_NAV_LABEL, NAV_ENTRIES } from '../navigation';
 import { NavItem } from '../NavItem';
 import { UserCard } from '../UserCard';

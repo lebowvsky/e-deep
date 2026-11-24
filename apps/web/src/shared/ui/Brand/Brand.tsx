@@ -7,13 +7,15 @@ import styles from './Brand.module.scss';
 export interface BrandProps {
   /** md: sidebar / drawer · sm: mobile top bar */
   size?: 'sm' | 'md';
+  /** Where the brand leads: the dashboard in the app, the landing page on the public pages. */
+  to?: string;
   className?: string | undefined;
 }
 
-/** Logo mark (two waves) + product name, linking to the dashboard. */
-export function Brand({ size = 'md', className }: BrandProps) {
+/** Logo mark (two waves) + product name, as a link home. */
+export function Brand({ size = 'md', to = '/dashboard', className }: BrandProps) {
   return (
-    <Link to="/dashboard" className={cx(styles.brand, styles[size], className)}>
+    <Link to={to} className={cx(styles.brand, styles[size], className)}>
       <span className={styles.mark} aria-hidden="true">
         <svg
           className={styles.glyph}

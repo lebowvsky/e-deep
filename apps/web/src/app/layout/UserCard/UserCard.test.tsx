@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import type { CurrentDiver } from '@/shared/session/types';
+import { ToastProvider } from '@/shared/ui/Toast';
 import { UserCard } from './UserCard';
 
 const marine: CurrentDiver = {
@@ -12,10 +13,14 @@ const marine: CurrentDiver = {
 };
 
 function renderCard(user: CurrentDiver) {
+  // A data router: the sign-out button is a fetcher form.
+  const router = createMemoryRouter([
+    { path: '/', element: <UserCard user={user} action="logout" /> },
+  ]);
   render(
-    <MemoryRouter>
-      <UserCard user={user} action="logout" />
-    </MemoryRouter>,
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>,
   );
 }
 

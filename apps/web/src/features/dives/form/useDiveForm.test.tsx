@@ -2,13 +2,8 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SaveDive, SaveDiveResult } from '../api/saveDive';
 import { CONTEXT, validValues } from '../mocks/diveFormFixture';
-import {
-  createLocalDraftStore,
-  purgeAllDrafts,
-  storageKeyOf,
-  type DiveDraft,
-  type DraftStore,
-} from './draftStore';
+import { createLocalDraftStore, storageKeyOf, type DiveDraft, type DraftStore } from './draftStore';
+import { purgeAllDrafts } from './draftPurge';
 import { DRAFT_DEBOUNCE_MS, useDiveForm, type UseDiveFormOptions } from './useDiveForm';
 
 /** The draft key of a new dive, within the diver's drafts (`draftKey`). */

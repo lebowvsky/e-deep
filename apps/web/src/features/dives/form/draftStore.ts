@@ -1,9 +1,9 @@
 // Dive form — draft kept on the device, one per diver, per mode and per dive.
 //
 // Stored under `e-deep:dive-draft:<diverId>:<mode>` (D41): a draft is health data, another account
-// signed in on the same device never sees it. Signing out erases them all (`purgeAllDrafts`) and
-// advances the drafts' epoch, so that no store opened before (a form flushing on unmount, another
-// tab) can write one again.
+// signed in on the same device never sees it. Signing out erases them all (`purgeAllDrafts`, in
+// `draftPurge.ts`) and advances the drafts' epoch, so that no store opened before (a form flushing
+// on unmount, another tab) can write one again.
 //
 // Behind `DraftStore` so that IndexedDB can replace `localStorage` (asynchronous on purpose). The
 // stored data is untrusted (another version of the app, a hand edit): it is checked by a guard and
@@ -27,6 +27,7 @@ import {
   WEATHERS,
 } from '../lib/unions';
 import type { DiveFormIds } from './convert';
+import { draftStorageKeys, KEY_PREFIX, readEpoch, safeLocalStorage } from './draftPurge';
 import type { DiveFormValues } from './model';
 import type { DiveFormMode } from './prefill';
 
@@ -47,18 +48,12 @@ export interface DraftStore {
   clear(key: string): Promise<void>;
 }
 
-const KEY_PREFIX = 'e-deep:dive-draft:';
 /**
  * Keys written before the drafts had an owner (`e-deep:dive-draft:new`, `…:edit:<id>`): nothing
  * tells whose they are, so they are never restored, and deleted at the next purge. A diver id never
  * starts with these words.
  */
 const UNOWNED_KEY = /^(?:new|edit)(?::|$)/;
-/**
- * Counter advanced by every purge, outside the drafts' prefix. Kept in the storage itself, so that
- * every tab of the device sees a purge made by another one.
- */
-const EPOCH_KEY = 'e-deep:dive-draft-epoch';
 /**
  * Bumped when the draft changes shape: older drafts are then ignored. 2: the logbook number left
  * the values (computed, D26). 3: the ids of the dive and of a new site are kept with the values.
@@ -226,44 +221,12 @@ function isExpired(text: string, now: number): boolean {
   return !isNumber(savedAt) || now - savedAt > DRAFT_MAX_AGE_MS;
 }
 
-/** The storage keys of every draft of the device (all divers, modes and dives). */
-function draftStorageKeys(storage: Storage): string[] {
-  const keys: string[] = [];
-  for (let index = 0; index < storage.length; index += 1) {
-    const key = storage.key(index);
-    if (key?.startsWith(KEY_PREFIX)) keys.push(key);
-  }
-  return keys;
-}
-
 /** Deletes every expired draft of the device, and those without an owner. */
 function purgeStale(storage: Storage, now: number): void {
   for (const key of draftStorageKeys(storage)) {
     const text = storage.getItem(key);
     const isUnowned = UNOWNED_KEY.test(key.slice(KEY_PREFIX.length));
     if (text !== null && (isUnowned || isExpired(text, now))) storage.removeItem(key);
-  }
-}
-
-/** The current epoch of the drafts (`0` before any purge, or when unreadable). */
-function readEpoch(storage: Storage): number {
-  const value = Number(storage.getItem(EPOCH_KEY));
-  return Number.isSafeInteger(value) ? value : 0;
-}
-
-/**
- * Deletes every draft of the device, whoever wrote it: signing out leaves no health data behind
- * (D41). The epoch moves first: a store opened before (in this tab or another) refuses to write
- * from then on, so a form that flushes its last changes while leaving cannot bring one back. Never
- * throws: a blocked storage has nothing to delete.
- */
-export function purgeAllDrafts(storage: Storage | null = safeLocalStorage()): void {
-  try {
-    if (storage === null) return;
-    storage.setItem(EPOCH_KEY, String(readEpoch(storage) + 1));
-    for (const key of draftStorageKeys(storage)) storage.removeItem(key);
-  } catch {
-    // Storage blocked: nothing was written either.
   }
 }
 
@@ -325,14 +288,5 @@ function readEpochSafely(storage: Storage | null): number {
     return storage === null ? 0 : readEpoch(storage);
   } catch {
     return 0;
-  }
-}
-
-/** Reading `window.localStorage` itself throws when the browser blocks it. */
-function safeLocalStorage(): Storage | null {
-  try {
-    return typeof window === 'undefined' ? null : window.localStorage;
-  } catch {
-    return null;
   }
 }

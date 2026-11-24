@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tan
 import { meQueryOptions } from '@/shared/session/api/meApi';
 import { isAuthFailure } from '@/shared/session/authClient';
 import { useAuthServices } from '@/shared/session/hooks/useAuthServices';
+import { endSession } from '@/shared/session/lib/endSession';
 import { useSessionMutation } from './useSessionMutation';
 
 /** The session as the public pages see it. `unknown`: `/me` failed for another reason (network). */
@@ -18,7 +19,10 @@ export interface Auth {
   login: (request: LoginRequest) => Promise<MeResponse>;
   /** Rejects with an `AuthError` (`email-taken`, `registration-closed`…) or an `ApiError`. */
   signup: (request: RegisterRequest) => Promise<MeResponse>;
-  /** Ends the session: cache emptied, device data erased, other tabs told (D41). */
+  /**
+   * Ends the session: cache emptied, device data erased, other tabs told (D41). Rejects with an
+   * `ApiError` when the API could not close it, and then changes nothing (`endSession`).
+   */
   logout: () => Promise<void>;
 }
 
@@ -27,7 +31,8 @@ export interface Auth {
  * single source. The protected screens read the diver with `useCurrentDiver` instead.
  */
 export function useAuth(): Auth {
-  const { authClient, broadcast, purgeDeviceData } = useAuthServices();
+  const services = useAuthServices();
+  const { authClient } = services;
   const queryClient = useQueryClient();
   const me = useQuery(meQueryOptions(authClient));
   const login = useSessionMutation((request: LoginRequest) => authClient.login(request), {
@@ -36,15 +41,7 @@ export function useAuth(): Auth {
   const signup = useSessionMutation((request: RegisterRequest) => authClient.signup(request), {
     newSession: true,
   });
-  const logout = useMutation({
-    mutationFn: () => authClient.logout(),
-    onSuccess: () => {
-      // Queries and mutations: the bodies of the dive writes are health data too.
-      queryClient.clear();
-      purgeDeviceData();
-      broadcast.announceLogout();
-    },
-  });
+  const logout = useMutation({ mutationFn: () => endSession(services, queryClient) });
 
   return {
     session: sessionStateOf(me),

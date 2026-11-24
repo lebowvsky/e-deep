@@ -4,7 +4,7 @@ import { safeNext } from './safeNext';
 import { ONBOARDING_PATHS } from './sessionPaths';
 
 /**
- * Loader of the public auth pages (`/login`, later `/signup`): a signed-in diver goes to `next`
+ * Loader of the public entry (`/`, `/login`, `/signup`): a signed-in diver goes to `next`
  * (internal paths only, `safeNext`), or to the onboarding page their status asks for. When the
  * session cannot be checked (network, 5xx), the page is shown: signing in will tell.
  */

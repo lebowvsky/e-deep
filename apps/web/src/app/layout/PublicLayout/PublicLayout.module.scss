@@ -1,0 +1,87 @@
+@use '@/styles/tokens' as *;
+
+// Page background: abyss + discreet radial glows, as in the app frame.
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background-color: $color-abyss;
+  background-image: $gradient-page-mobile;
+  background-repeat: no-repeat;
+
+  @include from($bp-tablet) {
+    background-image: $gradient-page-desktop;
+  }
+}
+
+.skipLink {
+  @include visually-hidden;
+  @include type($type-body-med);
+
+  &:focus {
+    position: fixed;
+    top: $space-3;
+    left: $space-3;
+    z-index: 30;
+    width: auto;
+    height: auto;
+    padding: $space-3 $space-4;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    color: $color-accent-ink;
+    white-space: normal;
+    background: $color-accent;
+    border-radius: $radius-md;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: $layout-top-bar-pad-y $space-5;
+
+  @include from($bp-desktop) {
+    padding: $space-6 $space-11;
+  }
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+  max-width: $layout-content-max-width;
+  padding: $space-7 $space-5;
+  margin-inline: auto;
+}
+
+.footer {
+  padding: $space-7 $space-5 $space-8;
+  border-top: 1px solid $color-line;
+
+  @include from($bp-desktop) {
+    padding-inline: $space-11;
+  }
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3 $space-5;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.link {
+  @include focus-ring;
+  @include hit-area;
+  @include type($type-body-sm);
+
+  color: $color-text-low;
+  border-radius: $radius-xs;
+
+  &:hover,
+  &[aria-current='page'] {
+    color: $color-text-high;
+  }
+}
