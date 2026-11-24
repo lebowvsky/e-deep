@@ -1,9 +1,12 @@
-/** The legal pages linked from the footer of the public pages (placeholders until written). */
+/**
+ * The legal pages linked from the footer of the public pages (placeholders until written);
+ * `shortTitle` on phones (welcome.jsx · mobile footer).
+ */
 export const LEGAL_PAGES = [
-  { path: '/legal', title: 'Mentions légales' },
-  { path: '/privacy', title: 'Confidentialité' },
-  { path: '/terms', title: 'Conditions d’utilisation' },
-  { path: '/contact', title: 'Contact' },
+  { path: '/legal', title: 'Mentions légales', shortTitle: 'Mentions légales' },
+  { path: '/privacy', title: 'Confidentialité', shortTitle: 'Confidentialité' },
+  { path: '/terms', title: 'Conditions d’utilisation', shortTitle: 'Conditions' },
+  { path: '/contact', title: 'Contact', shortTitle: 'Contact' },
 ] as const;
 
 /**

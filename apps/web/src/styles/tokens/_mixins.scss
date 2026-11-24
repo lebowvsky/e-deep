@@ -201,3 +201,17 @@
     display: none;
   }
 }
+
+// Side gutters of the public pages (welcome.jsx): 20 on phones, 32 from the tablet, 80 from
+// 1280px (between 1024 and 1279, the hero's 440px card leaves too little room for 80).
+@mixin page-gutter {
+  padding-inline: $space-5;
+
+  @include from($bp-tablet) {
+    padding-inline: $space-7;
+  }
+
+  @include from($bp-large) {
+    padding-inline: $space-11;
+  }
+}

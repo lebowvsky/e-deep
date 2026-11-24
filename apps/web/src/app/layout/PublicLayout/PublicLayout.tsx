@@ -1,44 +1,30 @@
 import type { ReactNode } from 'react';
-import { NavLink } from 'react-router';
-import { LEGAL_PAGES } from '@/shared/config/publicPages';
+import { PublicFooter } from '@/features/home/components/PublicFooter';
+import { PublicHeader } from '@/features/home/components/PublicHeader';
 import { cx } from '@/shared/lib/classNames';
-import { Brand } from '@/shared/ui/Brand';
 import styles from './PublicLayout.module.scss';
 
 export interface PublicLayoutProps {
   children: ReactNode;
+  /**
+   * The landing page: full-width sections, the header's anchors, its own background. Otherwise a
+   * single readable column (placeholders, legal pages).
+   */
+  landing?: boolean;
 }
 
-/**
- * Frame of the public pages (D45), without the app's sidebar: the brand back to the landing page,
- * the page itself, and the legal links. Its header and footer get their final look with the
- * landing page (lot 6a, phase 3).
- */
-export function PublicLayout({ children }: PublicLayoutProps) {
+/** Frame of the public pages (D45), without the app's sidebar: header, page, legal links. */
+export function PublicLayout({ children, landing = false }: PublicLayoutProps) {
   return (
-    <div className={styles.page}>
+    <div className={cx(styles.page, landing && styles.landing)}>
       <a className={styles.skipLink} href="#main-content">
         Aller au contenu
       </a>
-      <header className={styles.header}>
-        <Brand to="/" />
-      </header>
-      <main id="main-content" className={styles.main}>
+      <PublicHeader anchors={landing} />
+      <main id="main-content" className={cx(styles.main, !landing && styles.column)}>
         {children}
       </main>
-      <footer className={styles.footer}>
-        <nav aria-label="Informations légales">
-          <ul className={styles.links}>
-            {LEGAL_PAGES.map((page) => (
-              <li key={page.path}>
-                <NavLink to={page.path} className={cx(styles.link)}>
-                  {page.title}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

@@ -1,0 +1,39 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · SectionTitle — overline, h2 32/38 10 under it, subtitle 16 10 under, 40 above content.
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  margin-bottom: $space-4;
+
+  @include from($bp-desktop) {
+    margin-bottom: $space-8;
+  }
+}
+
+.centered {
+  @include from($bp-desktop) {
+    align-items: center;
+    text-align: center;
+  }
+}
+
+.title {
+  @include type($type-h-2);
+
+  margin: 0;
+  color: $color-text-high;
+
+  @include from($bp-desktop) {
+    @include type($type-section-title);
+  }
+}
+
+.subtitle {
+  @include type($type-body-xl);
+
+  max-width: $layout-hero-text-max;
+  margin: 0;
+  color: $color-text-med;
+}

@@ -4,6 +4,7 @@
 // Usage (dev server running):
 //   node scripts/screenshot.mjs                      → /dashboard at 1440 and 375
 //   node scripts/screenshot.mjs /dashboard?state=empty 1440
+//   DEVICE_SCALE_FACTOR=2 node scripts/screenshot.mjs …   → @2x capture (marketing images)
 //
 // Output: .screenshots/<route>-<width>.png  (git-ignored)
 import { chromium } from 'playwright';
@@ -12,15 +13,20 @@ import { mkdirSync } from 'node:fs';
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173';
 const route = process.argv[2] ?? '/dashboard';
 const widths = process.argv[3] ? [Number(process.argv[3])] : [1440, 375];
+const deviceScaleFactor = Number(process.env.DEVICE_SCALE_FACTOR ?? 1);
 
 mkdirSync('.screenshots', { recursive: true });
 const browser = await chromium.launch();
 for (const width of widths) {
-  const page = await browser.newPage({ viewport: { width, height: width < 768 ? 812 : 1280 } });
+  const page = await browser.newPage({
+    viewport: { width, height: width < 768 ? 812 : 1280 },
+    deviceScaleFactor,
+  });
   await page.goto(BASE + route, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
   const name = route.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'root';
-  const path = `.screenshots/${name}-${width}.png`;
+  const suffix = deviceScaleFactor === 1 ? '' : `@${deviceScaleFactor}x`;
+  const path = `.screenshots/${name}-${width}${suffix}.png`;
   await page.screenshot({ path, fullPage: true });
   console.log('✔', path);
   await page.close();

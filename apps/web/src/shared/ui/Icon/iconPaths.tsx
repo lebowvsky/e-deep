@@ -250,6 +250,14 @@ export const ICON_PATHS = {
       <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
     </>
   ),
+  wifi: (
+    <>
+      <path d="M2 8.5a15 15 0 0 1 20 0" />
+      <path d="M5.5 12a10 10 0 0 1 13 0" />
+      <path d="M9 15.5a5 5 0 0 1 6 0" />
+      <path d="M12 19h.01" />
+    </>
+  ),
   lock: (
     <>
       <rect x="5" y="11" width="14" height="10" rx="2" />

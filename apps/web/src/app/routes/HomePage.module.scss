@@ -1,0 +1,7 @@
+@use '@/styles/tokens' as *;
+
+// The authentication card in the hero's right column (440px, welcome.jsx · AuthCard).
+.card {
+  width: 100%;
+  max-width: $layout-auth-card-width;
+}

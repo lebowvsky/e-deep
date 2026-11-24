@@ -1,47 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { DataRouter } from 'react-router';
-import { RouterProvider } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
-import { appConfig, type AppConfig } from '@/shared/config/app';
-import { createFakeAuthClient } from '@/shared/session/mocks/fakeAuthClient';
-import { ToastProvider } from '@/shared/ui/Toast';
-import { createTestAppRouter } from '@/test/appRouter';
-import { fakeApiClient } from '@/test/fakeApiClient';
-import { TestProviders } from '@/test/TestProviders';
+import { describe, expect, it } from 'vitest';
+import { renderPublicRoute, stubDesktop } from '@/test/renderPublicRoute';
 
-/** jsdom has no `matchMedia`: a ≥ 1024px viewport, or a phone without the stub. */
-function stubDesktop() {
-  vi.stubGlobal('matchMedia', (query: string): Partial<MediaQueryList> => ({
-    matches: true,
-    media: query,
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
-  }));
-}
-
-function renderEntry(path: string, { signup = true }: { signup?: boolean } = {}) {
-  const features = { ...appConfig.features, signup };
-  const config: AppConfig = { ...appConfig, features };
-  const { router, queryClient, authServices } = createTestAppRouter(path, {
-    authClient: createFakeAuthClient({ session: null }),
-    features,
-  });
-  render(
-    <TestProviders
-      client={fakeApiClient({})}
-      queryClient={queryClient}
-      authServices={authServices}
-      config={config}
-      me={null}
-    >
-      <ToastProvider>
-        <RouterProvider router={router} />
-      </ToastProvider>
-    </TestProviders>,
-  );
-  return router;
-}
+const renderEntry = (path: string, options: { signup?: boolean } = {}) =>
+  renderPublicRoute(path, options);
 
 const locationOf = (router: DataRouter) =>
   `${router.state.location.pathname}${router.state.location.search}`;

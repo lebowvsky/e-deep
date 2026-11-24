@@ -45,6 +45,7 @@ $color-run-stop-fill: rgba(91, 211, 145, 0.75);
 $color-map-overlay: rgba(11, 26, 46, 0.85);
 $color-map-overlay-strong: rgba(11, 26, 46, 0.9);
 $color-warning-line: rgba(231, 178, 74, 0.35);
+$color-device-bezel: #0A1424;
 
 // Font
 $font-sans: "Geist Variable", "Geist", -apple-system, system-ui, sans-serif;
@@ -94,6 +95,13 @@ $type-panel-title: (18px, 24px, 600, -0.2px);
 $type-metric-xs: (16px, 20px, 600, -0.2px);
 $type-card-title: (22px, 28px, 600, -0.3px);
 $type-body-compact: (13px, 19px, 400, 0);
+$type-hero: (56px, 60px, 600, -1.6px);
+$type-hero-sm: (34px, 38px, 600, -1px);
+$type-lead: (18px, 28px, 400, 0);
+$type-section-title: (32px, 38px, 600, -0.6px);
+$type-feature-title: (17px, 22px, 600, 0);
+$type-body-lg-loose: (15px, 24px, 400, 0);
+$type-step-index: (13px, 18px, 500, 1px);
 
 // Space (4px scale)
 $space-0: 0;
@@ -114,10 +122,12 @@ $radius-xxs: 2px;
 $radius-xs: 4px;
 $radius-sm: 6px;
 $radius-segment: 8px;
+$radius-screen: 22px;
 $radius-md: 10px;
 $radius-lg: 14px;
 $radius-xl: 20px;
 $radius-pill: 999px;
+$radius-device: 30px;
 
 // Shadow
 $shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 6px 24px rgba(0, 0, 0, 0.35);
@@ -135,11 +145,16 @@ $shadow-peak: 0 0 16px rgba(79, 214, 201, 0.3);
 $shadow-ring-surface-2: 0 0 0 2px #1B3156;
 $shadow-thumb: 0 0 0 4px rgba(79, 214, 201, 0.14);
 $shadow-sheet: inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5);
+$shadow-browser-frame: 0 40px 80px rgba(0, 0, 0, 0.55);
+$shadow-phone-frame: 0 30px 60px rgba(0, 0, 0, 0.55);
 
 // Gradient
 $gradient-page-mobile: radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%);
 $gradient-page-desktop: radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%);
 $gradient-map-empty: radial-gradient(900px 400px at 50% 60%, rgba(27, 49, 86, 0.35), transparent 70%);
+$gradient-public-desktop: radial-gradient(1100px 700px at 75% 5%, rgba(79, 214, 201, 0.07), transparent 60%), radial-gradient(900px 600px at 5% 20%, rgba(27, 49, 86, 0.45), transparent 60%);
+$gradient-public-mobile: radial-gradient(500px 420px at 85% 0%, rgba(79, 214, 201, 0.08), transparent 60%);
+$gradient-cta-panel: radial-gradient(600px 300px at 90% 0%, rgba(79, 214, 201, 0.12), transparent 70%);
 
 // Motion
 $ease-out: cubic-bezier(.2, .7, .3, 1);
@@ -307,3 +322,17 @@ $layout-checkbox: 18px;
 $layout-strength-bar-height: 4px;
 $layout-brand-mark-lg: 40px;
 $layout-brand-glyph-lg: 22px;
+$layout-hero-pad-top: 56px;
+$layout-hero-pad-bottom: 72px;
+$layout-hero-title-max: 640px;
+$layout-hero-text-max: 560px;
+$layout-section-pad-bottom: 96px;
+$layout-check-bullet: 22px;
+$layout-feature-icon: 40px;
+$layout-browser-bar-height: 30px;
+$layout-browser-dot: 9px;
+$layout-preview-desktop-width: 950px;
+$layout-preview-phone-width: 225px;
+$layout-preview-phone-width-sm: 270px;
+$layout-preview-phone-overlap-x: 110px;
+$layout-preview-phone-overlap-y: 40px;

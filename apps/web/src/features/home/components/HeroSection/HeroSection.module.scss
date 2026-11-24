@@ -1,0 +1,125 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · hero — phones: padding 28 20 0; desktop: grid `1fr 440px`, gap 80, padding 56 80 72.
+.hero {
+  @include page-gutter;
+
+  padding-top: $space-7;
+
+  @include from($bp-desktop) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) $layout-auth-card-width;
+    gap: $space-9;
+    align-items: center;
+    padding-block: $layout-hero-pad-top $layout-hero-pad-bottom;
+  }
+
+  @include from($bp-large) {
+    gap: $space-11;
+  }
+}
+
+.title {
+  @include type($type-hero-sm);
+
+  max-width: $layout-hero-title-max;
+  margin: $space-3 0 0;
+  color: $color-text-high;
+
+  @include from($bp-desktop) {
+    @include type($type-hero);
+
+    margin-top: $space-4;
+  }
+}
+
+.lead {
+  @include type($type-body-xl);
+
+  max-width: $layout-hero-text-max;
+  margin: $space-3 0 0;
+  color: $color-text-med;
+
+  @include from($bp-desktop) {
+    @include type($type-lead);
+
+    margin-top: $space-5;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  margin-top: $space-6;
+}
+
+// The promises and the scroll hint: desktop only (welcome.jsx · WelcomeMobile has neither).
+.points,
+.scrollHint {
+  display: none;
+}
+
+.points {
+  @include from($bp-desktop) {
+    display: flex;
+    flex-direction: column;
+    gap: $space-3;
+    padding: 0;
+    margin: $space-7 0 0;
+    list-style: none;
+  }
+}
+
+.point {
+  @include type($type-body-lg);
+
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  color: $color-text-high;
+}
+
+// 22px ticked circle, accent on its soft fill.
+.bullet {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $layout-check-bullet;
+  height: $layout-check-bullet;
+  color: $color-accent;
+  background: $color-accent-soft;
+  border-radius: $radius-pill;
+}
+
+.scrollHint {
+  @include focus-ring;
+  @include type($type-body);
+
+  @include from($bp-desktop) {
+    display: inline-flex;
+    gap: $space-3;
+    align-items: center;
+    min-height: $layout-hit-target;
+    margin-top: $space-5;
+    color: $color-text-low;
+    border-radius: $radius-xs;
+
+    &:hover {
+      color: $color-text-med;
+    }
+  }
+}
+
+// 24 × 1 hairline before the hint.
+.rule {
+  width: $space-6;
+  height: 1px;
+  background: $color-line-strong;
+}
+
+.aside {
+  display: flex;
+  justify-content: flex-end;
+}

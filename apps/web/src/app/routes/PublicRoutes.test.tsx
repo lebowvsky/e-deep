@@ -1,44 +1,16 @@
-import type { MeResponse } from '@e-deep/shared';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import type { DataRouter } from 'react-router';
 import { RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
-import { appConfig, type AppConfig } from '@/shared/config/app';
 import { createFakeAuthClient } from '@/shared/session/mocks/fakeAuthClient';
 import { ME_FIXTURE, NEW_ACCOUNT_FIXTURE } from '@/shared/session/mocks/me';
-import { ToastProvider } from '@/shared/ui/Toast';
 import { createTestAppRouter } from '@/test/appRouter';
 import { fakeApiClient } from '@/test/fakeApiClient';
 import { TestProviders } from '@/test/TestProviders';
+import { renderPublicRoute, type RenderPublicRouteOptions } from '@/test/renderPublicRoute';
 
-interface RenderOptions {
-  /** No session by default: these are the visitor's pages. */
-  session?: MeResponse | null;
-  signup?: boolean;
-}
-
-function renderPublic(path: string, { session = null, signup = true }: RenderOptions = {}) {
-  const features = { ...appConfig.features, signup };
-  const config: AppConfig = { ...appConfig, features };
-  const { router, queryClient, authServices } = createTestAppRouter(path, {
-    authClient: createFakeAuthClient({ session }),
-    features,
-  });
-  render(
-    <TestProviders
-      client={fakeApiClient({ get: vi.fn(() => new Promise<never>(() => undefined)) })}
-      queryClient={queryClient}
-      authServices={authServices}
-      config={config}
-      me={null}
-    >
-      <ToastProvider>
-        <RouterProvider router={router} />
-      </ToastProvider>
-    </TestProviders>,
-  );
-  return router;
-}
+const renderPublic = (path: string, options: RenderPublicRouteOptions = {}) =>
+  renderPublicRoute(path, options);
 
 const locationOf = (router: DataRouter) =>
   `${router.state.location.pathname}${router.state.location.search}`;
@@ -51,9 +23,8 @@ describe('/ (landing page)', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: LANDING_TITLE })).toBeTruthy();
     expect(screen.queryByRole('navigation', { name: 'Navigation principale' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Créer mon carnet' }).getAttribute('href')).toBe(
-      '/signup',
-    );
+    const signupLinks = screen.getAllByRole('link', { name: 'Créer mon carnet' });
+    expect(signupLinks.map((link) => link.getAttribute('href'))).toContain('/signup');
     expect(screen.getByRole('link', { name: 'J’ai déjà un compte' }).getAttribute('href')).toBe(
       '/login',
     );
@@ -97,8 +68,11 @@ describe('closed beta (features.signup false)', () => {
 
     await screen.findByRole('heading', { level: 1, name: LANDING_TITLE });
     expect(screen.queryByRole('link', { name: 'Créer mon carnet' })).toBeNull();
-    expect(screen.getByText(/Inscriptions bientôt ouvertes/)).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Se connecter' }).getAttribute('href')).toBe('/login');
+    expect(screen.getByText('Les inscriptions ouvrent bientôt.')).toBeTruthy();
+    const loginLinks = screen.getAllByRole('link', { name: 'Se connecter' });
+    expect(new Set(loginLinks.map((link) => link.getAttribute('href')))).toEqual(
+      new Set(['/login']),
+    );
 
     await router.navigate('/login');
     await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' });

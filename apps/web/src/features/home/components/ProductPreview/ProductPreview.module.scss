@@ -1,0 +1,78 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · preview — phones: the phone alone, padding 40 0 8; desktop: padding 24 80 96, the
+// phone overlapping the browser at the bottom right (−110, −40).
+.preview {
+  @include page-gutter;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-block: $space-8 $space-2;
+
+  @include from($bp-desktop) {
+    padding-block: $space-6 $layout-section-pad-bottom;
+  }
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.browser {
+  display: none;
+
+  @include from($bp-desktop) {
+    display: block;
+    flex: 0 1 auto;
+    width: $layout-preview-desktop-width;
+    min-width: 0;
+    overflow: hidden;
+    background: $color-surface-0;
+    border-radius: $radius-lg;
+    box-shadow:
+      inset 0 0 0 1px $color-line-strong,
+      $shadow-browser-frame;
+  }
+}
+
+.bar {
+  display: flex;
+  gap: $layout-field-gap;
+  align-items: center;
+  height: $layout-browser-bar-height;
+  padding: 0 $space-3;
+  border-bottom: 1px solid $color-line;
+}
+
+.dot {
+  width: $layout-browser-dot;
+  height: $layout-browser-dot;
+  background: $color-line-strong;
+  border-radius: $radius-pill;
+}
+
+// Bezel 8, radius 30 outside, 22 inside.
+.phone {
+  flex-shrink: 0;
+  width: calc(#{$layout-preview-phone-width-sm} + 2 * #{$space-2});
+  padding: $space-2;
+  background: $color-device-bezel;
+  border-radius: $radius-device;
+  box-shadow:
+    inset 0 0 0 1px $color-line-strong,
+    $shadow-phone-frame;
+
+  .image {
+    border-radius: $radius-screen;
+  }
+
+  @include from($bp-desktop) {
+    position: relative;
+    width: calc(#{$layout-preview-phone-width} + 2 * #{$space-2});
+    margin-bottom: -$layout-preview-phone-overlap-y;
+    margin-left: -$layout-preview-phone-overlap-x;
+  }
+}

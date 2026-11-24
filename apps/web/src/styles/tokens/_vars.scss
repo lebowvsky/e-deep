@@ -45,6 +45,7 @@
   --dl-color-map-overlay: rgba(11, 26, 46, 0.85);
   --dl-color-map-overlay-strong: rgba(11, 26, 46, 0.9);
   --dl-color-warning-line: rgba(231, 178, 74, 0.35);
+  --dl-color-device-bezel: #0A1424;
   --dl-font-sans: "Geist Variable", "Geist", -apple-system, system-ui, sans-serif;
   --dl-font-mono: "Geist Mono Variable", "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
   --dl-space-0: 0;
@@ -63,10 +64,12 @@
   --dl-radius-xs: 4px;
   --dl-radius-sm: 6px;
   --dl-radius-segment: 8px;
+  --dl-radius-screen: 22px;
   --dl-radius-md: 10px;
   --dl-radius-lg: 14px;
   --dl-radius-xl: 20px;
   --dl-radius-pill: 999px;
+  --dl-radius-device: 30px;
   --dl-shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 6px 24px rgba(0, 0, 0, 0.35);
   --dl-shadow-raised: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 40px rgba(0, 0, 0, 0.45);
   --dl-shadow-focus: 0 0 0 2px rgba(79, 214, 201, 0.55);
@@ -82,9 +85,14 @@
   --dl-shadow-ring-surface-2: 0 0 0 2px #1B3156;
   --dl-shadow-thumb: 0 0 0 4px rgba(79, 214, 201, 0.14);
   --dl-shadow-sheet: inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5);
+  --dl-shadow-browser-frame: 0 40px 80px rgba(0, 0, 0, 0.55);
+  --dl-shadow-phone-frame: 0 30px 60px rgba(0, 0, 0, 0.55);
   --dl-gradient-page-mobile: radial-gradient(500px 320px at 80% -10%, rgba(79, 214, 201, 0.05), transparent 60%), radial-gradient(400px 250px at -10% 20%, rgba(27, 49, 86, 0.35), transparent 60%);
   --dl-gradient-page-desktop: radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%);
   --dl-gradient-map-empty: radial-gradient(900px 400px at 50% 60%, rgba(27, 49, 86, 0.35), transparent 70%);
+  --dl-gradient-public-desktop: radial-gradient(1100px 700px at 75% 5%, rgba(79, 214, 201, 0.07), transparent 60%), radial-gradient(900px 600px at 5% 20%, rgba(27, 49, 86, 0.45), transparent 60%);
+  --dl-gradient-public-mobile: radial-gradient(500px 420px at 85% 0%, rgba(79, 214, 201, 0.08), transparent 60%);
+  --dl-gradient-cta-panel: radial-gradient(600px 300px at 90% 0%, rgba(79, 214, 201, 0.12), transparent 70%);
   --dl-ease-out: cubic-bezier(.2, .7, .3, 1);
   --dl-ease-in: cubic-bezier(.5, 0, .75, 0);
   --dl-ease-std: cubic-bezier(.4, 0, .2, 1);
@@ -239,4 +247,18 @@
   --dl-layout-strength-bar-height: 4px;
   --dl-layout-brand-mark-lg: 40px;
   --dl-layout-brand-glyph-lg: 22px;
+  --dl-layout-hero-pad-top: 56px;
+  --dl-layout-hero-pad-bottom: 72px;
+  --dl-layout-hero-title-max: 640px;
+  --dl-layout-hero-text-max: 560px;
+  --dl-layout-section-pad-bottom: 96px;
+  --dl-layout-check-bullet: 22px;
+  --dl-layout-feature-icon: 40px;
+  --dl-layout-browser-bar-height: 30px;
+  --dl-layout-browser-dot: 9px;
+  --dl-layout-preview-desktop-width: 950px;
+  --dl-layout-preview-phone-width: 225px;
+  --dl-layout-preview-phone-width-sm: 270px;
+  --dl-layout-preview-phone-overlap-x: 110px;
+  --dl-layout-preview-phone-overlap-y: 40px;
 }

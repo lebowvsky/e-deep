@@ -1,0 +1,65 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · header — padding 24 80 (desktop), 14 16 14 20 (phones).
+.header {
+  @include page-gutter;
+
+  display: flex;
+  gap: $space-6;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: $layout-top-bar-pad-y;
+
+  @include from($bp-desktop) {
+    padding-block: $space-6;
+  }
+}
+
+.anchors {
+  display: none;
+
+  @include from($bp-desktop) {
+    display: block;
+  }
+}
+
+.list {
+  display: flex;
+  gap: $space-7;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.anchor {
+  @include focus-ring;
+  @include hit-area;
+  @include type($type-body);
+
+  color: $color-text-med;
+  border-radius: $radius-xs;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+// « Se connecter » — 14/500 accent, 44px high.
+.login {
+  @include focus-ring;
+  @include type($type-body-med);
+
+  display: inline-flex;
+  align-items: center;
+  min-height: $layout-hit-target;
+  padding: 0 $space-1;
+  color: $color-accent;
+  border-radius: $radius-xs;
+}
+
+// The landing page's way in on desktop is its card.
+.loginPhoneOnly {
+  @include from($bp-desktop) {
+    display: none;
+  }
+}

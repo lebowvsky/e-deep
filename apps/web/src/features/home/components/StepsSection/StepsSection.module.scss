@@ -1,0 +1,98 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · steps — phones: padding 40 20 0, rows 16 apart with a hairline; desktop: padding
+// 24 80 96, three cards (padding 28) 20 apart.
+.section {
+  @include page-gutter;
+
+  padding-top: $space-8;
+  scroll-margin-top: $space-6;
+
+  @include from($bp-desktop) {
+    padding-block: $space-6 $layout-section-pad-bottom;
+  }
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  @include from($bp-desktop) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: $space-5;
+  }
+}
+
+.step {
+  display: flex;
+  gap: $space-4;
+  padding-block: $space-4;
+
+  & + & {
+    border-top: 1px solid $color-line;
+  }
+
+  @include from($bp-desktop) {
+    @include card(1);
+
+    flex-direction: column;
+    gap: $space-5;
+    padding: $layout-card-pad-lg;
+
+    & + & {
+      border-top: 0;
+    }
+  }
+}
+
+.top {
+  @include from($bp-desktop) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+// « 01 » — mono 13, accent, tracking 1 (a section eyebrow, like the overlines).
+.index {
+  @include type($type-step-index, $font: $font-mono, $tabular: true);
+
+  color: $color-accent;
+}
+
+.icon {
+  display: none;
+  color: $color-text-low;
+
+  @include from($bp-desktop) {
+    display: block;
+  }
+}
+
+.title {
+  @include type($type-feature-title);
+
+  margin: 0;
+  color: $color-text-high;
+
+  @include from($bp-desktop) {
+    @include type($type-h-2);
+  }
+}
+
+.text {
+  @include type($type-body-loose);
+
+  margin: $layout-field-gap 0 0;
+  color: $color-text-med;
+
+  @include from($bp-desktop) {
+    @include type($type-body-lg-loose);
+
+    margin-top: $space-3;
+  }
+}
