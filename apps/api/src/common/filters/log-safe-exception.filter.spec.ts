@@ -8,7 +8,11 @@ import {
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types';
-import { InvalidReferenceError, UnsupportedContractValueError } from '../errors/domain-errors';
+import {
+  DomainValidationError,
+  InvalidReferenceError,
+  UnsupportedContractValueError,
+} from '../errors/domain-errors';
 import { LogSafeExceptionFilter } from './log-safe-exception.filter';
 
 const SENSITIVE_DETAIL = 'patient diagnosis';
@@ -30,6 +34,11 @@ class ThrowingController {
   @Get('invalid-reference')
   invalidReference(): never {
     throw new InvalidReferenceError();
+  }
+
+  @Get('weak-password')
+  weakPassword(): never {
+    throw new DomainValidationError({ password: ['compromised'] });
   }
 
   @Get('unsupported-value')
@@ -82,6 +91,17 @@ describe('LogSafeExceptionFilter', () => {
     const response = await request(app.getHttpServer()).get('/invalid-reference').expect(422);
 
     expect(response.body).toStrictEqual({ statusCode: 422, code: 'invalid-reference' });
+    expect(logError).not.toHaveBeenCalled();
+  });
+
+  it('replies a business validation error like a DTO one, without logging it', async () => {
+    const response = await request(app.getHttpServer()).get('/weak-password').expect(400);
+
+    expect(response.body).toStrictEqual({
+      statusCode: 400,
+      code: 'validation-failed',
+      fieldErrors: { password: ['compromised'] },
+    });
     expect(logError).not.toHaveBeenCalled();
   });
 

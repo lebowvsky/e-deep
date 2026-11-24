@@ -32,6 +32,25 @@ describe('EnvironmentVariables.DEV_AUTH_STUB', () => {
   });
 });
 
+describe('EnvironmentVariables.REGISTRATION_ENABLED', () => {
+  it('is disabled by default (closed beta, D39)', () => {
+    expect(validateEnvironment(EnvironmentVariables, BASE).REGISTRATION_ENABLED).toBe(false);
+  });
+
+  it('is only enabled by the exact value "true"', () => {
+    expect(
+      validateEnvironment(EnvironmentVariables, { ...BASE, REGISTRATION_ENABLED: 'true' })
+        .REGISTRATION_ENABLED,
+    ).toBe(true);
+    for (const value of ['false', 'TRUE', '1', 'yes', '']) {
+      expect(
+        validateEnvironment(EnvironmentVariables, { ...BASE, REGISTRATION_ENABLED: value })
+          .REGISTRATION_ENABLED,
+      ).toBe(false);
+    }
+  });
+});
+
 describe('EnvironmentVariables.NODE_ENV', () => {
   it('is required, naming the variable but none of the values', () => {
     const { NODE_ENV: _omitted, ...withoutNodeEnv } = BASE;

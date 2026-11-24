@@ -1,5 +1,7 @@
 import type { DataSource } from 'typeorm';
 import { InactiveCertificationLevelError } from '../../src/common/errors/domain-errors';
+import { AuthEvent } from '../../src/modules/auth/auth-event.entity';
+import { Session } from '../../src/modules/auth/session.entity';
 import { Buddy } from '../../src/modules/buddies/buddy.entity';
 import { CertificationLevel } from '../../src/modules/certification-levels/certification-level.entity';
 import { CertificationLevelsService } from '../../src/modules/certification-levels/certification-levels.service';
@@ -135,7 +137,14 @@ describe('DiversService, CertificationLevelsService and PurgeService', () => {
 
       const report = await purge.purge();
 
-      expect(report).toEqual({ participations: 1, events: 1, buddies: 1, sites: 1 });
+      expect(report).toEqual({
+        participations: 1,
+        events: 1,
+        buddies: 1,
+        sites: 1,
+        sessions: 0,
+        authEvents: 0,
+      });
       expect(await dataSource.manager.count(DiveBuddy)).toBe(0);
       expect(await dataSource.manager.count(DiveObservation)).toBe(0);
       expect(await dataSource.manager.count(DiveSite)).toBe(0);
@@ -149,7 +158,14 @@ describe('DiversService, CertificationLevelsService and PurgeService', () => {
 
       const report = await purge.purge();
 
-      expect(report).toEqual({ participations: 0, events: 0, buddies: 0, sites: 0 });
+      expect(report).toEqual({
+        participations: 0,
+        events: 0,
+        buddies: 0,
+        sites: 0,
+        sessions: 0,
+        authEvents: 0,
+      });
       expect(await dataSource.manager.existsBy(DiveEvent, { id: event.id })).toBe(true);
       expect(await dataSource.manager.existsBy(DiveSite, { id: site.id })).toBe(true);
     });
@@ -163,7 +179,14 @@ describe('DiversService, CertificationLevelsService and PurgeService', () => {
 
       const report = await purge.purge();
 
-      expect(report).toEqual({ participations: 1, events: 0, buddies: 0, sites: 0 });
+      expect(report).toEqual({
+        participations: 1,
+        events: 0,
+        buddies: 0,
+        sites: 0,
+        sessions: 0,
+        authEvents: 0,
+      });
       expect(await dataSource.manager.existsBy(DiveSite, { id: site.id })).toBe(true);
     });
 
@@ -219,6 +242,60 @@ describe('DiversService, CertificationLevelsService and PurgeService', () => {
       expect((await purge.purge()).sites).toBe(1);
       expect(await dataSource.manager.existsBy(DiveSite, { id: target.id })).toBe(true);
       expect(await dataSource.manager.existsBy(DiveSite, { id: source.id })).toBe(false);
+    });
+
+    it('purges the sessions past their absolute expiry or their idle window', async () => {
+      const now = new Date('2026-11-24T10:00:00.000Z');
+      const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60_000);
+      const daysAgo = (days: number) => minutesAgo(days * 24 * 60);
+      const account = await fixtures.account((await fixtures.diver()).id);
+      const staff = await fixtures.account(null);
+      const session = (values: Partial<Session>) =>
+        fixtures.session(values.audience === 'admin' ? staff.id : account.id, {
+          createdAt: daysAgo(40),
+          ...values,
+        });
+      const absoluteExpired = await session({ expiresAt: now, lastSeenAt: minutesAgo(1) });
+      const webIdle = await session({ expiresAt: daysAgo(-100), lastSeenAt: daysAgo(30) });
+      const webLive = await session({ expiresAt: daysAgo(-100), lastSeenAt: daysAgo(29) });
+      const adminIdle = await session({
+        audience: 'admin',
+        expiresAt: minutesAgo(-60),
+        lastSeenAt: minutesAgo(30),
+      });
+      const adminLive = await session({
+        audience: 'admin',
+        expiresAt: minutesAgo(-60),
+        lastSeenAt: minutesAgo(29),
+      });
+
+      const report = await purge.purge(now);
+
+      expect(report.sessions).toBe(3);
+      const remaining = await dataSource.manager.find(Session);
+      expect(remaining.map((row) => row.id).sort()).toEqual([webLive.id, adminLive.id].sort());
+      for (const gone of [absoluteExpired, webIdle, adminIdle]) {
+        expect(await dataSource.manager.existsBy(Session, { id: gone.id })).toBe(false);
+      }
+    });
+
+    it('purges the auth events older than 180 days', async () => {
+      const now = new Date('2026-11-24T10:00:00.000Z');
+      const daysAgo = (days: number) => new Date(now.getTime() - days * 86_400_000);
+      const account = await fixtures.account((await fixtures.diver()).id);
+      const old = await fixtures.authEvent(account.id, { occurredAt: daysAgo(181) });
+      const anonymousOld = await fixtures.authEvent(null, {
+        type: 'account_deleted',
+        occurredAt: daysAgo(200),
+      });
+      const recent = await fixtures.authEvent(account.id, { occurredAt: daysAgo(179) });
+
+      const report = await purge.purge(now);
+
+      expect(report.authEvents).toBe(2);
+      expect(await dataSource.manager.existsBy(AuthEvent, { id: old.id })).toBe(false);
+      expect(await dataSource.manager.existsBy(AuthEvent, { id: anonymousOld.id })).toBe(false);
+      expect(await dataSource.manager.existsBy(AuthEvent, { id: recent.id })).toBe(true);
     });
 
     it('keeps recent tombstones and never purges certification levels', async () => {

@@ -1,4 +1,4 @@
-import type { ApiDomainErrorCode } from '@e-deep/shared';
+import type { ApiDomainErrorCode, ApiFieldErrors } from '@e-deep/shared';
 
 /**
  * Business errors raised by the services. Their messages are generic on purpose (GDPR, no
@@ -98,5 +98,108 @@ export class MergeIntoSelfError extends DomainError {
   constructor() {
     super('Cannot merge a site into itself');
     this.name = MergeIntoSelfError.name;
+  }
+}
+
+/** No valid session for a route that needs one (D37). */
+export class UnauthenticatedError extends DomainError {
+  readonly code = 'unauthenticated';
+  constructor() {
+    super('Authentication required');
+    this.name = UnauthenticatedError.name;
+  }
+}
+
+/**
+ * Unknown email, wrong password or an account of the other audience: always the same error, so
+ * that the answer never reveals whether an account exists (D35).
+ */
+export class InvalidCredentialsError extends DomainError {
+  readonly code = 'invalid-credentials';
+  constructor() {
+    super('Invalid credentials');
+    this.name = InvalidCredentialsError.name;
+  }
+}
+
+/** Too many sign-in attempts for the IP or the email (D35); answered with `Retry-After`. */
+export class TooManyAttemptsError extends DomainError {
+  readonly code = 'too-many-attempts';
+  /** Whole seconds to wait before the next attempt can succeed (at least 1). */
+  readonly retryAfterSeconds: number;
+  constructor(retryAfterSeconds: number) {
+    super('Too many attempts');
+    this.name = TooManyAttemptsError.name;
+    this.retryAfterSeconds = Math.max(1, Math.ceil(retryAfterSeconds));
+  }
+}
+
+/** Sign-up is closed (`REGISTRATION_ENABLED=false`, closed beta, D39). */
+export class RegistrationClosedError extends DomainError {
+  readonly code = 'registration-closed';
+  constructor() {
+    super('Registration closed');
+    this.name = RegistrationClosedError.name;
+  }
+}
+
+/** An account already uses this email (enumeration accepted in the closed beta, D39). */
+export class EmailTakenError extends DomainError {
+  readonly code = 'email-taken';
+  constructor() {
+    super('Email already used');
+    this.name = EmailTakenError.name;
+  }
+}
+
+/** The diver has not completed `/welcome` yet (no level, D38). */
+export class OnboardingRequiredError extends DomainError {
+  readonly code = 'onboarding-required';
+  constructor() {
+    super('Onboarding required');
+    this.name = OnboardingRequiredError.name;
+  }
+}
+
+/** `/welcome` was already completed: a new consent goes through `/me/consents` (D38). */
+export class OnboardingCompleteError extends DomainError {
+  readonly code = 'onboarding-complete';
+  constructor() {
+    super('Onboarding already complete');
+    this.name = OnboardingCompleteError.name;
+  }
+}
+
+/** The diver has no live consent at the current policy version (D38). */
+export class ConsentRequiredError extends DomainError {
+  readonly code = 'consent-required';
+  constructor() {
+    super('Consent required');
+    this.name = ConsentRequiredError.name;
+  }
+}
+
+/** The account's role does not allow the action (e.g. a staff account on a diver route, D37). */
+export class ForbiddenError extends DomainError {
+  readonly code = 'forbidden';
+  constructor() {
+    super('Forbidden');
+    this.name = ForbiddenError.name;
+  }
+}
+
+/**
+ * A value refused by a business rule that the DTO cannot check (password policy, email that the
+ * database could not store, outdated policy version). Answered like a DTO failure:
+ * `400 validation-failed` with `fieldErrors` (`common/validation/field-errors.ts`, D-26). Not a
+ * `DomainError`: its code is the validation one, not a business one.
+ */
+export class DomainValidationError extends Error {
+  /** Request path → codes; never the value received. */
+  readonly fieldErrors: ApiFieldErrors;
+  constructor(fieldErrors: ApiFieldErrors) {
+    super('Validation failed');
+    this.name = DomainValidationError.name;
+    this.fieldErrors = fieldErrors;
   }
 }

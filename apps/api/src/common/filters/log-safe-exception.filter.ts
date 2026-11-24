@@ -6,8 +6,8 @@ import {
   type ArgumentsHost,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
-import { toDomainErrorResponse } from '../errors/domain-error-http';
-import { DomainError } from '../errors/domain-errors';
+import { toDomainErrorResponse, toValidationFailedException } from '../errors/domain-error-http';
+import { DomainError, DomainValidationError } from '../errors/domain-errors';
 import { errorClassName } from '../logging/error-class-name';
 
 /**
@@ -15,6 +15,7 @@ import { errorClassName } from '../logging/error-class-name';
  * (e.g. a `QueryFailedError` carries the SQL query and its parameters).
  * `HttpException`s keep Nest's default behavior: they are replied as-is and not logged.
  * A `DomainError` is replied `{ statusCode, code }` with its status (D-26); only a 5xx is logged.
+ * A `DomainValidationError` is replied like a DTO failure (`400 validation-failed`), not logged.
  */
 @Catch()
 export class LogSafeExceptionFilter extends BaseExceptionFilter<unknown> {
@@ -32,6 +33,11 @@ export class LogSafeExceptionFilter extends BaseExceptionFilter<unknown> {
         this.logger.error(`Unhandled ${errorClassName(exception)}`);
       }
       super.catch(new HttpException(response, response.statusCode), host);
+      return;
+    }
+
+    if (exception instanceof DomainValidationError) {
+      super.catch(toValidationFailedException(exception), host);
       return;
     }
 

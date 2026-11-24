@@ -1,0 +1,2 @@
+# Data assets are compared byte for byte (SHA-256 of compromised-passwords.txt): LF everywhere.
+*.txt text eol=lf

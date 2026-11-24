@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from '../auth/auth.module';
 import { Consent } from './consent.entity';
+import { ConsentsService } from './consents.service';
 
-/** Registers the entity only (lot 1 of docs/plans/auth.md); the services come with lot 2. */
+/** Health data consents (D38). No controller until lot 3. */
 @Module({
-  imports: [TypeOrmModule.forFeature([Consent])],
+  imports: [TypeOrmModule.forFeature([Consent]), AuthModule],
+  providers: [ConsentsService],
+  exports: [ConsentsService],
 })
 export class ConsentsModule {}
