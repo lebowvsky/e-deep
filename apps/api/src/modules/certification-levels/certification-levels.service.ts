@@ -13,4 +13,12 @@ export class CertificationLevelsService {
       order: { agency: 'ASC', rank: 'ASC', code: 'ASC' },
     });
   }
+
+  /** The levels a diver can choose (`/welcome`), in the same order. */
+  findActive(): Promise<CertificationLevel[]> {
+    return this.dataSource.manager.find(CertificationLevel, {
+      where: { isActive: true },
+      order: { agency: 'ASC', rank: 'ASC', code: 'ASC' },
+    });
+  }
 }

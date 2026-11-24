@@ -108,7 +108,7 @@ export class EnvironmentVariables extends DatabaseEnvironment {
   TRUST_PROXY: number = 0;
 
   /**
-   * `Secure` attribute of the session cookie (D34). Not read by anything until lot 3. Fail-safe:
+   * `Secure` attribute and `__Host-` prefix of the session cookies (D34, `SessionCookies`). Fail-safe:
    * only the exact value `false` disables it, any other value (or none) keeps it on. Set it to
    * `false` only for local development over plain http.
    */

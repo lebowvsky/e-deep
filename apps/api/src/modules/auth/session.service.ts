@@ -12,7 +12,7 @@ const TOKEN_BYTES = 32;
 /** 32 bytes in base64url, without padding. */
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
-/** A session just opened or rotated: what the cookie needs (lot 3). The token is never stored. */
+/** A session just opened or rotated: what the cookie needs (`SessionCookies`). The token is never stored. */
 export interface IssuedSession {
   readonly sessionId: string;
   /** Opaque token for the cookie, shown once. Never logged. */
@@ -150,20 +150,41 @@ export class SessionService {
 
   /**
    * Deletes the session of `token` for `audience` (logout): a web cookie never ends an admin
-   * session. Idempotent: an unknown token is a no-op. The `logout` event is recorded by the caller
-   * (lot 3 controller), which knows the account.
+   * session. Idempotent: an unknown token is a no-op. Returns the account of the deleted session,
+   * `null` when nothing was deleted, in a single `DELETE … RETURNING`: of two concurrent logouts of
+   * the same token, only one gets the account. The `logout` event is recorded by the caller
+   * (`AuthenticationService.signOut`).
    */
-  async revoke(token: string, audience: SessionAudience): Promise<void> {
+  revoke(token: string, audience: SessionAudience): Promise<string | null> {
+    return this.revokeIn(this.dataSource.manager, token, audience);
+  }
+
+  /** Same as `revoke`, inside the caller's transaction (login and sign-up rotation). */
+  async revokeIn(
+    manager: EntityManager,
+    token: string,
+    audience: SessionAudience,
+  ): Promise<string | null> {
     if (!TOKEN_PATTERN.test(token)) {
-      return;
+      return null;
     }
-    await this.dataSource.manager.delete(Session, { tokenHash: hashToken(token), audience });
+    const result = await manager
+      .createQueryBuilder()
+      .delete()
+      .from(Session)
+      .where('token_hash = :tokenHash AND audience = :audience', {
+        tokenHash: hashToken(token),
+        audience,
+      })
+      .returning('account_id')
+      .execute();
+    return deletedAccountId(result.raw);
   }
 
   /**
    * Deletes every session of the account but `exceptSessionId`; returns how many were deleted.
-   * The `sessions_revoked` event is recorded by the caller (lot 3 `logout-all` controller); a
-   * password change records `password_changed` instead.
+   * The `sessions_revoked` event is recorded by the caller (`AuthenticationService.signOutEverywhere`);
+   * a password change records `password_changed` instead.
    */
   revokeAll(accountId: string, exceptSessionId?: string): Promise<number> {
     return this.revokeAllIn(this.dataSource.manager, accountId, exceptSessionId);
@@ -222,6 +243,19 @@ function newToken(): string {
 
 function hashToken(token: string): Buffer {
   return createHash('sha256').update(token, 'utf8').digest();
+}
+
+/** `account_id` of the row a `DELETE … RETURNING account_id` removed (at most one: unique hash). */
+function deletedAccountId(raw: unknown): string | null {
+  const rows: unknown = raw;
+  if (!Array.isArray(rows)) {
+    return null;
+  }
+  const row: unknown = rows.at(0);
+  if (typeof row !== 'object' || row === null || !('account_id' in row)) {
+    return null;
+  }
+  return typeof row.account_id === 'string' ? row.account_id : null;
 }
 
 function roleMatchesAudience(role: AccountRole, audience: SessionAudience): boolean {

@@ -4,7 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { Consent } from './consent.entity';
 import { ConsentsService } from './consents.service';
 
-/** Health data consents (D38). No controller until lot 3. */
+/** Health data consents (D38). Served by `MeController` (`POST /me/consents`). */
 @Module({
   imports: [TypeOrmModule.forFeature([Consent]), AuthModule],
   providers: [ConsentsService],

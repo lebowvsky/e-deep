@@ -1,3 +1,4 @@
+import type { AccountRole } from '@e-deep/shared';
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import {
@@ -19,6 +20,12 @@ export interface AccountCaller {
   readonly accountId: string;
   readonly sessionId: string;
   readonly ip: string;
+}
+
+/** What `/me` and `/admin/me` show of the account: never the hash. */
+export interface AccountIdentity {
+  readonly email: string;
+  readonly role: AccountRole;
 }
 
 export interface ChangePasswordInput {
@@ -44,10 +51,22 @@ export class AccountsService {
     private readonly diversService: DiversService,
   ) {}
 
+  /** @throws {UnauthenticatedError} when the account is gone (deleted meanwhile). */
+  async identityOf(accountId: string): Promise<AccountIdentity> {
+    const account = await this.dataSource.manager.findOne(Account, {
+      select: { email: true, role: true },
+      where: { id: accountId },
+    });
+    if (account === null) {
+      throw new UnauthenticatedError();
+    }
+    return { email: account.email, role: account.role };
+  }
+
   /**
    * Checks the current password, applies the policy to the new one, then in one transaction
    * stores its hash, revokes every other session and rotates the caller's (new token, same
-   * expiry): the returned session replaces the cookie (lot 3).
+   * expiry): the returned session replaces the cookie (`MeController`).
    *
    * @throws {TooManyAttemptsError} | {InvalidCredentialsError} for the current password.
    * @throws {DomainValidationError} `fieldErrors.newPassword` for the new one.

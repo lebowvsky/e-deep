@@ -6,7 +6,12 @@ import {
   type ArgumentsHost,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
-import { toDomainErrorResponse, toValidationFailedException } from '../errors/domain-error-http';
+import type { Response } from 'express';
+import {
+  domainErrorHeaders,
+  toDomainErrorResponse,
+  toValidationFailedException,
+} from '../errors/domain-error-http';
 import { DomainError, DomainValidationError } from '../errors/domain-errors';
 import { errorClassName } from '../logging/error-class-name';
 
@@ -14,7 +19,8 @@ import { errorClassName } from '../logging/error-class-name';
  * Replaces Nest's default handling of unexpected errors, which logs the full message and stack
  * (e.g. a `QueryFailedError` carries the SQL query and its parameters).
  * `HttpException`s keep Nest's default behavior: they are replied as-is and not logged.
- * A `DomainError` is replied `{ statusCode, code }` with its status (D-26); only a 5xx is logged.
+ * A `DomainError` is replied `{ statusCode, code }` with its status (D-26) and its headers
+ * (`Retry-After` on a 429); only a 5xx is logged.
  * A `DomainValidationError` is replied like a DTO failure (`400 validation-failed`), not logged.
  */
 @Catch()
@@ -32,6 +38,7 @@ export class LogSafeExceptionFilter extends BaseExceptionFilter<unknown> {
       if (response.statusCode >= 500) {
         this.logger.error(`Unhandled ${errorClassName(exception)}`);
       }
+      this.setHeaders(host, domainErrorHeaders(exception));
       super.catch(new HttpException(response, response.statusCode), host);
       return;
     }
@@ -56,5 +63,15 @@ export class LogSafeExceptionFilter extends BaseExceptionFilter<unknown> {
     // GDPR: log the error class only, never its message or stack (see errorClassName).
     this.logger.error(`Unhandled ${errorClassName(exception)}`);
     super.catch(new InternalServerErrorException(), host);
+  }
+
+  private setHeaders(host: ArgumentsHost, headers: Readonly<Record<string, string>>): void {
+    if (host.getType() !== 'http') {
+      return;
+    }
+    const response = host.switchToHttp().getResponse<Response>();
+    for (const [name, value] of Object.entries(headers)) {
+      response.setHeader(name, value);
+    }
   }
 }

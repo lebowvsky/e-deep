@@ -11,6 +11,7 @@ import type { App } from 'supertest/types';
 import {
   DomainValidationError,
   InvalidReferenceError,
+  TooManyAttemptsError,
   UnsupportedContractValueError,
 } from '../errors/domain-errors';
 import { LogSafeExceptionFilter } from './log-safe-exception.filter';
@@ -39,6 +40,11 @@ class ThrowingController {
   @Get('weak-password')
   weakPassword(): never {
     throw new DomainValidationError({ password: ['compromised'] });
+  }
+
+  @Get('too-many-attempts')
+  tooManyAttempts(): never {
+    throw new TooManyAttemptsError(42);
   }
 
   @Get('unsupported-value')
@@ -102,6 +108,14 @@ describe('LogSafeExceptionFilter', () => {
       code: 'validation-failed',
       fieldErrors: { password: ['compromised'] },
     });
+    expect(logError).not.toHaveBeenCalled();
+  });
+
+  it('replies a 429 with its Retry-After header', async () => {
+    const response = await request(app.getHttpServer()).get('/too-many-attempts').expect(429);
+
+    expect(response.body).toStrictEqual({ statusCode: 429, code: 'too-many-attempts' });
+    expect(response.headers['retry-after']).toBe('42');
     expect(logError).not.toHaveBeenCalled();
   });
 

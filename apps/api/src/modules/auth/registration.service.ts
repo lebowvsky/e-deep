@@ -26,6 +26,11 @@ export interface RegistrationInput {
   readonly email: string;
   readonly password: string;
   readonly ip: string;
+  /**
+   * Tokens of the web session cookies the browser already presents: revoked with the sign-up, like
+   * a login (rotation). Absent or empty: nothing to revoke.
+   */
+  readonly replacedTokens?: readonly string[];
 }
 
 export interface RegistrationResult {
@@ -37,7 +42,8 @@ export interface RegistrationResult {
 
 /**
  * Minimal sign-up of the landing page (D36, D39): the diver (first name only), the account, a
- * session and the trail, in a single transaction. Signed in at once with a long web session
+ * session and the trail, in a single transaction; the web cookies already presented are revoked in
+ * it (rotation, like a login). Signed in at once with a long web session
  * (« Rester connecté » is the default, D33).
  */
 @Injectable()
@@ -84,6 +90,9 @@ export class RegistrationService {
         });
         await manager.insert(Account, { diverId: diver.id, email, passwordHash, role: 'diver' });
         const account = await manager.findOneByOrFail(Account, { email });
+        for (const token of input.replacedTokens ?? []) {
+          await this.sessions.revokeIn(manager, token, 'web');
+        }
         const session = await this.sessions.createIn(manager, account.id, 'web', {
           rememberMe: true,
         });

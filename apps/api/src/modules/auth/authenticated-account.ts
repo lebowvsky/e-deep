@@ -2,7 +2,7 @@ import type { AccountRole } from '@e-deep/shared';
 import type { Account } from '../accounts/account.entity';
 
 /**
- * What a sign-in or a sign-up hands to its caller (lot 3 builds `MeResponse` from it): never the
+ * What a sign-in or a sign-up hands to its caller (the controllers build `MeResponse` from it): never the
  * entity, which carries the password hash (and a stale one after a rehash).
  */
 export interface AuthenticatedAccount {
