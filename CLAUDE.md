@@ -18,7 +18,8 @@ pnpm dev                            # api :3000, web :5173, admin :5174
 pnpm dev:api | dev:web | dev:admin
 
 pnpm lint && pnpm typecheck && pnpm test && pnpm build   # à lancer avant chaque commit
-pnpm format                         # Prettier (format:check en CI)
+pnpm --filter web run check:public-bundle   # + avant chaque commit web : `/` n'embarque pas l'app connectée
+pnpm format                         # Prettier (format:check ; pas encore de CI)
 
 pnpm --filter api run migration:generate src/database/migrations/<Nom>
 pnpm --filter <api|web|admin> run <script>
