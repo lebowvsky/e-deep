@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useParams } from 'react-router';
-import { mockUser } from '@/features/dashboard/mocks/dashboard';
 import { DeleteSiteDialog } from '@/features/sites/components/DeleteSiteDialog';
 import { MergeSiteDialog } from '@/features/sites/components/MergeSiteDialog';
 import { SiteAccessCard } from '@/features/sites/components/SiteAccessCard';
@@ -15,15 +14,13 @@ import { newDiveHrefOf } from '@/features/sites/lib/labels';
 import { pageTitle } from '@/shared/config/app';
 import { formatInitials } from '@/shared/lib/format';
 import type { SiteEntry } from '@/shared/model/site';
+import { useCurrentDiver } from '@/shared/session/hooks/useCurrentDiver';
 import { useSiteCommands } from '@/shared/sites/hooks/useSiteCommands';
 import { siteHrefOf } from '@/shared/sites/lib/siteHref';
 import { Button, ButtonLink } from '@/shared/ui/Button';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useToast } from '@/shared/ui/Toast';
 import styles from './SiteDetailPage.module.scss';
-
-// TODO(auth): the diver will come from the session, as in AppShell.
-const SELF_INITIALS = formatInitials(mockUser.firstName, mockUser.lastName);
 
 /** `/sites/:siteId`: one of the user's sites, its figures, its dives, what to know to go there. */
 export function SiteDetailPage() {
@@ -81,6 +78,8 @@ function SiteDetail({ entry, entries, onLeave }: SiteDetailProps) {
   const { merge, remove } = useSiteCommands();
   const navigate = useNavigate();
   const { notify } = useToast();
+  const diver = useCurrentDiver();
+  const selfInitials = formatInitials(diver.firstName, diver.lastName);
 
   return (
     <article className={styles.page}>
@@ -97,7 +96,7 @@ function SiteDetail({ entry, entries, onLeave }: SiteDetailProps) {
           <ButtonLink to={newDiveHrefOf(site.id)} icon="plus" size="lg" className={styles.newDive}>
             Nouvelle plongée ici
           </ButtonLink>
-          <SiteDivesList siteId={site.id} dives={dives} selfInitials={SELF_INITIALS} />
+          <SiteDivesList siteId={site.id} dives={dives} selfInitials={selfInitials} />
         </div>
         <div className={styles.aside}>
           <SiteInfoCard site={site} stats={stats} />

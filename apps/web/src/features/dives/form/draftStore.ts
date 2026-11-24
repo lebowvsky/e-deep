@@ -1,4 +1,9 @@
-// Dive form — draft kept on the device, one per mode and per dive.
+// Dive form — draft kept on the device, one per diver, per mode and per dive.
+//
+// Stored under `e-deep:dive-draft:<diverId>:<mode>` (D41): a draft is health data, another account
+// signed in on the same device never sees it. Signing out erases them all (`purgeAllDrafts`) and
+// advances the drafts' epoch, so that no store opened before (a form flushing on unmount, another
+// tab) can write one again.
 //
 // Behind `DraftStore` so that IndexedDB can replace `localStorage` (asynchronous on purpose). The
 // stored data is untrusted (another version of the app, a hand edit): it is checked by a guard and
@@ -44,6 +49,17 @@ export interface DraftStore {
 
 const KEY_PREFIX = 'e-deep:dive-draft:';
 /**
+ * Keys written before the drafts had an owner (`e-deep:dive-draft:new`, `…:edit:<id>`): nothing
+ * tells whose they are, so they are never restored, and deleted at the next purge. A diver id never
+ * starts with these words.
+ */
+const UNOWNED_KEY = /^(?:new|edit)(?::|$)/;
+/**
+ * Counter advanced by every purge, outside the drafts' prefix. Kept in the storage itself, so that
+ * every tab of the device sees a purge made by another one.
+ */
+const EPOCH_KEY = 'e-deep:dive-draft-epoch';
+/**
  * Bumped when the draft changes shape: older drafts are then ignored. 2: the logbook number left
  * the values (computed, D26). 3: the ids of the dive and of a new site are kept with the values.
  */
@@ -55,16 +71,21 @@ const DRAFT_VERSION = 3;
  */
 export const DRAFT_MAX_AGE_MS = 30 * 24 * 3_600_000;
 
-/** `new`, `new:from:<id>` or `edit:<id>`, prefixed. */
+/** `new`, `new:from:<id>` or `edit:<id>`: the draft of a mode, within the diver's drafts. */
 export function draftKey(mode: DiveFormMode): string {
   switch (mode.kind) {
     case 'new':
-      return `${KEY_PREFIX}new`;
+      return 'new';
     case 'duplicate':
-      return `${KEY_PREFIX}new:from:${mode.sourceId}`;
+      return `new:from:${mode.sourceId}`;
     case 'edit':
-      return `${KEY_PREFIX}edit:${mode.diveId}`;
+      return `edit:${mode.diveId}`;
   }
+}
+
+/** `e-deep:dive-draft:<diverId>:<key>`: where the draft `key` of a diver is stored. */
+export function storageKeyOf(diverId: string, key: string): string {
+  return `${KEY_PREFIX}${diverId}:${key}`;
 }
 
 // ── Guard ─────────────────────────────────────────────────────────────────────────────────────
@@ -205,37 +226,71 @@ function isExpired(text: string, now: number): boolean {
   return !isNumber(savedAt) || now - savedAt > DRAFT_MAX_AGE_MS;
 }
 
-/** Deletes every expired draft of the device (all modes and dives). */
-function purgeExpired(storage: Storage, now: number): void {
+/** The storage keys of every draft of the device (all divers, modes and dives). */
+function draftStorageKeys(storage: Storage): string[] {
   const keys: string[] = [];
   for (let index = 0; index < storage.length; index += 1) {
     const key = storage.key(index);
     if (key?.startsWith(KEY_PREFIX)) keys.push(key);
   }
-  for (const key of keys) {
+  return keys;
+}
+
+/** Deletes every expired draft of the device, and those without an owner. */
+function purgeStale(storage: Storage, now: number): void {
+  for (const key of draftStorageKeys(storage)) {
     const text = storage.getItem(key);
-    if (text !== null && isExpired(text, now)) storage.removeItem(key);
+    const isUnowned = UNOWNED_KEY.test(key.slice(KEY_PREFIX.length));
+    if (text !== null && (isUnowned || isExpired(text, now))) storage.removeItem(key);
+  }
+}
+
+/** The current epoch of the drafts (`0` before any purge, or when unreadable). */
+function readEpoch(storage: Storage): number {
+  const value = Number(storage.getItem(EPOCH_KEY));
+  return Number.isSafeInteger(value) ? value : 0;
+}
+
+/**
+ * Deletes every draft of the device, whoever wrote it: signing out leaves no health data behind
+ * (D41). The epoch moves first: a store opened before (in this tab or another) refuses to write
+ * from then on, so a form that flushes its last changes while leaving cannot bring one back. Never
+ * throws: a blocked storage has nothing to delete.
+ */
+export function purgeAllDrafts(storage: Storage | null = safeLocalStorage()): void {
+  try {
+    if (storage === null) return;
+    storage.setItem(EPOCH_KEY, String(readEpoch(storage) + 1));
+    for (const key of draftStorageKeys(storage)) storage.removeItem(key);
+  } catch {
+    // Storage blocked: nothing was written either.
   }
 }
 
 // ── localStorage ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * Drafts in `localStorage`. Every access is guarded: storage may be disabled (private mode), full
- * or blocked by the browser; a draft is a comfort, its failure never breaks the form. A failed write
- * rejects, so that the form does not claim a draft it does not have. Loading a draft first purges
- * the expired ones (`DRAFT_MAX_AGE_MS`).
+ * The drafts of `diverId` in `localStorage`. Every access is guarded: storage may be disabled
+ * (private mode), full or blocked by the browser; a draft is a comfort, its failure never breaks
+ * the form. A failed write rejects, so that the form does not claim a draft it does not have.
+ * Loading a draft first purges the expired ones (`DRAFT_MAX_AGE_MS`) and the unowned ones.
+ *
+ * The store belongs to the session it was opened in: after a purge (sign-out, here or in another
+ * tab), its writes reject and write nothing.
  */
 export function createLocalDraftStore(
+  diverId: string,
   storage: Storage | null = safeLocalStorage(),
   now: () => number = Date.now,
 ): DraftStore {
+  const at = (key: string) => storageKeyOf(diverId, key);
+  const epoch = readEpochSafely(storage);
   return {
     load(key) {
       try {
         if (storage === null) return Promise.resolve(null);
-        purgeExpired(storage, now());
-        const text = storage.getItem(key);
+        purgeStale(storage, now());
+        const text = storage.getItem(at(key));
         return Promise.resolve(text === null ? null : parseDraft(text));
       } catch {
         return Promise.resolve(null);
@@ -243,7 +298,10 @@ export function createLocalDraftStore(
     },
     save(key, draft) {
       try {
-        storage?.setItem(key, JSON.stringify({ version: DRAFT_VERSION, ...draft }));
+        if (storage !== null && readEpoch(storage) !== epoch) {
+          return Promise.reject(new Error('Drafts purged since this form opened: not saved.'));
+        }
+        storage?.setItem(at(key), JSON.stringify({ version: DRAFT_VERSION, ...draft }));
         return Promise.resolve();
       } catch (error) {
         // Quota exceeded or storage blocked: the form keeps working, without the draft mention.
@@ -252,13 +310,22 @@ export function createLocalDraftStore(
     },
     clear(key) {
       try {
-        storage?.removeItem(key);
+        storage?.removeItem(at(key));
       } catch {
         // Storage blocked: nothing to clear.
       }
       return Promise.resolve();
     },
   };
+}
+
+/** The epoch at the opening of a store; a blocked storage never writes anyway. */
+function readEpochSafely(storage: Storage | null): number {
+  try {
+    return storage === null ? 0 : readEpoch(storage);
+  } catch {
+    return 0;
+  }
 }
 
 /** Reading `window.localStorage` itself throws when the browser blocks it. */

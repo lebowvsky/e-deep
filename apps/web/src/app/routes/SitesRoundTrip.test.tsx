@@ -1,17 +1,16 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeDiveApi, type FakeDiveApi } from '@/features/dives/mocks/fakeDiveApi';
-import { ApiClientContext } from '@/shared/lib/apiClientContext';
 import { isRecord } from '@/shared/lib/guards';
 import { createHttpSitesRepository } from '@/shared/sites/api/httpSitesRepository';
 import { isSiteListResponse } from '@/shared/sites/api/siteContract';
 import { mockSites } from '@/shared/sites/mocks/sites';
-import { SitesRepositoryContext } from '@/shared/sites/repository/sitesRepositoryContext';
 import type { MapViewProps } from '@/shared/ui/MapView';
 import { ToastProvider } from '@/shared/ui/Toast';
+import { TestProviders } from '@/test/TestProviders';
 import { DiveDetailPage } from './DiveDetailPage';
 import { DiveFormPage } from './DiveFormPage';
 import { MapPage } from './MapPage';
@@ -46,15 +45,15 @@ function renderPage(api: FakeDiveApi, path: string) {
     defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: Infinity } },
   });
   const view = render(
-    <ApiClientContext value={api.client}>
-      <SitesRepositoryContext value={createHttpSitesRepository(api.client)}>
-        <QueryClientProvider client={queryClient}>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
-        </QueryClientProvider>
-      </SitesRepositoryContext>
-    </ApiClientContext>,
+    <TestProviders
+      client={api.client}
+      sitesRepository={createHttpSitesRepository(api.client)}
+      queryClient={queryClient}
+    >
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
+    </TestProviders>,
   );
   return { router, unmount: view.unmount };
 }

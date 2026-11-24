@@ -2,10 +2,17 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SaveDive, SaveDiveResult } from '../api/saveDive';
 import { CONTEXT, validValues } from '../mocks/diveFormFixture';
-import type { DiveDraft, DraftStore } from './draftStore';
+import {
+  createLocalDraftStore,
+  purgeAllDrafts,
+  storageKeyOf,
+  type DiveDraft,
+  type DraftStore,
+} from './draftStore';
 import { DRAFT_DEBOUNCE_MS, useDiveForm, type UseDiveFormOptions } from './useDiveForm';
 
-const KEY = 'e-deep:dive-draft:new';
+/** The draft key of a new dive, within the diver's drafts (`draftKey`). */
+const KEY = 'new';
 const DRAFT_IDS = { eventId: 'e-draft', newSiteId: 's-draft' };
 
 /** An in-memory `DraftStore` whose calls can be inspected. */
@@ -340,5 +347,42 @@ describe('editing helpers', () => {
     act(() => actions.change('notes', 'Mérou'));
     expect(hook.result.current.values.notes).toBe('Mérou');
     expect(hook.result.current.actions).toBe(actions);
+  });
+});
+
+describe('draft after a sign-out', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('never writes the pending draft back when the form unmounts after the purge', async () => {
+    const { hook } = setup({ draftStore: createLocalDraftStore('u1', localStorage) });
+    await flush();
+    act(() => hook.result.current.actions.change('notes', 'Mérou'));
+
+    // The diver signs out within the delay: drafts purged, then the form leaves and flushes.
+    purgeAllDrafts(localStorage);
+    hook.unmount();
+    await act(() => vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS));
+
+    expect(localStorage.getItem(storageKeyOf('u1', KEY))).toBeNull();
+  });
+
+  it('nor on pagehide in a tab whose session ended in another tab', async () => {
+    // Two tabs share the storage: the other one purges, this one is still on the form.
+    const { hook } = setup({ draftStore: createLocalDraftStore('u1', localStorage) });
+    await flush();
+    act(() => hook.result.current.actions.change('notes', 'Mérou'));
+    purgeAllDrafts(localStorage);
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    await act(() => vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS));
+
+    expect(localStorage.getItem(storageKeyOf('u1', KEY))).toBeNull();
   });
 });

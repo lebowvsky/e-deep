@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { User } from '@/features/dashboard/types';
+import type { CurrentDiver } from '@/shared/session/types';
 import { useBodyScrollLock } from '@/shared/hooks/useBodyScrollLock';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { IconButton } from '@/shared/ui/IconButton';
@@ -14,7 +14,7 @@ export interface DrawerProps {
   id: string;
   open: boolean;
   onClose: () => void;
-  user: User;
+  user: CurrentDiver;
 }
 
 /**

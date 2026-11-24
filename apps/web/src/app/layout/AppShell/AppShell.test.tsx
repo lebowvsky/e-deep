@@ -1,17 +1,21 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
-import { routes } from '@/app/routes';
+import { createTestAppRouter } from '@/test/appRouter';
 import { TestProviders } from '@/test/TestProviders';
 import { fakeApiClient } from '@/test/fakeApiClient';
 
 function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const { router, queryClient, authClient } = createTestAppRouter(path);
   // These tests are about the shell: the dashboard stays loading (API call never settles).
   const get = vi.fn(() => new Promise<never>(() => undefined));
   render(
-    <TestProviders client={fakeApiClient({ get })}>
+    <TestProviders
+      client={fakeApiClient({ get })}
+      queryClient={queryClient}
+      authClient={authClient}
+    >
       <RouterProvider router={router} />
     </TestProviders>,
   );

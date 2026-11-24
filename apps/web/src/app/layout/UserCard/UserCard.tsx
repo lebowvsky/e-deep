@@ -1,13 +1,13 @@
 import { useEffect, useId, useRef, useState, type FocusEvent } from 'react';
 import { Link } from 'react-router';
-import type { User } from '@/features/dashboard/types';
+import type { CurrentDiver } from '@/shared/session/types';
 import { formatDiverLevel, formatFullName, formatInitials } from '@/shared/lib/format';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Icon } from '@/shared/ui/Icon';
 import styles from './UserCard.module.scss';
 
 export interface UserCardProps {
-  user: User;
+  user: CurrentDiver;
   /** menu: collapsed user menu (sidebar, Hick) · logout: direct sign-out link (drawer) */
   action?: 'menu' | 'logout';
   onNavigate?: () => void;
@@ -22,7 +22,7 @@ export function UserCard({ user, action = 'menu', onNavigate }: UserCardProps) {
       <Avatar initials={formatInitials(user.firstName, user.lastName)} src={user.avatarUrl} />
       <div className={styles.identity}>
         <span className={styles.name}>{fullName}</span>
-        <span className={styles.level}>{formatDiverLevel(user.level, user.federation)}</span>
+        <span className={styles.level}>{formatDiverLevel(user.level.code, user.level.agency)}</span>
       </div>
       {action === 'menu' ? (
         <UserMenu onNavigate={onNavigate} />
