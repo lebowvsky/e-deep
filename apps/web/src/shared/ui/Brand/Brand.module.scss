@@ -23,40 +23,54 @@
   color: $color-text-high;
 }
 
-// Sidebar / drawer: 28px mark, radius 8, 15px name.
-.md {
-  gap: $space-3; // mockup 10px, rounded to the 4px scale
+// Mobile top bar: 24px mark, radius 6.
+.sm {
+  width: $layout-brand-mark-sm;
+  height: $layout-brand-mark-sm;
+  border-radius: $radius-sm;
 
-  .mark {
-    width: $layout-brand-mark;
-    height: $layout-brand-mark;
-    border-radius: $layout-brand-radius;
+  .glyph {
+    width: $layout-brand-glyph-sm;
+    height: $layout-brand-glyph-sm;
   }
+}
+
+// Sidebar / drawer: 28px mark, radius 8.
+.md {
+  width: $layout-brand-mark;
+  height: $layout-brand-mark;
+  border-radius: $layout-brand-radius;
 
   .glyph {
     width: $layout-brand-glyph;
     height: $layout-brand-glyph;
   }
+}
+
+// Auth screens (welcome.jsx · LoginMobile): 40px mark, radius 10 (40 × 0.28, rounded).
+.lg {
+  width: $layout-brand-mark-lg;
+  height: $layout-brand-mark-lg;
+  border-radius: $radius-md;
+
+  .glyph {
+    width: $layout-brand-glyph-lg;
+    height: $layout-brand-glyph-lg;
+  }
+}
+
+// Sidebar / drawer: 15px name.
+.brandMd {
+  gap: $space-3; // mockup 10px, rounded to the 4px scale
 
   .name {
     @include type($type-brand);
   }
 }
 
-// Mobile top bar: 24px mark, radius 6, 14px name.
-.sm {
+// Mobile top bar: 14px name.
+.brandSm {
   gap: $space-2;
-
-  .mark {
-    width: $layout-brand-mark-sm;
-    height: $layout-brand-mark-sm;
-    border-radius: $radius-sm;
-  }
-
-  .glyph {
-    width: $layout-brand-glyph-sm;
-    height: $layout-brand-glyph-sm;
-  }
 
   .name {
     @include type($type-brand-sm);

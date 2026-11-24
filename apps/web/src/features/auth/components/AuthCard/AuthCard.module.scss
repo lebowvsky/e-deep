@@ -1,0 +1,42 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · AuthCard — 440px max, padding 28, surface2 with a strong ring and raised shadow.
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+  width: 100%;
+  max-width: $layout-auth-card-width;
+  padding: $layout-card-pad-lg;
+  box-shadow:
+    inset 0 0 0 1px $color-line-strong,
+    $shadow-raised;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.title {
+  @include type($type-card-title);
+
+  margin: 0;
+  color: $color-text-high;
+}
+
+.subtitle {
+  @include type($type-body);
+
+  margin: 0;
+  color: $color-text-med;
+}
+
+.note {
+  @include type($type-field-hint);
+
+  margin: 0;
+  color: $color-text-low;
+  text-align: center;
+}

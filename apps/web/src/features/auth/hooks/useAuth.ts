@@ -4,7 +4,8 @@ import { meQueryOptions } from '@/shared/session/api/meApi';
 import { isAuthFailure } from '@/shared/session/authClient';
 import { useAuthServices } from '@/shared/session/hooks/useAuthServices';
 import { endSession } from '@/shared/session/lib/endSession';
-import { useSessionMutation } from './useSessionMutation';
+import { useLogin } from './useLogin';
+import { useSignup } from './useSignup';
 
 /** The session as the public pages see it. `unknown`: `/me` failed for another reason (network). */
 export type SessionState =
@@ -35,18 +36,14 @@ export function useAuth(): Auth {
   const { authClient } = services;
   const queryClient = useQueryClient();
   const me = useQuery(meQueryOptions(authClient));
-  const login = useSessionMutation((request: LoginRequest) => authClient.login(request), {
-    newSession: true,
-  });
-  const signup = useSessionMutation((request: RegisterRequest) => authClient.signup(request), {
-    newSession: true,
-  });
+  const login = useLogin();
+  const signup = useSignup();
   const logout = useMutation({ mutationFn: () => endSession(services, queryClient) });
 
   return {
     session: sessionStateOf(me),
-    login: login.mutateAsync,
-    signup: signup.mutateAsync,
+    login,
+    signup,
     logout: logout.mutateAsync,
   };
 }

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   calendarDaysSince,
   formatCharacterCount,
+  formatCountdown,
+  formatRetryDelay,
   formatClockValue,
   formatInterval,
   formatNumberInputValue,
@@ -146,5 +148,20 @@ describe('placeLabel', () => {
 describe('formatDiveDayMonthYear', () => {
   it('reads the calendar day of the dive, whatever the device time zone', () => {
     expect(formatDiveDayMonthYear('2026-04-08T23:30:00+02:00')).toBe('08 avr. 2026');
+  });
+});
+
+describe('formatRetryDelay', () => {
+  it('rounds the wait up to the minute, in seconds under a minute', () => {
+    expect(formatRetryDelay(45)).toBe('45 s');
+    expect(formatRetryDelay(60)).toBe('1 min');
+    expect(formatRetryDelay(61)).toBe('2 min');
+  });
+});
+
+describe('formatCountdown', () => {
+  it('shows minutes and two-digit seconds', () => {
+    expect(formatCountdown(125)).toBe('2:05');
+    expect(formatCountdown(9)).toBe('0:09');
   });
 });

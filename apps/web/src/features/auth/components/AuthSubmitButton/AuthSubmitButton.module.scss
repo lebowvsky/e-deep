@@ -1,0 +1,10 @@
+@use '@/styles/tokens' as *;
+
+.submit {
+  width: 100%;
+}
+
+.countdown {
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
+}

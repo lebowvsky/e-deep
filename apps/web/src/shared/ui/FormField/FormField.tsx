@@ -6,12 +6,19 @@ import styles from './FormField.module.scss';
 
 export interface FormFieldProps {
   label: ReactNode;
+  /** Next to the label, on its right (« Mot de passe oublié ? »). */
+  aside?: ReactNode;
   /** Decorative `*` next to the label; the control gets `aria-required`. */
   required?: boolean;
   /** Help under the control, replaced by the error or the warning when there is one. */
   hint?: ReactNode;
   /** Says what to do: danger look, icon in the field, `aria-invalid`. Wins over `warning`. */
   error?: ReactNode;
+  /**
+   * Invalid without a message of its own: the reason is said elsewhere, e.g. the banner of a refused
+   * sign-in, which must not tell which of the e-mail or the password is wrong.
+   */
+  invalid?: boolean;
   /** Non-blocking warning (depth beyond the level, duplicate dive number). */
   warning?: ReactNode;
   /** Read-only control, shown with its help (e.g. « Air = 21 % »). */
@@ -23,8 +30,8 @@ export interface FormFieldProps {
   className?: string | undefined;
 }
 
-const statusOf = (error: ReactNode, warning: ReactNode): FieldStatus => {
-  if (error) return 'error';
+const statusOf = (error: ReactNode, invalid: boolean, warning: ReactNode): FieldStatus => {
+  if (error || invalid) return 'error';
   if (warning) return 'warning';
   return 'default';
 };
@@ -35,9 +42,11 @@ const statusOf = (error: ReactNode, warning: ReactNode): FieldStatus => {
  */
 export function FormField({
   label,
+  aside,
   required = false,
   hint,
   error,
+  invalid = false,
   warning,
   locked = false,
   id,
@@ -49,9 +58,20 @@ export function FormField({
   const labelId = `${generatedId}-label`;
   const descriptionId = `${generatedId}-description`;
 
-  const status = statusOf(error, warning);
+  const status = statusOf(error, invalid, warning);
   const message = status === 'error' ? error : status === 'warning' ? warning : null;
   const description = message ?? hint;
+
+  const labelElement = (
+    <label id={labelId} htmlFor={controlId} className={styles.label}>
+      {label}
+      {required && (
+        <span className={styles.required} aria-hidden="true">
+          {' *'}
+        </span>
+      )}
+    </label>
+  );
 
   const field: FormFieldContextValue = {
     controlId,
@@ -64,14 +84,14 @@ export function FormField({
 
   return (
     <div className={cx(styles.field, className)}>
-      <label id={labelId} htmlFor={controlId} className={styles.label}>
-        {label}
-        {required && (
-          <span className={styles.required} aria-hidden="true">
-            {' *'}
-          </span>
-        )}
-      </label>
+      {aside ? (
+        <div className={styles.header}>
+          {labelElement}
+          {aside}
+        </div>
+      ) : (
+        labelElement
+      )}
       <FormFieldContext value={field}>{children}</FormFieldContext>
       {message ? (
         <p id={descriptionId} className={cx(styles.message, styles[status])}>

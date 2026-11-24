@@ -124,6 +124,9 @@ export const type = {
   titleSm: { size: 15, lh: 20, w: 600, ls: -0.1 }, // site name in the map preview
   panelTitle: { size: 18, lh: 24, w: 600, ls: -0.2 }, // title of the site panel
   metricXs: { size: 16, lh: 20, w: 600, ls: -0.2 }, // mono — figures of the map preview
+  // Auth (welcome.jsx)
+  cardTitle: { size: 22, lh: 28, w: 600, ls: -0.3 }, // title of the auth card
+  bodyCompact: { size: 13, lh: 19, w: 400, ls: 0 }, // error banner, « Rester connecté »
 } as const;
 
 // 4px scale
@@ -187,7 +190,9 @@ export const motion = {
     in: 'cubic-bezier(.5, 0, .75, 0)',
     std: 'cubic-bezier(.4, 0, .2, 1)',
   },
-  dur: { fast: 120, base: 180, slow: 280, toast: 4000 }, // ms (toast: time on screen)
+  // ms (toast: time on screen; announce: quiet time before a live region speaks, e.g. the
+  // password criteria, so that a screen reader is not interrupted at every keystroke)
+  dur: { fast: 120, base: 180, slow: 280, toast: 4000, announce: 1000 },
 } as const;
 
 // Content dimmed while a refresh is in flight.
@@ -349,6 +354,14 @@ export const layout = {
   colNumberSm: 52,
   colMeasure: 90, // depth, duration columns of « Tes plongées ici »
   colTeamSm: 110,
+  // Auth (welcome.jsx)
+  inputHeightLg: 48, // fields of the sign-in and sign-up forms
+  authCardWidth: 440,
+  cardPadLg: 28, // auth card (and, later, the landing cards)
+  checkbox: 18,
+  strengthBarHeight: 4, // segments of the password gauge
+  brandMarkLg: 40, // logo of the auth screens
+  brandGlyphLg: 22,
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.

@@ -111,7 +111,9 @@ describe('protected routes', () => {
   it('send a visitor without session to /login, with the page as next', async () => {
     const { router } = renderApp('/dives?region=corse', { session: null });
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Connexion' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' }),
+    ).toBeTruthy();
     expect(locationOf(router)).toBe(`/login?next=${encodeURIComponent('/dives?region=corse')}`);
   });
 
@@ -155,7 +157,9 @@ describe('/login', () => {
   it('is shown to a visitor', async () => {
     renderApp('/login', { session: null });
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Connexion' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' }),
+    ).toBeTruthy();
   });
 });
 
@@ -208,7 +212,9 @@ describe('session lost while a page holding the diver is mounted', () => {
     await queryClient.invalidateQueries({ queryKey: DIVE_LOG_QUERY_KEY });
 
     await waitFor(() => expect(locationOf(router)).toBe('/login?next=%2Fdives%2Fnew'));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Connexion' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' }),
+    ).toBeTruthy();
     errorElement.stop();
     expect(errorElement.shown).not.toHaveBeenCalled();
     // Only the login page's own check: the mounted form never asked for `/me` again.

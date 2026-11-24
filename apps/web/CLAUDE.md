@@ -54,8 +54,10 @@ CSS-in-JS, pas de lib de composants UI.
   `?state=` (dev) et les tests uniquement, jamais importés par le code des dives hors tests ;
   formatage via `@/shared/lib/format` (jamais de formatage inline).
 - Un seul composant par écran pour desktop et mobile : le responsive passe par le SCSS, pas par
-  des composants `Mobile*` ni par `window.innerWidth` (sauf pour le passage sidebar ↔ drawer, via
-  un hook `useMediaQuery` dans `src/shared/hooks/`).
+  des composants `Mobile*` ni par `window.innerWidth`. Deux exceptions, via le hook
+  `useMediaQuery` de `src/shared/hooks/`, là où le DOM diffère vraiment : le passage sidebar ↔
+  drawer, et l'entrée publique (`HomePage` : carte d'authentification dans l'accueil ≥ 1024 px,
+  écrans dédiés `/login` et `/signup` en dessous ; validé par le porteur le 2026-11-24).
 - Nom du produit : toujours `APP_NAME` (`@/shared/config/app`), jamais « DiveLog » en dur.
 - Routing : table dans `src/app/routes.tsx` (React Router, mode data). Une action sans écran pointe
   vers une route placeholder : aucun lien ni bouton mort. Catalogue des primitives : `/_dev/ui` (dev).

@@ -92,6 +92,8 @@ $type-marker-count-sm: (10px, 12px, 600, 0);
 $type-title-sm: (15px, 20px, 600, -0.1px);
 $type-panel-title: (18px, 24px, 600, -0.2px);
 $type-metric-xs: (16px, 20px, 600, -0.2px);
+$type-card-title: (22px, 28px, 600, -0.3px);
+$type-body-compact: (13px, 19px, 400, 0);
 
 // Space (4px scale)
 $space-0: 0;
@@ -147,6 +149,7 @@ $dur-fast: 120ms;
 $dur-base: 180ms;
 $dur-slow: 280ms;
 $dur-toast: 4000ms;
+$dur-announce: 1000ms;
 
 // Opacity
 $opacity-busy: 0.6;
@@ -297,3 +300,10 @@ $layout-row-height-sm: 56px;
 $layout-col-number-sm: 52px;
 $layout-col-measure: 90px;
 $layout-col-team-sm: 110px;
+$layout-input-height-lg: 48px;
+$layout-auth-card-width: 440px;
+$layout-card-pad-lg: 28px;
+$layout-checkbox: 18px;
+$layout-strength-bar-height: 4px;
+$layout-brand-mark-lg: 40px;
+$layout-brand-glyph-lg: 22px;

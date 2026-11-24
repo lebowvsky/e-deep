@@ -11,6 +11,16 @@
   padding: 0 $space-3;
 }
 
+// welcome.jsx · Input — 48px, padding 0 14, 15px value.
+.lg {
+  height: $layout-input-height-lg;
+  padding: 0 $layout-tile-pad;
+
+  &.sans .input {
+    @include type($type-body-lg);
+  }
+}
+
 .input {
   @include field-control;
 

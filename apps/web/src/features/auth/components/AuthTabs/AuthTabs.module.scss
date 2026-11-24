@@ -1,0 +1,41 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · Tabs — padding 4, radius md, abyss with a hairline ring.
+.list {
+  display: flex;
+  padding: $space-1;
+  background: $color-abyss;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line;
+}
+
+// 40px tabs, radius 8; the selected one raised on surface2.
+.tab {
+  @include focus-ring;
+  @include type($type-body);
+
+  flex: 1;
+  min-height: $layout-control-height;
+  color: $color-text-low;
+  cursor: pointer;
+  border-radius: $radius-segment;
+  transition:
+    background-color $dur-base $ease-out,
+    color $dur-base $ease-out;
+
+  &:hover {
+    color: $color-text-high;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.selected {
+  @include type($type-body-med);
+
+  color: $color-text-high;
+  background: $color-surface-2;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+}

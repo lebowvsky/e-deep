@@ -86,7 +86,9 @@ describe('closed beta (features.signup false)', () => {
   it('sends /signup to /login, next kept', async () => {
     const router = renderPublic('/signup?next=%2Fdives', { signup: false });
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Connexion' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' }),
+    ).toBeTruthy();
     expect(locationOf(router)).toBe('/login?next=%2Fdives');
   });
 
@@ -99,7 +101,7 @@ describe('closed beta (features.signup false)', () => {
     expect(screen.getByRole('link', { name: 'Se connecter' }).getAttribute('href')).toBe('/login');
 
     await router.navigate('/login');
-    await screen.findByRole('heading', { level: 1, name: 'Connexion' });
+    await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' });
     expect(screen.queryByRole('link', { name: 'Créer mon carnet' })).toBeNull();
   });
 });
@@ -108,8 +110,8 @@ describe('/signup with the sign-up open', () => {
   it('is shown to a visitor, and leads to /login with the same next', async () => {
     renderPublic('/signup?next=%2Fdives');
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Inscription' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'J’ai déjà un compte' }).getAttribute('href')).toBe(
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ouvre ton carnet' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Se connecter' }).getAttribute('href')).toBe(
       '/login?next=%2Fdives',
     );
   });

@@ -254,3 +254,14 @@ export function placeLabel(...parts: readonly (string | null)[]): string | null 
   const entered = parts.filter((part) => part !== null);
   return entered.length === 0 ? null : entered.join(' · ');
 }
+
+/** Wait before a new try, rounded up: « 3 min », « 45 s » under a minute. */
+export function formatRetryDelay(seconds: number): string {
+  return seconds >= 60 ? `${Math.ceil(seconds / 60)} min` : `${seconds} s`;
+}
+
+/** Countdown on a button: « 2:05 », « 0:09 ». */
+export function formatCountdown(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
+}

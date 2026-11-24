@@ -1,0 +1,72 @@
+@use '@/styles/tokens' as *;
+
+.row {
+  display: inline-flex;
+  gap: $space-3;
+  align-items: center;
+  align-self: flex-start;
+  min-height: $layout-hit-target;
+  cursor: pointer;
+}
+
+.control {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: $layout-checkbox;
+  height: $layout-checkbox;
+}
+
+// The native box itself, restyled: it keeps its role, state and keyboard behaviour.
+.input {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  background: $color-surface-0;
+  border-radius: $radius-xs;
+  box-shadow: inset 0 0 0 1px $color-line-field;
+  appearance: none;
+  transition:
+    background-color $dur-fast $ease-out,
+    box-shadow $dur-fast $ease-out;
+
+  &:focus-visible {
+    outline: 2px solid $color-accent;
+    outline-offset: 2px;
+  }
+
+  &:checked {
+    background: $color-accent;
+    box-shadow: none;
+  }
+
+  &:disabled,
+  &[readonly] {
+    cursor: not-allowed;
+    opacity: $opacity-busy;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.mark {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  color: $color-accent-ink;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.input:checked + .mark {
+  opacity: 1;
+}
+
+.label {
+  @include type($type-body-compact);
+
+  color: $color-text-med;
+}
