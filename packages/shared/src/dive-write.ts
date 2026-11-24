@@ -133,10 +133,14 @@ export type ApiDomainErrorCode =
   | 'onboarding-required'
   | 'onboarding-complete'
   | 'consent-required'
-  | 'forbidden';
+  | 'forbidden'
+  // Request body refused before any validation (D34: JSON only; size limit of the parser).
+  | 'unsupported-media-type'
+  | 'payload-too-large';
 
 /**
- * Business error (D-26): `400`, `401`, `403`, `409`, `422`, `429` or `500` depending on the code.
+ * Business error (D-26): `400`, `401`, `403`, `409`, `413`, `415`, `422`, `429` or `500` depending
+ * on the code.
  * A `429 too-many-attempts` also carries a `Retry-After` header (seconds).
  */
 export interface ApiDomainErrorResponse {

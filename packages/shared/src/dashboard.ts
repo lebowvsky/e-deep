@@ -9,7 +9,8 @@ export type GasMix = 'AIR' | 'NITROX32' | 'NITROX36' | 'OTHER';
 export interface DashboardUser {
   id: string;
   firstName: string;
-  lastName: string;
+  /** `null` when not entered: the last name is optional at `/welcome` (D36, D38). */
+  lastName: string | null;
   level: UserLevel;
   federation: Federation;
   avatarUrl: string | null;
