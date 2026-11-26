@@ -201,3 +201,52 @@
     display: none;
   }
 }
+
+// Side gutters of the public pages (welcome.jsx): 20 on phones, 32 from the tablet, 80 from
+// 1280px (between 1024 and 1279, the hero's 440px card leaves too little room for 80).
+@mixin page-gutter {
+  padding-inline: $space-5;
+
+  @include from($bp-tablet) {
+    padding-inline: $space-7;
+  }
+
+  @include from($bp-large) {
+    padding-inline: $space-11;
+  }
+}
+
+// Landing sections on tablets (768–1023, not mocked up): the phone layout, centred on a 640px
+// column (`contentMaxWidth`, plus its 32px gutters) instead of stretched to the screen.
+@mixin landing-column {
+  @include from($bp-tablet) {
+    @include until($bp-desktop) {
+      max-width: calc(#{$layout-content-max-width} + 2 * #{$space-7});
+      margin-inline: auto;
+    }
+  }
+}
+
+// « Aller au contenu »: hidden until focused, then an accent pill at the top left of the screen
+// (WCAG 2.4.1). The target is the page's `<main id="main-content" tabindex="-1">`.
+@mixin skip-link {
+  @include visually-hidden;
+  @include type($type-body-med);
+
+  &:focus {
+    position: fixed;
+    top: $space-3;
+    left: $space-3;
+    z-index: $z-skip-link;
+    width: auto;
+    height: auto;
+    padding: $space-3 $space-4;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    color: $color-accent-ink;
+    white-space: normal;
+    background: $color-accent;
+    border-radius: $radius-md;
+  }
+}

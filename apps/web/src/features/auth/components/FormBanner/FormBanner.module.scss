@@ -1,0 +1,25 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · LoginForm error — padding 12 14, radius md, danger at 10 % with its ring.
+.banner {
+  display: flex;
+  gap: $layout-input-gap;
+  align-items: flex-start;
+  padding: $space-3 $layout-tile-pad;
+  background: $color-danger-soft;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-danger-line;
+}
+
+.icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: $color-danger;
+}
+
+.text {
+  @include type($type-body-compact);
+
+  margin: 0;
+  color: $color-text-high;
+}

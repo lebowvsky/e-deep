@@ -1,0 +1,115 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · features — phones: padding 32 20 0, cards (padding 16, radius md) 10 apart;
+// desktop: padding 24 80 96, cells (padding 28) on surface0, separated by 1px hairlines.
+.section {
+  @include page-gutter;
+  @include landing-column;
+
+  padding-top: $space-7;
+  scroll-margin-top: $space-6;
+
+  @include from($bp-desktop) {
+    padding-block: $space-6 $layout-section-pad-bottom;
+  }
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  // Tablets: the phone cards, two by two; an odd last one takes the whole row.
+  @include from($bp-tablet) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    @include until($bp-desktop) {
+      .cell:last-child:nth-child(odd) {
+        grid-column: span 2;
+      }
+    }
+  }
+
+  @include from($bp-desktop) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    background: $color-line;
+    border-radius: $radius-lg;
+    box-shadow: inset 0 0 0 1px $color-line;
+
+    &[data-count='4'] {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    // 5 promises: the last one closes the second row, no empty hole.
+    &[data-count='5'] .cell:last-child {
+      grid-column: span 2;
+    }
+  }
+}
+
+.cell {
+  @include card(1, $radius-md);
+
+  display: flex;
+  gap: $layout-tile-pad;
+  padding: $space-4;
+  scroll-margin-top: $space-6;
+
+  @include from($bp-desktop) {
+    flex-direction: column;
+    gap: $space-4;
+    padding: $layout-card-pad-lg;
+    background: $color-surface-0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+// Icon tile — 36 on phones, 40 on desktop with a strong ring.
+.iconBox {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $layout-avatar-md;
+  height: $layout-avatar-md;
+  color: $color-text-high;
+  background: $color-surface-2;
+  border-radius: $radius-md;
+
+  @include from($bp-desktop) {
+    width: $layout-feature-icon;
+    height: $layout-feature-icon;
+    box-shadow: inset 0 0 0 1px $color-line-strong;
+  }
+}
+
+.title {
+  @include type($type-title-sm);
+
+  margin: 0;
+  color: $color-text-high;
+
+  @include from($bp-desktop) {
+    @include type($type-feature-title);
+  }
+}
+
+.text {
+  @include type($type-body-compact);
+
+  margin: $space-1 0 0;
+  color: $color-text-med;
+
+  @include from($bp-desktop) {
+    @include type($type-body-loose);
+
+    margin-top: $space-2;
+  }
+}

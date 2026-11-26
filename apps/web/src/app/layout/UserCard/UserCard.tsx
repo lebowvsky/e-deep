@@ -4,11 +4,12 @@ import type { CurrentDiver } from '@/shared/session/types';
 import { formatDiverLevel, formatFullName, formatInitials } from '@/shared/lib/format';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Icon } from '@/shared/ui/Icon';
+import { LogoutButton } from '../LogoutButton';
 import styles from './UserCard.module.scss';
 
 export interface UserCardProps {
   user: CurrentDiver;
-  /** menu: collapsed user menu (sidebar, Hick) · logout: direct sign-out link (drawer) */
+  /** menu: collapsed user menu (sidebar, Hick) · logout: direct sign-out button (drawer) */
   action?: 'menu' | 'logout';
   onNavigate?: () => void;
 }
@@ -27,9 +28,9 @@ export function UserCard({ user, action = 'menu', onNavigate }: UserCardProps) {
       {action === 'menu' ? (
         <UserMenu onNavigate={onNavigate} />
       ) : (
-        <Link to="/logout" className={styles.action} aria-label="Déconnexion" onClick={onNavigate}>
-          <Icon name="logout" size="md" />
-        </Link>
+        <LogoutButton className={styles.action} aria-label="Déconnexion">
+          {() => <Icon name="logout" size="md" />}
+        </LogoutButton>
       )}
     </div>
   );
@@ -83,10 +84,15 @@ function UserMenu({ onNavigate }: { onNavigate?: (() => void) | undefined }) {
             </Link>
           </li>
           <li>
-            <Link to="/logout" className={styles.menuItem} onClick={close}>
-              <Icon name="logout" size="md" />
-              Déconnexion
-            </Link>
+            {/* Stays open while signing out: a failure leaves the diver where they were. */}
+            <LogoutButton className={styles.menuItem}>
+              {(isPending) => (
+                <>
+                  <Icon name="logout" size="md" />
+                  {isPending ? 'Déconnexion…' : 'Déconnexion'}
+                </>
+              )}
+            </LogoutButton>
           </li>
         </ul>
       )}

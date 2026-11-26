@@ -1,0 +1,56 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · footer — padding 28 80 40, hairline on top; phones: the links alone, 32 20 40.
+.footer {
+  @include page-gutter;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-4 $space-7;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: $space-7 $space-8;
+
+  @include from($bp-desktop) {
+    border-top: 1px solid $color-line;
+  }
+}
+
+// Phones: the links alone (welcome.jsx · WelcomeMobile).
+.footer .brand {
+  display: none;
+
+  @include from($bp-desktop) {
+    display: inline-flex;
+  }
+}
+
+// Rows touch: each link is 44px high itself, so wrapped rows never overlap their targets.
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 $space-5;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  @include from($bp-desktop) {
+    gap: $space-7;
+  }
+}
+
+.link {
+  @include focus-ring;
+  @include type($type-body-compact);
+
+  display: inline-flex;
+  align-items: center;
+  min-height: $layout-hit-target;
+  color: $color-text-low;
+  border-radius: $radius-xs;
+
+  &:hover,
+  &[aria-current='page'] {
+    color: $color-text-high;
+  }
+}

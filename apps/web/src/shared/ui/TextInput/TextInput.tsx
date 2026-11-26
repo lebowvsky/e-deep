@@ -15,6 +15,8 @@ export interface TextInputProps extends Omit<ComponentProps<'input'>, 'size'> {
   end?: ReactNode;
   /** Typeface of the value: `mono` for numbers, dates and times. Default `sans`. */
   font?: 'sans' | 'mono';
+  /** md 44px (forms of the app, default) · lg 48px (sign-in and sign-up, welcome.jsx). */
+  size?: 'md' | 'lg';
   /** Class of the box (the `<input>` itself takes no class). */
   className?: string | undefined;
 }
@@ -29,6 +31,7 @@ export function TextInput({
   icon,
   end,
   font = 'sans',
+  size = 'md',
   className,
   type = 'text',
   readOnly,
@@ -44,7 +47,7 @@ export function TextInput({
 
   return (
     <div
-      className={cx(styles.box, styles[font], className)}
+      className={cx(styles.box, styles[font], size === 'lg' && styles.lg, className)}
       {...fieldBoxState(status, Boolean(isReadOnly || disabled))}
     >
       {icon && <Icon name={icon} size="md" className={styles.icon} />}

@@ -1,6 +1,8 @@
 import type { MeResponse } from '@e-deep/shared';
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
+import { appConfig, type AppConfig } from '@/shared/config/app';
+import { AppConfigContext } from '@/shared/config/appConfigContext';
 import type { ApiClient } from '@/shared/lib/apiClient';
 import { ApiClientContext } from '@/shared/lib/apiClientContext';
 import { sessionKeys } from '@/shared/session/api/meApi';
@@ -30,6 +32,8 @@ export interface TestProvidersProps {
   authServices?: AuthServices;
   /** Shared with a router built by `createRoutes`, so that its loaders read the same cache. */
   queryClient?: QueryClient;
+  /** The product configuration (`features`, `privacy`); the real one by default. */
+  config?: AppConfig;
   children: ReactNode;
 }
 
@@ -44,6 +48,7 @@ export function TestProviders({
   authClient,
   authServices: givenAuthServices,
   queryClient: givenQueryClient,
+  config = appConfig,
   children,
 }: TestProvidersProps) {
   const [defaultSitesRepository] = useState(() => createMemorySitesRepository());
@@ -62,12 +67,14 @@ export function TestProviders({
       },
   );
   return (
-    <ApiClientContext value={client}>
-      <AuthServicesContext value={authServices}>
-        <SitesRepositoryContext value={sitesRepository ?? defaultSitesRepository}>
-          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-        </SitesRepositoryContext>
-      </AuthServicesContext>
-    </ApiClientContext>
+    <AppConfigContext value={config}>
+      <ApiClientContext value={client}>
+        <AuthServicesContext value={authServices}>
+          <SitesRepositoryContext value={sitesRepository ?? defaultSitesRepository}>
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+          </SitesRepositoryContext>
+        </AuthServicesContext>
+      </ApiClientContext>
+    </AppConfigContext>
   );
 }

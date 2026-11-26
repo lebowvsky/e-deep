@@ -5,9 +5,9 @@ import {
   draftKey,
   DRAFT_MAX_AGE_MS,
   isDiveFormValues,
-  purgeAllDrafts,
   storageKeyOf,
 } from './draftStore';
+import { purgeAllDrafts } from './draftPurge';
 
 const DIVER = '0190f5a2-7c1e-7d3a-9b1f-2a4c6e8f0a1b';
 const OTHER_DIVER = '0190f5a2-7c1e-7d3a-9b1f-2a4c6e8f0a1c';

@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
+import { ToastProvider } from '@/shared/ui/Toast';
 import { createTestAppRouter } from '@/test/appRouter';
 import { TestProviders } from '@/test/TestProviders';
 import { fakeApiClient } from '@/test/fakeApiClient';
@@ -16,7 +17,9 @@ function renderAt(path: string) {
       queryClient={queryClient}
       authClient={authClient}
     >
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </TestProviders>,
   );
   return router;
@@ -68,7 +71,7 @@ describe('AppShell — mobile', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Ouvrir le menu' }));
     const dialog = screen.getByRole('dialog', { name: 'Menu' });
-    const logout = within(dialog).getByRole('link', { name: 'Déconnexion' });
+    const logout = within(dialog).getByRole('button', { name: 'Déconnexion' });
 
     logout.focus();
     await user.tab();

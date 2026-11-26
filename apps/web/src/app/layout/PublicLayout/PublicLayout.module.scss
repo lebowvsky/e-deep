@@ -1,0 +1,52 @@
+@use '@/styles/tokens' as *;
+
+// Page background: abyss + discreet radial glows, as in the app frame.
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background-color: $color-abyss;
+  background-image: $gradient-page-mobile;
+  background-repeat: no-repeat;
+
+  @include from($bp-tablet) {
+    background-image: $gradient-page-desktop;
+  }
+}
+
+.skipLink {
+  @include skip-link;
+}
+
+.main {
+  flex: 1;
+  width: 100%;
+
+  // Reached by the skip link to start reading there: no ring around the whole page.
+  &:focus {
+    outline: none;
+  }
+}
+
+// A single readable column (placeholders, legal pages).
+.column {
+  max-width: $layout-content-max-width;
+  padding: $space-7 $space-5;
+  margin-inline: auto;
+}
+
+// Landing page (welcome.jsx): its own glows, and smooth scrolling to the anchors unless the
+// diver asked for less motion.
+.landing {
+  background-image: $gradient-public-mobile;
+
+  @include from($bp-desktop) {
+    background-image: $gradient-public-desktop;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :global(html):has(.landing) {
+    scroll-behavior: smooth;
+  }
+}

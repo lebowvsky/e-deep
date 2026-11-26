@@ -1,23 +1,7 @@
 @use '@/styles/tokens' as *;
 
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: $space-6;
+// The authentication card in the hero's right column (440px, welcome.jsx · AuthCard).
+.card {
   width: 100%;
-  max-width: $layout-content-max-width;
-  padding: $space-6 $space-4;
-  margin-inline: auto;
-
-  @include from($bp-tablet) {
-    padding-block: $space-9;
-  }
-}
-
-.title {
-  @include type($type-h-1);
-
-  @include from($bp-tablet) {
-    @include type($type-display);
-  }
+  max-width: $layout-auth-card-width;
 }

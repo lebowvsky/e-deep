@@ -1,0 +1,23 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · LoginForm — a column, 16px apart.
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+// « Mot de passe oublié ? » — 12/500 accent, right of the label.
+.forgot {
+  @include focus-ring;
+  @include hit-area;
+  @include type($type-caption);
+
+  color: $color-accent;
+  border-radius: $radius-xs;
+
+  &:hover {
+    text-decoration: underline;
+    text-underline-offset: $space-1;
+  }
+}

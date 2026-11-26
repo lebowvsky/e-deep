@@ -39,6 +39,14 @@
   padding: 0 $space-5;
 }
 
+// welcome.jsx · WelcomeMobile — full-width calls to action, 52px, 16px label.
+.xl {
+  @include type($type-button-xl);
+
+  min-height: $layout-cta-height-xl;
+  padding: 0 $space-5;
+}
+
 // Main CTA only: the accent stays rare.
 .primary {
   color: $color-accent-ink;

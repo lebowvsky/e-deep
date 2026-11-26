@@ -73,6 +73,9 @@ export const color = {
   mapOverlay: 'rgba(11, 26, 46, 0.85)', // zone chips
   mapOverlayStrong: 'rgba(11, 26, 46, 0.9)', // coordinates, placing hint, mini map links
   warningLine: 'rgba(231, 178, 74, 0.35)',
+
+  // Landing (welcome.jsx): bezel of the phone frame around the product preview
+  deviceBezel: '#0A1424',
 } as const;
 
 export const font = {
@@ -90,6 +93,7 @@ export const type = {
   bodyMed: { size: 14, lh: 20, w: 500, ls: 0 },
   button: { size: 14, lh: 20, w: 500, ls: -0.1 },
   buttonLg: { size: 15, lh: 20, w: 500, ls: -0.1 },
+  buttonXl: { size: 16, lh: 20, w: 500, ls: -0.1 }, // full-width calls to action on phones (welcome.jsx)
   bodyLoose: { size: 14, lh: 22, w: 400, ls: 0 }, // empty-state explanations
   bodyXl: { size: 16, lh: 24, w: 400, ls: 0 },
   bodySm: { size: 13, lh: 18, w: 500, ls: 0 }, // compact labels (buddy names, avatar initials)
@@ -124,6 +128,17 @@ export const type = {
   titleSm: { size: 15, lh: 20, w: 600, ls: -0.1 }, // site name in the map preview
   panelTitle: { size: 18, lh: 24, w: 600, ls: -0.2 }, // title of the site panel
   metricXs: { size: 16, lh: 20, w: 600, ls: -0.2 }, // mono — figures of the map preview
+  // Auth (welcome.jsx)
+  cardTitle: { size: 22, lh: 28, w: 600, ls: -0.3 }, // title of the auth card
+  bodyCompact: { size: 13, lh: 19, w: 400, ls: 0 }, // error banner, « Rester connecté »
+  // Landing (welcome.jsx)
+  hero: { size: 56, lh: 60, w: 600, ls: -1.6 }, // h1 of the landing page
+  heroSm: { size: 34, lh: 38, w: 600, ls: -1 }, // the same on phones
+  lead: { size: 18, lh: 28, w: 400, ls: 0 }, // paragraph under it
+  sectionTitle: { size: 32, lh: 38, w: 600, ls: -0.6 },
+  featureTitle: { size: 17, lh: 22, w: 600, ls: 0 },
+  bodyLgLoose: { size: 15, lh: 24, w: 400, ls: 0 }, // text of the steps
+  stepIndex: { size: 13, lh: 18, w: 500, ls: 1 }, // mono — « 01 », « 02 », « 03 »
 } as const;
 
 // 4px scale
@@ -148,10 +163,12 @@ export const radius = {
   xs: 4,
   sm: 6,
   segment: 8,
+  screen: 22, // screen inside the phone frame (landing preview)
   md: 10,
   lg: 14,
   xl: 20,
   pill: 999,
+  device: 30, // phone frame of the landing preview
 } as const;
 
 export const shadow = {
@@ -170,6 +187,9 @@ export const shadow = {
   ringSurface2: '0 0 0 2px #1B3156', // overlapping avatars on a hovered row (surface2)
   thumb: '0 0 0 4px rgba(79, 214, 201, 0.14)', // range slider handle
   sheet: 'inset 0 1px 0 rgba(154, 186, 224, 0.18), 0 -20px 50px rgba(0, 0, 0, 0.5)',
+  // Landing preview frames (welcome.jsx · BrowserFrame, PhoneFrame)
+  browserFrame: '0 40px 80px rgba(0, 0, 0, 0.55)',
+  phoneFrame: '0 30px 60px rgba(0, 0, 0, 0.55)',
 } as const;
 
 // Page backgrounds: abyss + two discreet radial glows (dashboard mockups).
@@ -179,6 +199,11 @@ export const gradient = {
   pageDesktop:
     'radial-gradient(1200px 600px at 80% -10%, rgba(79, 214, 201, 0.04), transparent 60%), radial-gradient(900px 500px at 10% 30%, rgba(27, 49, 86, 0.35), transparent 60%)',
   mapEmpty: 'radial-gradient(900px 400px at 50% 60%, rgba(27, 49, 86, 0.35), transparent 70%)',
+  // Landing (welcome.jsx · WelcomeDesktop, WelcomeMobile, final call to action)
+  publicDesktop:
+    'radial-gradient(1100px 700px at 75% 5%, rgba(79, 214, 201, 0.07), transparent 60%), radial-gradient(900px 600px at 5% 20%, rgba(27, 49, 86, 0.45), transparent 60%)',
+  publicMobile: 'radial-gradient(500px 420px at 85% 0%, rgba(79, 214, 201, 0.08), transparent 60%)',
+  ctaPanel: 'radial-gradient(600px 300px at 90% 0%, rgba(79, 214, 201, 0.12), transparent 70%)',
 } as const;
 
 export const motion = {
@@ -187,7 +212,9 @@ export const motion = {
     in: 'cubic-bezier(.5, 0, .75, 0)',
     std: 'cubic-bezier(.4, 0, .2, 1)',
   },
-  dur: { fast: 120, base: 180, slow: 280, toast: 4000 }, // ms (toast: time on screen)
+  // ms (toast: time on screen; announce: quiet time before a live region speaks, e.g. the
+  // password criteria, so that a screen reader is not interrupted at every keystroke)
+  dur: { fast: 120, base: 180, slow: 280, toast: 4000, announce: 1000 },
 } as const;
 
 // Content dimmed while a refresh is in flight.
@@ -197,6 +224,11 @@ export const opacity = {
   spark: 0.7,
   ghost: 0.5, // ghost logbook lines of the empty dive log
   disabled: 0.45, // missing previous / next dive tile (dive-detail.jsx)
+} as const;
+
+// Stacking levels (unitless). The app's bars (10) and drawer (20) still hold their own values.
+export const zIndex = {
+  skipLink: 30, // above everything once focused
 } as const;
 
 export const breakpoint = {
@@ -349,6 +381,30 @@ export const layout = {
   colNumberSm: 52,
   colMeasure: 90, // depth, duration columns of « Tes plongées ici »
   colTeamSm: 110,
+  // Auth (welcome.jsx)
+  inputHeightLg: 48, // fields of the sign-in and sign-up forms
+  authCardWidth: 440,
+  cardPadLg: 28, // auth card (and, later, the landing cards)
+  checkbox: 18,
+  strengthBarHeight: 4, // segments of the password gauge
+  brandMarkLg: 40, // logo of the auth screens
+  brandGlyphLg: 22,
+  // Landing (welcome.jsx)
+  heroPadTop: 56,
+  heroPadBottom: 72,
+  heroTitleMax: 640,
+  heroTextMax: 560, // hero paragraph, section subtitles
+  sectionPadBottom: 96,
+  checkBullet: 22, // ticked circle of the hero list
+  featureIcon: 40,
+  browserBarHeight: 30,
+  browserDot: 9,
+  previewDesktopWidth: 950, // 1440 × 0.66
+  previewPhoneWidth: 225, // 375 × 0.6, overlapping the browser frame
+  previewPhoneWidthSm: 270, // 375 × 0.72, alone on phones
+  previewPhoneOverlapX: 110,
+  previewPhoneOverlapY: 40,
+  ctaHeightXl: 52, // full-width calls to action of the landing page on phones
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.
@@ -386,6 +442,7 @@ export const tokens = {
   gradient,
   motion,
   opacity,
+  zIndex,
   breakpoint,
   layout,
   iconSize,

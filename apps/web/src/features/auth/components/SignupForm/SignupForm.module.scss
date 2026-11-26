@@ -1,0 +1,41 @@
+@use '@/styles/tokens' as *;
+
+// welcome.jsx · SignupForm — a column, 16px apart.
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+// « Se connecter » inside the « compte existant » message.
+.inlineLink {
+  @include focus-ring;
+  @include type($type-caption);
+
+  color: $color-accent;
+  text-decoration: underline;
+  text-underline-offset: $space-1;
+  border-radius: $radius-xs;
+}
+
+// Terms and privacy mention under the button — 12, textLow, centred.
+.legal {
+  @include type($type-field-hint);
+
+  margin: 0;
+  color: $color-text-low;
+  text-align: center;
+}
+
+.legalLink {
+  @include focus-ring;
+
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: $space-1;
+  border-radius: $radius-xs;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}

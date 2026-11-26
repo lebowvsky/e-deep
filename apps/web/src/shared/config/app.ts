@@ -25,12 +25,21 @@ export const features: FeatureFlags = {
 
 export interface PrivacyConfig {
   /**
-   * The privacy promise of the landing page (« Tes données restent à toi »), `null` until its
-   * wording is validated by the product owner: the landing then leaves it out (D45).
+   * Body of the privacy promise of the landing page, under its fixed title « Tes données restent à
+   * toi » (wording validated by the product owner, 2026-11-24). `null`: the landing leaves the
+   * promise out (D45).
    */
   copy: string | null;
 }
 
 export const privacy: PrivacyConfig = {
-  copy: null,
+  copy: 'Ton carnet et tes sites ne sont visibles que par toi, et tes données de plongée ne sont utilisées qu’avec ton consentement.',
 };
+
+/** What the screens read of this configuration, injectable (`AppConfigContext`). */
+export interface AppConfig {
+  features: FeatureFlags;
+  privacy: PrivacyConfig;
+}
+
+export const appConfig: AppConfig = { features, privacy };

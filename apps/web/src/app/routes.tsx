@@ -1,16 +1,24 @@
-import { Navigate, type RouteObject } from 'react-router';
+import type { QueryClient } from '@tanstack/react-query';
+import { Outlet, type RouteObject } from 'react-router';
+import type { FeatureFlags } from '@/shared/config/app';
+import { LEGAL_PAGES, BETA_CONTACT_MESSAGE } from '@/shared/config/publicPages';
+import type { AuthServices } from '@/shared/session/authServices';
+import type { SessionLoaderDependencies } from '@/shared/session/lib/loadSession';
 import { redirectIfAuthenticated } from '@/shared/session/lib/redirectIfAuthenticated';
 import { requireOnboardingStep, requireSession } from '@/shared/session/lib/requireSession';
-import type { SessionLoaderDependencies } from '@/shared/session/lib/loadSession';
-import { AppShell } from './layout/AppShell';
+import { requireSignupOpen } from '@/shared/session/lib/requireSignupOpen';
+import { PublicLayout } from './layout/PublicLayout';
 import type { AppRouteHandle } from './layout/routeHandle';
-import { DashboardPage } from './routes/DashboardPage';
-import { DiveDetailPage } from './routes/DiveDetailPage';
-import { DivesPage } from './routes/DivesPage';
+import { logoutAction, logoutLoader } from './logoutRoute';
+import { ForgotPasswordPage } from './routes/ForgotPasswordPage';
 import { HomePage } from './routes/HomePage';
+import { LegalPlaceholderPage } from './routes/LegalPlaceholderPage';
 import { PlaceholderPage } from './routes/PlaceholderPage';
 import { RouteErrorPage } from './routes/RouteErrorPage';
 import { SessionPending } from './routes/SessionPending';
+
+// Only the public pages are in the entry bundle: every screen of the signed-in app (its frame
+// included) is a `lazy` route, loaded once matched, in parallel with its session loader (D45).
 
 // Dev-only catalogue: `import.meta.env.DEV` is false in prod, so Rolldown drops the import.
 const devRoutes: RouteObject[] = import.meta.env.DEV
@@ -23,6 +31,15 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
       },
     ]
   : [];
+
+const lazyAppShell = async () => ({ Component: (await import('./layout/AppShell')).AppShell });
+const lazyDashboard = async () => ({
+  Component: (await import('./routes/DashboardPage')).DashboardPage,
+});
+const lazyDives = async () => ({ Component: (await import('./routes/DivesPage')).DivesPage });
+const lazyDiveDetail = async () => ({
+  Component: (await import('./routes/DiveDetailPage')).DiveDetailPage,
+});
 
 // The dive form is a large screen opened on demand: its own chunk, loaded when the route matches.
 const lazyDiveForm = async () => ({
@@ -43,6 +60,9 @@ const lazyMap = async () => ({
 // Phones: the map under the top bar, edge to edge, with its own « + Site » (no FAB).
 const mapHandle: AppRouteHandle = { hideFab: true, fullBleed: true };
 
+// Technical page: API health (outside the app frame).
+const lazyStatus = async () => ({ Component: (await import('./routes/StatusPage')).StatusPage });
+
 const placeholder = (path: string, title: string): RouteObject => ({
   path,
   element: <PlaceholderPage title={title} />,
@@ -55,51 +75,97 @@ const standalone = (title: string, message: string) => (
   </main>
 );
 
-export type RouteDependencies = SessionLoaderDependencies;
+export interface RouteDependencies {
+  queryClient: QueryClient;
+  /** The session services of the hooks (the logout action needs all of them). */
+  authServices: AuthServices;
+  /** What the product offers today (`features.signup`: is `/signup` open). */
+  features: Pick<FeatureFlags, 'signup'>;
+}
 
 /**
- * The route table (React Router data mode, D20). The session loaders (D41) get the query client and
- * the auth client injected: the app passes its own, the tests theirs.
+ * The route table (React Router data mode, D20). The session loaders and the logout action (D41)
+ * get the query client and the auth services injected: the app passes its own, the tests theirs.
  */
-export function createRoutes(dependencies: RouteDependencies): RouteObject[] {
+export function createRoutes({
+  queryClient,
+  authServices,
+  features,
+}: RouteDependencies): RouteObject[] {
+  const session: SessionLoaderDependencies = { queryClient, authClient: authServices.authClient };
+
   return [
-    // The landing page arrives with the public pages (lot 6).
-    { index: true, element: <Navigate to="/dashboard" replace /> },
-    // Public: a signed-in diver goes on to `next`. The real page arrives at lot 6.
     {
-      path: '/login',
-      loader: redirectIfAuthenticated(dependencies),
+      // The public entry (D45): `/`, `/login` and `/signup` share one element, which stays mounted
+      // from one to the other (the e-mail typed survives a change of tab). A signed-in diver goes
+      // on to `next` or to their onboarding page.
+      id: 'public-entry',
+      loader: redirectIfAuthenticated(session),
       HydrateFallback: SessionPending,
       errorElement: <RouteErrorPage />,
-      element: standalone('Connexion', 'La page de connexion arrive bientôt.'),
+      Component: HomePage,
+      children: [
+        { index: true },
+        { path: '/login' },
+        // Closed beta (D39): to `/login`, `next` kept.
+        { path: '/signup', loader: requireSignupOpen(features) },
+      ],
     },
-    // Onboarding (D38): a session is needed, a complete profile is not. Real pages at lot 6.
+    {
+      // Public pages readable with or without a session (placeholders: a few lines each).
+      element: (
+        <PublicLayout>
+          <Outlet />
+        </PublicLayout>
+      ),
+      errorElement: <RouteErrorPage />,
+      children: [
+        { path: '/forgot-password', element: <ForgotPasswordPage /> },
+        ...LEGAL_PAGES.map(({ path, title }): RouteObject => ({
+          path,
+          element:
+            path === '/contact' ? (
+              <LegalPlaceholderPage title={title} message={BETA_CONTACT_MESSAGE} />
+            ) : (
+              <LegalPlaceholderPage title={title} />
+            ),
+        })),
+      ],
+    },
+    // Sign-out (D41): a form posts here (`UserCard`); a plain visit signs nobody out.
+    {
+      path: '/logout',
+      loader: logoutLoader,
+      action: logoutAction({ authServices, queryClient }),
+      errorElement: <RouteErrorPage />,
+    },
+    // Onboarding (D38): a session is needed, a complete profile is not. Real pages at lot 6b.
     {
       path: '/welcome',
-      loader: requireOnboardingStep(dependencies, 'profile-required'),
+      loader: requireOnboardingStep(session, 'profile-required'),
       HydrateFallback: SessionPending,
       errorElement: <RouteErrorPage />,
       element: standalone('Bienvenue', 'Le premier lancement de ton carnet arrive bientôt.'),
     },
     {
       path: '/consent',
-      loader: requireOnboardingStep(dependencies, 'consent-required'),
+      loader: requireOnboardingStep(session, 'consent-required'),
       HydrateFallback: SessionPending,
       errorElement: <RouteErrorPage />,
       element: standalone('Consentement', 'Le renouvellement de ton consentement arrive bientôt.'),
     },
     {
       // The app: a session and a complete profile, or a redirect (`requireSession`).
-      loader: requireSession(dependencies),
+      loader: requireSession(session),
       HydrateFallback: SessionPending,
       errorElement: <RouteErrorPage />,
-      element: <AppShell />,
+      lazy: lazyAppShell,
       children: [
-        { path: '/dashboard', element: <DashboardPage /> },
-        { path: '/dives', element: <DivesPage /> },
+        { path: '/dashboard', lazy: lazyDashboard },
+        { path: '/dives', lazy: lazyDives },
         // Also `/dives/new?from=:id` (duplicate); the static segment wins over `:diveId`.
         { path: '/dives/new', lazy: lazyDiveForm, handle: diveFormHandle },
-        { path: '/dives/:diveId', element: <DiveDetailPage /> },
+        { path: '/dives/:diveId', lazy: lazyDiveDetail },
         { path: '/dives/:diveId/edit', lazy: lazyDiveForm, handle: diveFormHandle },
         { path: '/map', lazy: lazyMap, handle: mapHandle },
         { path: '/sites/:siteId', lazy: lazySiteDetail, handle: siteDetailHandle },
@@ -108,15 +174,13 @@ export function createRoutes(dependencies: RouteDependencies): RouteObject[] {
         placeholder('/search', 'Recherche'),
         placeholder('/notifications', 'Notifications'),
         placeholder('/settings', 'Paramètres'),
-        placeholder('/logout', 'Déconnexion'),
         {
           path: '*',
           element: <PlaceholderPage title="Page introuvable" message="Cette page n’existe pas." />,
         },
       ],
     },
-    // Technical page: API health (outside the app frame).
-    { path: '/status', element: <HomePage /> },
+    { path: '/status', lazy: lazyStatus },
     ...devRoutes,
   ];
 }

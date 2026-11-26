@@ -1,14 +1,10 @@
 import type { DataRouter } from 'react-router';
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
-import { useAuth } from '@/features/auth/hooks/useAuth';
-import {
-  createLocalDraftStore,
-  purgeAllDrafts,
-  storageKeyOf,
-} from '@/features/dives/form/draftStore';
+import { purgeAllDrafts } from '@/features/dives/form/draftPurge';
+import { createLocalDraftStore, storageKeyOf } from '@/features/dives/form/draftStore';
 import { validValues } from '@/features/dives/mocks/diveFormFixture';
 import { createFakeDiveApi } from '@/features/dives/mocks/fakeDiveApi';
 import { mockDiveLogResponse } from '@/features/dives/mocks/diveLogResponse';
@@ -17,7 +13,8 @@ import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { sessionKeys } from '@/shared/session/api/meApi';
 import type { AuthClient } from '@/shared/session/authClient';
 import { createAuthBroadcast } from '@/shared/session/lib/authBroadcast';
-import { createFakeAuthClient } from '@/shared/session/mocks/fakeAuthClient';
+import { endSession } from '@/shared/session/lib/endSession';
+import { createFakeAuthClient, FAKE_CREDENTIALS } from '@/shared/session/mocks/fakeAuthClient';
 import { ME_FIXTURE } from '@/shared/session/mocks/me';
 import { createHttpSitesRepository } from '@/shared/sites/api/httpSitesRepository';
 import { ToastProvider } from '@/shared/ui/Toast';
@@ -61,7 +58,10 @@ function renderApp(
     },
   });
   const { queryClient } = app;
-  const { router } = createTestAppRouter(path, { queryClient, authClient });
+  const { router } = createTestAppRouter(path, {
+    queryClient,
+    authServices: app.authServices,
+  });
   holder.router = router;
   render(
     <TestProviders
@@ -111,7 +111,9 @@ describe('protected routes', () => {
   it('send a visitor without session to /login, with the page as next', async () => {
     const { router } = renderApp('/dives?region=corse', { session: null });
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Connexion' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' }),
+    ).toBeTruthy();
     expect(locationOf(router)).toBe(`/login?next=${encodeURIComponent('/dives?region=corse')}`);
   });
 
@@ -155,7 +157,9 @@ describe('/login', () => {
   it('is shown to a visitor', async () => {
     renderApp('/login', { session: null });
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Connexion' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' }),
+    ).toBeTruthy();
   });
 });
 
@@ -208,7 +212,9 @@ describe('session lost while a page holding the diver is mounted', () => {
     await queryClient.invalidateQueries({ queryKey: DIVE_LOG_QUERY_KEY });
 
     await waitFor(() => expect(locationOf(router)).toBe('/login?next=%2Fdives%2Fnew'));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Connexion' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' }),
+    ).toBeTruthy();
     errorElement.stop();
     expect(errorElement.shown).not.toHaveBeenCalled();
     // Only the login page's own check: the mounted form never asked for `/me` again.
@@ -282,19 +288,183 @@ describe('logout wiring of the app', () => {
     const told = vi.fn();
     otherTab.onLogout(told);
 
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: ({ children }) => (
-        <TestProviders
-          client={fakeApiClient({})}
-          queryClient={app.queryClient}
-          authServices={app.authServices}
-        >
-          {children}
-        </TestProviders>
-      ),
-    });
-    await act(() => result.current.logout());
+    // The app's own services (`createAppSession`): its draft purge and its channel.
+    await endSession(app.authServices, app.queryClient);
 
+    expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).toBeNull();
+    expect(told).toHaveBeenCalledOnce();
+  });
+});
+
+describe('logout from the app (route action)', () => {
+  const draft = () => ({
+    values: validValues(),
+    ids: { eventId: 'e1', newSiteId: 's1' },
+    savedAt: Date.now(),
+  });
+
+  /** The dashboard's calls hang while signed in, and answer 401 once the session is closed. */
+  function closingApi(authClient: ReturnType<typeof createFakeAuthClient>) {
+    return vi.fn(() =>
+      authClient.session === null
+        ? Promise.reject(new ApiError('http', 'HTTP 401', { status: 401, code: 'unauthenticated' }))
+        : new Promise<never>(() => undefined),
+    );
+  }
+
+  it('signs out from the drawer: cache, drafts and other tabs cleared, then the landing page', async () => {
+    localStorage.clear();
+    const user = userEvent.setup();
+    const authClient = createFakeAuthClient();
+    const { router, queryClient, otherTab } = renderApp('/dashboard', {
+      authClient,
+      get: closingApi(authClient),
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Tableau de bord' });
+    await createLocalDraftStore(ME_FIXTURE.diver.id).save('new', draft());
+    const told = vi.fn();
+    otherTab.onLogout(told);
+    const navigate = vi.spyOn(router, 'navigate');
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', {
+        name: 'Déconnexion',
+      }),
+    );
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Toutes tes plongées, dans un seul carnet.',
+      }),
+    ).toBeTruthy();
+    expect(locationOf(router)).toBe('/');
+    expect(authClient.session).toBeNull();
+    expect(queryClient.getQueryData(sessionKeys.me())).toBeUndefined();
+    expect(queryClient.getQueryCache().find({ queryKey: ['dashboard'] })).toBeUndefined();
+    expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).toBeNull();
+    expect(told).toHaveBeenCalledOnce();
+    // Straight to the landing page: the dashboard's 401 never sent the diver to the login page.
+    const toLogin = navigate.mock.calls.some(
+      ([to]) => typeof to === 'string' && to.startsWith('/login'),
+    );
+    expect(toLogin).toBe(false);
+  });
+
+  it('keeps everything and says so when the API cannot be reached', async () => {
+    localStorage.clear();
+    const user = userEvent.setup();
+    const authClient = createFakeAuthClient();
+    vi.spyOn(authClient, 'logout').mockRejectedValue(
+      new ApiError('network', 'The API is unreachable.'),
+    );
+    const { router, queryClient, otherTab } = renderApp('/dashboard', {
+      authClient,
+      get: () => new Promise<never>(() => undefined),
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Tableau de bord' });
+    await createLocalDraftStore(ME_FIXTURE.diver.id).save('new', draft());
+    const told = vi.fn();
+    otherTab.onLogout(told);
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', {
+        name: 'Déconnexion',
+      }),
+    );
+
+    expect(
+      await screen.findByText('La déconnexion n’a pas abouti. Vérifie ton réseau et réessaie.'),
+    ).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/dashboard');
+    expect(queryClient.getQueryData(sessionKeys.me())).toEqual(ME_FIXTURE);
+    expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).not.toBeNull();
+    expect(told).not.toHaveBeenCalled();
+  });
+
+  it('still says so when the drawer was closed before the API answered (phones)', async () => {
+    const user = userEvent.setup();
+    const authClient = createFakeAuthClient();
+    let fail: (error: Error) => void = () => undefined;
+    vi.spyOn(authClient, 'logout').mockReturnValue(
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      }),
+    );
+    renderApp('/dashboard', { authClient, get: () => new Promise<never>(() => undefined) });
+    await screen.findByRole('heading', { level: 1, name: 'Tableau de bord' });
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', {
+        name: 'Déconnexion',
+      }),
+    );
+    // The drawer closes (and unmounts its user card) while the sign-out is under way.
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Menu' })).toBeNull();
+    act(() => fail(new ApiError('network', 'The API is unreachable.')));
+
+    expect(
+      await screen.findByText('La déconnexion n’a pas abouti. Vérifie ton réseau et réessaie.'),
+    ).toBeTruthy();
+  });
+});
+
+describe('a visit, from the sign-in to the sign-out (fake server)', () => {
+  it('signs in from a protected page, comes back to it, then signs out to the landing page', async () => {
+    localStorage.clear();
+    const user = userEvent.setup();
+    const authClient = createFakeAuthClient({ session: null });
+    const { router, queryClient, otherTab } = renderApp('/dives', {
+      authClient,
+      get: vi.fn().mockResolvedValue(mockDiveLogResponse),
+    });
+
+    // No session: the sign-in screen, the page kept as next.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Content de te revoir' }),
+    ).toBeTruthy();
+    expect(locationOf(router)).toBe('/login?next=%2Fdives');
+
+    await user.type(screen.getByLabelText('E-mail'), FAKE_CREDENTIALS.email);
+    await user.type(
+      screen.getByLabelText('Mot de passe', { selector: 'input' }),
+      `${FAKE_CREDENTIALS.password}{Enter}`,
+    );
+
+    // Signed in: back to the page asked for, without a second sign-in.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mes plongées' })).toBeTruthy();
+    expect(locationOf(router)).toBe('/dives');
+    expect(queryClient.getQueryData(sessionKeys.me())).toEqual(ME_FIXTURE);
+    await createLocalDraftStore(ME_FIXTURE.diver.id).save('new', {
+      values: validValues(),
+      ids: { eventId: 'e1', newSiteId: 's1' },
+      savedAt: Date.now(),
+    });
+    const told = vi.fn();
+    otherTab.onLogout(told);
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', {
+        name: 'Déconnexion',
+      }),
+    );
+
+    // Signed out: the landing page, nothing of the session left here nor on the device.
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Toutes tes plongées, dans un seul carnet.',
+      }),
+    ).toBeTruthy();
+    expect(locationOf(router)).toBe('/');
+    expect(authClient.session).toBeNull();
+    expect(queryClient.getQueryData(sessionKeys.me())).toBeUndefined();
+    expect(queryClient.getQueryCache().find({ queryKey: DIVE_LOG_QUERY_KEY })).toBeUndefined();
     expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).toBeNull();
     expect(told).toHaveBeenCalledOnce();
   });

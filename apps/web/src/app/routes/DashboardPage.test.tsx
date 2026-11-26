@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { dashboardResponse } from '@/features/dashboard/api/dashboardResponse.fixture';
 import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import type { MapViewProps } from '@/shared/ui/MapView';
+import { ToastProvider } from '@/shared/ui/Toast';
 import { createTestAppRouter } from '@/test/appRouter';
 import { TestProviders } from '@/test/TestProviders';
 import { fakeApiClient } from '@/test/fakeApiClient';
@@ -21,7 +22,9 @@ function renderAt(path: string, get: ApiClient['get'] = vi.fn()) {
       queryClient={queryClient}
       authClient={authClient}
     >
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </TestProviders>,
   );
 }
@@ -54,7 +57,8 @@ describe('DashboardPage', () => {
     renderAt('/dashboard?state=ready');
     expect(await screen.findByRole('list', { name: 'Chiffres clés' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: '6 palanquées régulières' })).toBeTruthy();
-    expect(screen.queryByRole('status')).toBeNull();
+    // No loading state left (the toasts' live region, always there, is another status).
+    expect(screen.queryByText('Chargement du tableau de bord')).toBeNull();
   });
 
   it('shows the dashboard served by the API', async () => {

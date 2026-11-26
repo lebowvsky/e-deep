@@ -1,0 +1,12 @@
+@use '@/styles/tokens' as *;
+
+// The form only carries the submission: its button lays out as if it were alone.
+.form {
+  display: contents;
+}
+
+// Signing out: dimmed and busy, like the other submit buttons (`Button`).
+.button[aria-disabled='true'] {
+  cursor: progress;
+  opacity: $opacity-busy;
+}

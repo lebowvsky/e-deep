@@ -1,5 +1,5 @@
 import { IconButton, IconLink } from '@/shared/ui/IconButton';
-import { Brand } from '../Brand';
+import { Brand } from '@/shared/ui/Brand';
 import styles from './TopBar.module.scss';
 
 export interface TopBarProps {

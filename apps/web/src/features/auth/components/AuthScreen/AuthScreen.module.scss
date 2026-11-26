@@ -1,0 +1,78 @@
+@use '@/styles/tokens' as *;
+
+.screen {
+  min-height: 100dvh;
+  background-color: $color-abyss;
+  background-image: $gradient-public-mobile;
+  background-repeat: no-repeat;
+}
+
+// welcome.jsx · LoginMobile header — padding 14 12 14 10, « ‹ Accueil » 44px high.
+.header {
+  display: flex;
+  align-items: center;
+  padding: $layout-top-bar-pad-y $space-3 $layout-top-bar-pad-y $space-2;
+}
+
+.back {
+  @include focus-ring;
+  @include type($type-body-med);
+
+  display: inline-flex;
+  gap: $space-1;
+  align-items: center;
+  min-height: $layout-hit-target;
+  padding: 0 $space-2;
+  color: $color-text-high;
+  border-radius: $radius-sm;
+}
+
+// Content — padding 16 20, the form 28 under the subtitle, the way out 24 under the form.
+.content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: $layout-auth-card-width;
+  padding: $space-4 $space-5 $space-8;
+  margin-inline: auto;
+
+  // Focused on arrival only to start reading there: no ring around the whole page.
+  &:focus {
+    outline: none;
+  }
+}
+
+.title {
+  @include type($type-h-1);
+
+  margin: $space-5 0 $layout-field-gap;
+  color: $color-text-high;
+}
+
+.subtitle {
+  @include type($type-body-lg);
+
+  margin: 0;
+  color: $color-text-med;
+}
+
+.form {
+  margin-top: $space-7;
+}
+
+.footer {
+  @include type($type-body);
+
+  margin: $space-6 0 0;
+  color: $color-text-med;
+  text-align: center;
+
+  // The way to the other screen — accent, 500.
+  a {
+    @include focus-ring;
+    @include type($type-body-med);
+
+    color: $color-accent;
+    border-radius: $radius-xs;
+  }
+}

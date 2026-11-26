@@ -4,7 +4,7 @@ import { useBodyScrollLock } from '@/shared/hooks/useBodyScrollLock';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { IconButton } from '@/shared/ui/IconButton';
 import { Overline } from '@/shared/ui/Overline';
-import { Brand } from '../Brand';
+import { Brand } from '@/shared/ui/Brand';
 import { MAIN_NAV_LABEL, NAV_ENTRIES } from '../navigation';
 import { NavItem } from '../NavItem';
 import { UserCard } from '../UserCard';

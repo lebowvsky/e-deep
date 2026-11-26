@@ -1,5 +1,5 @@
 import type { DataRouter } from 'react-router';
-import { purgeAllDrafts } from '@/features/dives/form/draftStore';
+import { purgeAllDrafts } from '@/features/dives/form/draftPurge';
 import { createQueryClient } from '@/shared/lib/queryClient';
 import type { AuthClient } from '@/shared/session/authClient';
 import type { AuthServices } from '@/shared/session/authServices';
