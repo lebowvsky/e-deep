@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # A new push supersedes a PR run; runs on main all finish, so each merge keeps its status.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  static:
+    name: Format, lint, typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+  test:
+    name: Unit and e2e tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm test
+
+  build:
+    name: Build and public bundle check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm build
+      # `/` must not ship the signed-in app nor any dev-only module (builds on its own).
+      - run: pnpm --filter web run check:public-bundle
+
+  test-db:
+    name: Database tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    services:
+      postgres:
+        # Same image as docker-compose.yml. Throwaway credentials: the container lives for this job only.
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: edeep
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: edeep
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U edeep -d edeep"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # The suite drops and recreates `<DATABASE_NAME>_test` next to this database.
+      - run: pnpm --filter api run test:db
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: '5432'
+          DATABASE_USER: edeep
+          DATABASE_PASSWORD: ci-only
+          DATABASE_NAME: edeep
