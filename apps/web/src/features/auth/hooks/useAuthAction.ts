@@ -1,5 +1,10 @@
 import { startTransition, useActionState, useRef } from 'react';
-import { toSubmitFailure, type SubmitFailure, type SubmittedValues } from '../lib/authErrors';
+import {
+  toSubmitFailure,
+  type PasswordRole,
+  type SubmitFailure,
+  type SubmittedValues,
+} from '../lib/authErrors';
 import { useCountdown } from './useCountdown';
 
 /** The last submission's outcome; `count` tells two identical failures apart (re-announced). */
@@ -15,6 +20,8 @@ export interface UseAuthActionOptions<V extends SubmittedValues> {
   run: (values: V) => Promise<void>;
   /** Called with each failure, before it is shown (e.g. clear the password). */
   onFailure?: (failure: SubmitFailure) => void;
+  /** How a refusal of the `password` field reads (`toSubmitFailure`); default `new`. */
+  passwordRole?: PasswordRole;
 }
 
 const NO_ATTEMPT: AuthAttempt = { failure: null, count: 0 };
@@ -31,6 +38,7 @@ export function useAuthAction<V extends SubmittedValues>({
   read,
   run,
   onFailure,
+  passwordRole,
 }: UseAuthActionOptions<V>) {
   // Set at once by `submit`, before `isPending` reaches a render: two submits in the same tick
   // (double click, Entrée held) send one request.
@@ -44,7 +52,7 @@ export function useAuthAction<V extends SubmittedValues>({
       } catch (error) {
         // The refused values (password included) stay in this state until the next submission,
         // in memory only: they say which field the API refused, never logged nor stored.
-        const failure = toSubmitFailure(error, values, Date.now());
+        const failure = toSubmitFailure(error, values, Date.now(), passwordRole);
         onFailure?.(failure);
         return { failure, count: previous.count + 1 };
       } finally {

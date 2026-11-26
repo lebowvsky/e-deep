@@ -10,12 +10,8 @@ import {
   Matches,
   Max,
   Min,
-  Validate,
-  ValidatorConstraint,
   validateSync,
-  type ValidationArguments,
   type ValidationError,
-  type ValidatorConstraintInterface,
 } from 'class-validator';
 import { DEFAULT_PURGE_HORIZON_DAYS } from '../common/sync/sync-settings';
 
@@ -27,22 +23,6 @@ const MAX_TRUST_PROXY_HOPS = 10;
 export const NODE_ENVIRONMENTS = ['development', 'test', 'production'] as const;
 
 export type NodeEnvironment = (typeof NODE_ENVIRONMENTS)[number];
-
-/**
- * Refuses the development authentication stub in production: the API must not boot with it.
- * The message names the variables only, never their values.
- */
-@ValidatorConstraint({ name: 'devAuthStubForbiddenInProduction' })
-class DevAuthStubForbiddenInProduction implements ValidatorConstraintInterface {
-  validate(enabled: unknown, args: ValidationArguments): boolean {
-    const { NODE_ENV } = args.object as Partial<EnvironmentVariables>;
-    return !(enabled === true && NODE_ENV === 'production');
-  }
-
-  defaultMessage(): string {
-    return 'DEV_AUTH_STUB must not be enabled when NODE_ENV is production';
-  }
-}
 
 /** Variables required to reach the database. Shared by the Nest app and the TypeORM CLI. */
 export class DatabaseEnvironment {
@@ -70,7 +50,7 @@ export class DatabaseEnvironment {
 
 /** Every variable the API reads. Validated once at startup by `ConfigModule`. */
 export class EnvironmentVariables extends DatabaseEnvironment {
-  /** Required: `development`, `test` or `production`. `production` forbids `DEV_AUTH_STUB`. */
+  /** Required: `development`, `test` or `production`. */
   @IsIn(NODE_ENVIRONMENTS)
   NODE_ENV: NodeEnvironment;
 
@@ -134,19 +114,6 @@ export class EnvironmentVariables extends DatabaseEnvironment {
   })
   @IsBoolean()
   REGISTRATION_ENABLED: boolean = false;
-
-  /**
-   * DEVELOPMENT ONLY, removed in auth lot 6 (D44): when `true`, a web request without any session
-   * cookie acts for the first diver created (`SessionGuard`, `DevAuthStub`), onboarding checks
-   * included. Any other value, or no value, disables it. Refused when `NODE_ENV=production`.
-   */
-  @Transform(({ obj }: { obj: Record<string, unknown> }) => {
-    const raw = obj['DEV_AUTH_STUB'];
-    return raw === true || raw === 'true';
-  })
-  @IsBoolean()
-  @Validate(DevAuthStubForbiddenInProduction)
-  DEV_AUTH_STUB: boolean = false;
 }
 
 /** Thrown when the environment does not match its schema. Its message is safe to log. */

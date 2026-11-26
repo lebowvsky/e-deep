@@ -1,0 +1,50 @@
+@use 'sass:list';
+@use '@/styles/tokens' as *;
+
+.consent {
+  display: flex;
+  flex-direction: column;
+  gap: $layout-field-gap;
+  align-items: flex-start;
+}
+
+// A text of several lines: the box sits on its first line.
+.row {
+  align-items: flex-start;
+}
+
+// Same look as the messages of a `FormField`.
+.error {
+  @include type($type-field-hint);
+
+  display: flex;
+  gap: $layout-field-gap;
+  align-items: flex-start;
+  margin: 0;
+  color: $color-danger;
+}
+
+// As tall as the first line of the message: the square glyph is centred on it.
+.icon {
+  flex-shrink: 0;
+  height: list.nth($type-field-hint, 2);
+}
+
+.more {
+  @include focus-ring;
+  @include hit-area;
+  @include type($type-caption);
+
+  color: $color-accent;
+  text-decoration: underline;
+  text-underline-offset: $space-1;
+  border-radius: $radius-xs;
+
+  &:hover {
+    color: $color-text-high;
+  }
+}
+
+.srOnly {
+  @include visually-hidden;
+}

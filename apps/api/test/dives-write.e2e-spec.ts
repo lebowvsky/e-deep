@@ -30,7 +30,7 @@ const SAVED: DiveWriteResponse = {
 
 /** The orchestration has its own unit and database tests: here, the HTTP contract only. */
 const diveWriteService = { create: jest.fn(), replace: jest.fn() };
-/** The session cookie of the request; `undefined`: none (the `DEV_AUTH_STUB` is off). */
+/** The session cookie of the request; `undefined`: none. */
 let cookie: string | undefined;
 
 describe('/api/dives writes (e2e)', () => {

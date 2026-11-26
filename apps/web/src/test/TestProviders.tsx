@@ -64,6 +64,7 @@ export function TestProviders({
         // No channel: a test never talks to other tabs.
         broadcast: createAuthBroadcast(() => null),
         purgeDeviceData: () => undefined,
+        onSessionLost: () => undefined,
       },
   );
   return (

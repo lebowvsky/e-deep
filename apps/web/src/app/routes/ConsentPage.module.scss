@@ -1,0 +1,22 @@
+@use '@/styles/tokens' as *;
+
+// Under a separator: the refusal, and what it means.
+.refusal {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding-top: $space-6;
+  margin-top: $space-6;
+  border-top: 1px solid $color-line;
+}
+
+.text {
+  @include type($type-body);
+
+  margin: 0;
+  color: $color-text-med;
+}
+
+.delete {
+  width: 100%;
+}

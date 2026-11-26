@@ -69,6 +69,60 @@ describe('httpAuthClient — calls', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toEqual(new URL('http://app.test/api/auth/logout'));
   });
 
+  it('lists the certification levels', async () => {
+    const levels = { levels: [{ id: 'l1', agency: 'FFESSM', code: 'N1', label: 'Niveau 1' }] };
+    const fetchMock = stubFetch(() => Response.json(levels));
+
+    await expect(authClient.certificationLevels()).resolves.toEqual(levels);
+    expect(fetchMock.mock.calls[0]?.[0]).toEqual(
+      new URL('http://app.test/api/certification-levels'),
+    );
+  });
+
+  it('refuses a level list of the wrong shape', async () => {
+    stubFetch(() => Response.json({ levels: [{ id: 'l1' }] }));
+
+    await expect(authClient.certificationLevels()).rejects.toMatchObject({
+      kind: 'invalid-response',
+    });
+  });
+
+  it.each([
+    [
+      'changePassword',
+      () => authClient.changePassword({ currentPassword: 'a', newPassword: 'b' }),
+      'me/password',
+      'PUT',
+      { currentPassword: 'a', newPassword: 'b' },
+    ],
+    ['logoutAll', () => authClient.logoutAll(), 'auth/logout-all', 'POST', undefined],
+    [
+      'deleteAccount',
+      () => authClient.deleteAccount({ password: 'p' }),
+      'me',
+      'DELETE',
+      { password: 'p' },
+    ],
+  ])('%s calls /api/%s and resolves on a 204', async (_label, call, path, method, body) => {
+    const fetchMock = stubFetch(() => new Response(null, { status: 204 }));
+
+    await expect(call()).resolves.toBeUndefined();
+    expect(fetchMock.mock.calls[0]?.[0]).toEqual(new URL(`http://app.test/api/${path}`));
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe(method);
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+      body === undefined ? undefined : JSON.stringify(body),
+    );
+  });
+
+  it('maps a wrong password on deletion to invalid-credentials', async () => {
+    stubFetch(refusal(401, 'invalid-credentials'));
+
+    const error: unknown = await authClient
+      .deleteAccount({ password: 'p' })
+      .catch((e: unknown) => e);
+    expect(isAuthFailure(error, 'invalid-credentials')).toBe(true);
+  });
+
   it('refuses a /me of the wrong shape', async () => {
     stubFetch(() => Response.json({ ...ME_FIXTURE, onboarding: 'maybe' }));
 

@@ -3,7 +3,10 @@
 // fake (`mocks/fakeAuthClient.ts`), never bundled as a simulated session. No `refresh`: the session
 // is an opaque `HttpOnly` cookie (D33), JS never holds a token.
 import type {
+  CertificationLevelListResponse,
+  ChangePasswordRequest,
   ConsentGrantRequest,
+  DeleteAccountRequest,
   LoginRequest,
   MeResponse,
   OnboardingRequest,
@@ -24,6 +27,17 @@ export interface AuthClient {
   completeOnboarding(request: OnboardingRequest): Promise<MeResponse>;
   /** `POST /api/me/consents`: re-consent to the current policy version. */
   grantConsent(request: ConsentGrantRequest): Promise<MeResponse>;
+  /** `GET /api/certification-levels`: the levels selectable at `/welcome`. */
+  certificationLevels(options?: RequestOptions): Promise<CertificationLevelListResponse>;
+  /**
+   * `PUT /api/me/password`: the other sessions are closed, this one goes on (the API sets its new
+   * cookie). `invalid-credentials` when the current password is wrong.
+   */
+  changePassword(request: ChangePasswordRequest): Promise<void>;
+  /** `POST /api/auth/logout-all`: closes every session of the account, this one included. */
+  logoutAll(): Promise<void>;
+  /** `DELETE /api/me`: erases the account and its logbook (D38). `invalid-credentials` on a wrong password. */
+  deleteAccount(request: DeleteAccountRequest): Promise<void>;
 }
 
 /** An expected refusal of an auth call, one variant per API code (docs/plans/auth.md §3). */

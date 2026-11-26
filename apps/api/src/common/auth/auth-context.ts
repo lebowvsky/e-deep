@@ -2,7 +2,6 @@ import type { AccountRole } from '@e-deep/shared';
 import type { Request } from 'express';
 import type { SessionAudience } from '../../modules/auth/session-audiences';
 import type { ResolvedSession } from '../../modules/auth/session.service';
-import { UnauthenticatedError } from '../errors/domain-errors';
 import { asDiverId, type DiverId } from './diver-id';
 
 /**
@@ -16,11 +15,8 @@ export interface AuthContext {
   readonly diverId: DiverId | null;
   readonly role: AccountRole;
   readonly audience: SessionAudience;
-  /**
-   * The session behind the request; `null` only for the `DEV_AUTH_STUB` fallback, which has none
-   * (removed in auth lot 6). Routes that rotate or revoke the caller's session refuse it.
-   */
-  readonly sessionId: string | null;
+  /** The session behind the request (rotated or ended by the password and logout routes). */
+  readonly sessionId: string;
 }
 
 /** The context of a live session: the only production place where a `DiverId` is minted. */
@@ -31,41 +27,6 @@ export function authContextOfSession(session: ResolvedSession): AuthContext {
     role: session.role,
     audience: session.audience,
     sessionId: session.sessionId,
-  };
-}
-
-/**
- * The session of a route that rotates or ends it (`PUT /me/password`, `DELETE /me`,
- * `POST /auth/logout-all`).
- *
- * @throws {UnauthenticatedError} for the `DEV_AUTH_STUB` fallback (until lot 6): there is no
- *   session to rotate or end, so these routes need a real sign-in.
- */
-export function requireSessionId(auth: AuthContext): string {
-  if (auth.sessionId === null) {
-    throw new UnauthenticatedError();
-  }
-  return auth.sessionId;
-}
-
-/** The diver account the `DEV_AUTH_STUB` fallback acts for (`DevAuthStub`). */
-export interface DevStubAccount {
-  readonly accountId: string;
-  readonly diverId: string;
-}
-
-/**
- * DEVELOPMENT ONLY (until auth lot 6): the context of the first diver, without a session. Built by
- * the `SessionGuard` only when no web cookie is presented, `DEV_AUTH_STUB=true` and
- * `NODE_ENV≠production`.
- */
-export function devStubAuthContext(account: DevStubAccount): AuthContext {
-  return {
-    accountId: account.accountId,
-    diverId: asDiverId(account.diverId),
-    role: 'diver',
-    audience: 'web',
-    sessionId: null,
   };
 }
 

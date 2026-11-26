@@ -1,0 +1,21 @@
+@use '@/styles/tokens' as *;
+
+// One column of cards, its reading width bounded on wide screens.
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  width: 100%;
+  max-width: $layout-settings-max-width;
+
+  @include from($bp-tablet) {
+    gap: $space-6;
+  }
+}
+
+.title {
+  @include type($type-h-1);
+
+  margin: 0;
+  color: $color-text-high;
+}

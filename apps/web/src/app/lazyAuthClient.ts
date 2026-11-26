@@ -15,5 +15,9 @@ export function lazyAuthClient(load: () => Promise<AuthClient>): AuthClient {
     logout: () => client().then((c) => c.logout()),
     completeOnboarding: (request) => client().then((c) => c.completeOnboarding(request)),
     grantConsent: (request) => client().then((c) => c.grantConsent(request)),
+    certificationLevels: (options) => client().then((c) => c.certificationLevels(options)),
+    changePassword: (request) => client().then((c) => c.changePassword(request)),
+    logoutAll: () => client().then((c) => c.logoutAll()),
+    deleteAccount: (request) => client().then((c) => c.deleteAccount(request)),
   };
 }

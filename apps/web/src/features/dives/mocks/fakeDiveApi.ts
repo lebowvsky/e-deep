@@ -278,6 +278,10 @@ export function createFakeDiveApi({
       requests.push({ method: 'POST', path, body });
       return Promise.reject(notFound());
     },
+    putNoContent(path, body) {
+      requests.push({ method: 'PUT', path, body });
+      return Promise.reject(notFound());
+    },
     delete(path) {
       requests.push({ method: 'DELETE', path });
       if (!sitesApi.handles(path)) return Promise.reject(notFound());

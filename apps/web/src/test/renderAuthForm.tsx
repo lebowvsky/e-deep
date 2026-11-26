@@ -56,6 +56,7 @@ export function renderAuthForm(
         authClient,
         broadcast: createAuthBroadcast(() => null),
         purgeDeviceData: () => undefined,
+        onSessionLost: () => undefined,
       }}
     >
       <RouterProvider router={router} />

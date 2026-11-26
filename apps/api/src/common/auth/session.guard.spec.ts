@@ -3,7 +3,6 @@ import { Controller, Get, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request, Response } from 'express';
 import type { AppConfigService } from '../../config/app-config.service';
-import type { NodeEnvironment } from '../../config/environment';
 import type { OnboardingService } from '../../modules/accounts/onboarding.service';
 import type { ResolvedSession, SessionService } from '../../modules/auth/session.service';
 import {
@@ -14,7 +13,6 @@ import {
 } from '../errors/domain-errors';
 import { AllowIncompleteProfile } from './allow-incomplete-profile.decorator';
 import { authContextOf } from './auth-context';
-import type { DevAuthStub } from './dev-auth-stub';
 import { Public } from './public.decorator';
 import { Roles } from './roles.decorator';
 import { SessionCookies } from './session-cookie';
@@ -93,27 +91,15 @@ const AMBIGUOUS: Route = [AmbiguousController, 'list'];
 const resolve = jest.fn<Promise<ResolvedSession | null>, [string, string]>();
 const touch = jest.fn<Promise<boolean>, [ResolvedSession]>();
 const statusOf = jest.fn<Promise<string>, [string]>();
-const firstDiverAccount = jest.fn<Promise<{ accountId: string; diverId: string } | null>, []>();
 
-interface GuardSettings {
-  readonly devAuthStub?: boolean;
-  readonly nodeEnv?: NodeEnvironment;
-}
-
-function guard({ devAuthStub = false, nodeEnv = 'development' }: GuardSettings = {}): SessionGuard {
-  const values: Record<string, unknown> = {
-    DEV_AUTH_STUB: devAuthStub,
-    NODE_ENV: nodeEnv,
-    SESSION_COOKIE_SECURE: false,
-  };
+function guard(): SessionGuard {
+  const values: Record<string, unknown> = { SESSION_COOKIE_SECURE: false };
   const config = { get: (key: string) => values[key] } as unknown as AppConfigService;
   return new SessionGuard(
     new Reflector(),
     new SessionCookies(config, { now: () => NOW }),
     { resolve, touch } as unknown as SessionService,
     { statusOf } as unknown as OnboardingService,
-    { firstDiverAccount } as unknown as DevAuthStub,
-    config,
   );
 }
 
@@ -143,7 +129,6 @@ describe('SessionGuard', () => {
     resolve.mockResolvedValue(null);
     touch.mockResolvedValue(false);
     statusOf.mockResolvedValue('complete');
-    firstDiverAccount.mockResolvedValue(null);
   });
 
   it('refuses any context but HTTP', async () => {
@@ -291,100 +276,5 @@ describe('SessionGuard', () => {
       'Unsupported route path metadata',
     );
     expect(resolve).not.toHaveBeenCalled();
-  });
-
-  describe('DEV_AUTH_STUB fallback (until lot 6)', () => {
-    const STUB_ACCOUNT = { accountId: 'account-9', diverId: 'diver-9' };
-    const stubbed = (nodeEnv: NodeEnvironment = 'development') =>
-      guard({ devAuthStub: true, nodeEnv });
-
-    it('acts for the first diver without any cookie, with no session', async () => {
-      firstDiverAccount.mockResolvedValue(STUB_ACCOUNT);
-      const { context, request, setHeader } = call(ACCOUNT);
-
-      await expect(stubbed().canActivate(context)).resolves.toBe(true);
-      expect(setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
-      expect(resolve).not.toHaveBeenCalled();
-      expect(touch).not.toHaveBeenCalled();
-      expect(authContextOf(request)).toEqual({
-        accountId: 'account-9',
-        diverId: 'diver-9',
-        role: 'diver',
-        audience: 'web',
-        sessionId: null,
-      });
-    });
-
-    it('still goes through the onboarding checks on the dive log', async () => {
-      firstDiverAccount.mockResolvedValue(STUB_ACCOUNT);
-      statusOf.mockResolvedValue('consent-required');
-
-      await expect(stubbed().canActivate(call(LOGBOOK).context)).rejects.toThrow(
-        ConsentRequiredError,
-      );
-      expect(statusOf).toHaveBeenCalledWith('diver-9');
-    });
-
-    it('401 when the first diver has no account', async () => {
-      await expect(stubbed().canActivate(call(LOGBOOK).context)).rejects.toThrow(
-        UnauthenticatedError,
-      );
-      expect(firstDiverAccount).toHaveBeenCalled();
-    });
-
-    it('does not apply once a web cookie is presented, even an invalid one', async () => {
-      firstDiverAccount.mockResolvedValue(STUB_ACCOUNT);
-
-      await expect(
-        stubbed().canActivate(call(LOGBOOK, 'edeep_sid=garbage').context),
-      ).rejects.toThrow(UnauthenticatedError);
-      expect(firstDiverAccount).not.toHaveBeenCalled();
-    });
-
-    it.each([
-      ['an empty web cookie', 'edeep_sid='],
-      ['the web cookie under the secure name', `__Host-edeep_sid=${TOKEN}`],
-      ['an empty web cookie under the secure name', '__Host-edeep_sid='],
-    ])('does not apply with %s either', async (_case, cookie) => {
-      firstDiverAccount.mockResolvedValue(STUB_ACCOUNT);
-
-      await expect(stubbed().canActivate(call(LOGBOOK, cookie).context)).rejects.toThrow(
-        UnauthenticatedError,
-      );
-      expect(firstDiverAccount).not.toHaveBeenCalled();
-    });
-
-    it('still applies with the admin cookie only (another audience)', async () => {
-      firstDiverAccount.mockResolvedValue(STUB_ACCOUNT);
-
-      await expect(stubbed().canActivate(call(ACCOUNT, ADMIN_COOKIE).context)).resolves.toBe(true);
-    });
-
-    it('never applies to the admin audience', async () => {
-      firstDiverAccount.mockResolvedValue(STUB_ACCOUNT);
-
-      await expect(stubbed().canActivate(call(ADMIN).context)).rejects.toThrow(
-        UnauthenticatedError,
-      );
-      expect(firstDiverAccount).not.toHaveBeenCalled();
-    });
-
-    it('is refused in production even when the variable is set', async () => {
-      firstDiverAccount.mockResolvedValue(STUB_ACCOUNT);
-
-      await expect(stubbed('production').canActivate(call(LOGBOOK).context)).rejects.toThrow(
-        UnauthenticatedError,
-      );
-      expect(firstDiverAccount).not.toHaveBeenCalled();
-    });
-
-    it('is off without the variable', async () => {
-      firstDiverAccount.mockResolvedValue(STUB_ACCOUNT);
-
-      await expect(guard().canActivate(call(LOGBOOK).context)).rejects.toThrow(
-        UnauthenticatedError,
-      );
-      expect(firstDiverAccount).not.toHaveBeenCalled();
-    });
   });
 });

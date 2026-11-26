@@ -3,19 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { DevAuthStub } from '../../src/common/auth/dev-auth-stub';
 import { JsonBodyGuard } from '../../src/common/auth/json-body.guard';
 import { OriginGuard } from '../../src/common/auth/origin.guard';
 import { SessionCookies } from '../../src/common/auth/session-cookie';
 import { SessionGuard } from '../../src/common/auth/session.guard';
 import { CLOCK, type Clock } from '../../src/common/time/clock';
-import type { NodeEnvironment } from '../../src/config/environment';
 import { OnboardingService } from '../../src/modules/accounts/onboarding.service';
 import { SessionService, type ResolvedSession } from '../../src/modules/auth/session.service';
 
 // E2e harness of the global guards (auth lot 4): the real `OriginGuard`, `SessionGuard` and
-// `SessionCookies`, on a fake `SessionService` (D44), a fake onboarding status and a fake
-// `DevAuthStub`. No database.
+// `SessionCookies`, on a fake `SessionService` (D44) and a fake onboarding status. No database.
 
 export const NOW = new Date('2026-11-24T10:00:00.000Z');
 export const WEB_ORIGIN = 'http://localhost:5173';
@@ -52,16 +49,14 @@ export const STAFF_SESSION: ResolvedSession = {
 
 export const sessionFakes = { resolve: jest.fn(), touch: jest.fn() };
 export const onboardingFakes = { statusOf: jest.fn(), stateOf: jest.fn(), complete: jest.fn() };
-export const devAuthStubFake = { firstDiverAccount: jest.fn() };
 
-/** Defaults: no live session, a complete profile, no first diver for the stub. */
+/** Defaults: no live session, a complete profile. */
 export function resetAccessControlFakes(): void {
   sessionFakes.resolve.mockReset().mockResolvedValue(null);
   sessionFakes.touch.mockReset().mockResolvedValue(false);
   onboardingFakes.statusOf.mockReset().mockResolvedValue('complete');
   onboardingFakes.stateOf.mockReset();
   onboardingFakes.complete.mockReset();
-  devAuthStubFake.firstDiverAccount.mockReset().mockResolvedValue(null);
 }
 
 /** The web cookie resolves to `session` (a signed-in diver by default). */
@@ -71,22 +66,16 @@ export function signIn(session: ResolvedSession = DIVER_SESSION): void {
 
 export interface TestSettings {
   readonly secureCookies?: boolean;
-  readonly devAuthStub?: boolean;
-  readonly nodeEnv?: NodeEnvironment;
   readonly allowedOrigins?: readonly string[];
 }
 
 /** A `ConfigService` answering the variables the guards and the cookies read. */
 export function testConfig({
   secureCookies = false,
-  devAuthStub = false,
-  nodeEnv = 'test',
   allowedOrigins = [WEB_ORIGIN],
 }: TestSettings = {}): { get: (key: string) => unknown } {
   const values: Readonly<Record<string, unknown>> = {
     SESSION_COOKIE_SECURE: secureCookies,
-    DEV_AUTH_STUB: devAuthStub,
-    NODE_ENV: nodeEnv,
     ALLOWED_ORIGINS: allowedOrigins,
   };
   return { get: (key) => values[key] };
@@ -104,7 +93,6 @@ export function accessControlProviders(settings: TestSettings = {}): Provider[] 
     { provide: ConfigService, useValue: testConfig(settings) },
     { provide: SessionService, useValue: sessionFakes },
     { provide: OnboardingService, useValue: onboardingFakes },
-    { provide: DevAuthStub, useValue: devAuthStubFake },
     { provide: APP_GUARD, useClass: OriginGuard },
     { provide: APP_GUARD, useClass: JsonBodyGuard },
     { provide: APP_GUARD, useClass: SessionGuard },

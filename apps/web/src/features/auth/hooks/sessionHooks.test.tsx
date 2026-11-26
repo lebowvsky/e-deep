@@ -18,6 +18,7 @@ function setup(session: typeof ME_FIXTURE | null) {
     authClient: createFakeAuthClient({ session }),
     broadcast: { announceLogout: () => undefined, onLogout: () => () => undefined },
     purgeDeviceData: () => undefined,
+    onSessionLost: () => undefined,
   };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <AuthServicesContext value={services}>

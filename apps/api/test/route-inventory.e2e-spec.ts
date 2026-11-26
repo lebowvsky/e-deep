@@ -17,7 +17,7 @@ import {
 
 // Refusal by default (D37): the frozen list of the public routes, then a cookie-less call on every
 // other route of the application. Mounts exactly the modules of `AppModule` (`APPLICATION_MODULES`,
-// global guards included) on a fake infrastructure: no database, no `.env`. `DEV_AUTH_STUB` is off.
+// global guards included) on a fake infrastructure: no database, no `.env`.
 
 /**
  * The only routes reachable without a session (§3 of docs/plans/auth.md). Adding a public route
@@ -37,7 +37,6 @@ const SETTINGS: Readonly<Record<string, unknown>> = {
   NODE_ENV: 'test',
   SESSION_COOKIE_SECURE: true,
   REGISTRATION_ENABLED: false,
-  DEV_AUTH_STUB: false,
   ALLOWED_ORIGINS: ['http://localhost:5173'],
   SYNC_PURGE_HORIZON_DAYS: 90,
 };

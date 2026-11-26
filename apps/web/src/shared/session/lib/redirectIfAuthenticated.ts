@@ -1,7 +1,6 @@
 import { redirect, type LoaderFunctionArgs } from 'react-router';
 import { loadSession, type SessionLoaderDependencies } from './loadSession';
-import { safeNext } from './safeNext';
-import { ONBOARDING_PATHS } from './sessionPaths';
+import { onboardingPath } from './sessionPaths';
 
 /**
  * How long the public pages wait for `/me` before showing up anyway (ms). Much shorter than the
@@ -12,7 +11,7 @@ export const PUBLIC_SESSION_PROBE_TIMEOUT_MS = 3000;
 
 /**
  * Loader of the public entry (`/`, `/login`, `/signup`): a signed-in diver goes to `next`
- * (internal paths only, `safeNext`), or to the onboarding page their status asks for. When the
+ * (internal paths only, `safeNext`), or first to the onboarding page their status asks for. When the
  * session cannot be checked in time (network, 5xx, `PUBLIC_SESSION_PROBE_TIMEOUT_MS`), the page
  * is shown: signing in will tell.
  */
@@ -22,7 +21,6 @@ export function redirectIfAuthenticated(dependencies: SessionLoaderDependencies)
       timeoutMs: PUBLIC_SESSION_PROBE_TIMEOUT_MS,
     }).catch(() => null);
     if (me === null) return null;
-    if (me.onboarding !== 'complete') return redirect(ONBOARDING_PATHS[me.onboarding]);
-    return redirect(safeNext(new URL(request.url).searchParams.get('next')));
+    return redirect(onboardingPath(me.onboarding, new URL(request.url).searchParams.get('next')));
   };
 }

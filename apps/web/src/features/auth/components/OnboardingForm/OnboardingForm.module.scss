@@ -1,0 +1,8 @@
+@use '@/styles/tokens' as *;
+
+// Same column as the sign-up form (welcome.jsx · SignupForm), 16px apart.
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}

@@ -39,4 +39,33 @@ describe('ConfirmDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Quitter' }));
     expect(onConfirm).toHaveBeenCalledOnce();
   });
+
+  it('cannot be cancelled while its choice is carried out (Échap pendant la suppression ne ferme pas)', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    const onConfirm = vi.fn();
+    const { container } = render(
+      <ConfirmDialog
+        open
+        title="Supprimer ton compte ?"
+        cancelLabel="Annuler"
+        confirmLabel="Suppression…"
+        confirmVariant="danger"
+        confirmBusy
+        onCancel={onCancel}
+        onConfirm={onConfirm}
+      />,
+    );
+    const cancel = screen.getByRole('button', { name: 'Annuler' });
+    expect(cancel.getAttribute('aria-disabled')).toBe('true');
+    await user.keyboard('{Escape}');
+    await user.click(cancel);
+    const scrim = container.querySelector('[aria-hidden="true"]');
+    if (!(scrim instanceof HTMLElement)) throw new Error('scrim not rendered');
+    await user.click(scrim);
+    await user.click(screen.getByRole('button', { name: 'Suppression…' }));
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog', { name: 'Supprimer ton compte ?' })).toBeTruthy();
+  });
 });

@@ -1,0 +1,40 @@
+@use 'sass:list';
+@use '@/styles/tokens' as *;
+
+// Aligned on the hero: same gutters and tablet column.
+.wrapper {
+  @include page-gutter;
+  @include landing-column;
+
+  padding-top: $space-5;
+}
+
+// The look of the form banners, in the success tone.
+.notice {
+  display: flex;
+  gap: $layout-input-gap;
+  align-items: flex-start;
+  padding: $space-3 $layout-tile-pad;
+  background: $color-success-soft;
+  border-radius: $radius-md;
+  box-shadow: inset 0 0 0 1px $color-line-strong;
+
+  // Focused by script only, to be read: its ring would only frame the message again.
+  &:focus {
+    outline: none;
+  }
+}
+
+// As tall as the first line of the text: the square glyph is centred on it.
+.icon {
+  flex-shrink: 0;
+  height: list.nth($type-body-compact, 2);
+  color: $color-success;
+}
+
+.text {
+  @include type($type-body-compact);
+
+  margin: 0;
+  color: $color-text-high;
+}

@@ -21,7 +21,15 @@ const PUBLIC_MODULES = [
   /^src\/app\/routes\/(Home|Login|Signup|ForgotPassword|LegalPlaceholder|Placeholder|RouteError)Page\.tsx$/,
   /^src\/app\/routes\/SessionPending\.tsx$/,
   /^src\/design\/tokens\.ts$/,
-  /^src\/features\/(auth|home)\//,
+  // What `/`, `/login` and `/signup` show, by name: an account screen of the auth feature
+  // (`/welcome`, `/consent`, `/settings`: OnboardingForm, ConsentForm, PasswordChangeForm,
+  // AccountSummary, DeleteAccountDialog…) imported statically from a public page fails here.
+  /^src\/features\/auth\/types\.ts$/,
+  /^src\/features\/auth\/components\/(AuthCard|AuthScreen|AuthSubmitButton|AuthTabs|FormBanner|LoginForm|PasswordField|PasswordStrength|SignupForm)\//,
+  /^src\/features\/auth\/hooks\/(useAuthAction|useCountdown|useDelayedValue|useLogin|useSessionMutation|useSignup)\.ts$/,
+  /^src\/features\/auth\/lib\/(authErrors|authValidation|passwordRules)\.ts$/,
+  /^src\/features\/home\/content\.ts$/,
+  /^src\/features\/home\/components\/(FeaturesSection|FinalCta|HeroSection|LandingNotice|ProductPreview|PublicFooter|PublicHeader|SectionHeading|StepsSection)\//,
   // The dependency-free purge of the dive drafts, run at sign-out (D41).
   /^src\/features\/dives\/form\/draftPurge\.ts$/,
   /^src\/shared\/config\//,

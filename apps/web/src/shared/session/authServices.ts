@@ -11,6 +11,11 @@ export interface AuthServices {
    * app, which knows the features that store something.
    */
   purgeDeviceData: () => void;
+  /**
+   * The session turned out closed (`401`) on a call made outside the query cache (`endSession`):
+   * the same reaction as the cache's (`leaveLostSession`), cache cleared then `/login?next=…`.
+   */
+  onSessionLost: () => void;
 }
 
 export const AuthServicesContext = createContext<AuthServices | null>(null);

@@ -1,0 +1,1 @@
+export { LandingNotice } from './LandingNotice';

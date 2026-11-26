@@ -3,7 +3,6 @@ import { APP_GUARD, DiscoveryModule } from '@nestjs/core';
 import { AccountsModule } from '../../modules/accounts/accounts.module';
 import { AuthModule } from '../../modules/auth/auth.module';
 import { AccessMetadataCheck } from './access-metadata.check';
-import { DevAuthStub } from './dev-auth-stub';
 import { JsonBodyGuard } from './json-body.guard';
 import { OriginGuard } from './origin.guard';
 import { SessionGuard } from './session.guard';
@@ -17,7 +16,6 @@ import { SessionGuard } from './session.guard';
 @Module({
   imports: [AuthModule, AccountsModule, DiscoveryModule],
   providers: [
-    DevAuthStub,
     AccessMetadataCheck,
     { provide: APP_GUARD, useClass: OriginGuard },
     { provide: APP_GUARD, useClass: JsonBodyGuard },

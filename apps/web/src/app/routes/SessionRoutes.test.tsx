@@ -125,8 +125,8 @@ describe('protected routes', () => {
   });
 
   it.each([
-    ['profile-required', '/welcome', 'Bienvenue'],
-    ['consent-required', '/consent', 'Consentement'],
+    ['profile-required', '/welcome', 'Bienvenue, Marine'],
+    ['consent-required', '/consent', 'Notre politique a changé'],
   ] as const)('send a %s profile to %s, which stays', async (onboarding, path, title) => {
     const { router } = renderApp('/dashboard', {
       session: { ...ME_FIXTURE, diver: { ...ME_FIXTURE.diver }, onboarding },
@@ -191,7 +191,9 @@ describe('session lost while using the app', () => {
     // The policy changed server-side: the API now answers `consent-required`.
     vi.spyOn(authClient, 'me').mockResolvedValue({ ...ME_FIXTURE, onboarding: 'consent-required' });
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Consentement' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Notre politique a changé' }),
+    ).toBeTruthy();
     expect(router.state.location.pathname).toBe('/consent');
   });
 });

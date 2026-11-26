@@ -60,6 +60,15 @@ const lazyMap = async () => ({
 // Phones: the map under the top bar, edge to edge, with its own « + Site » (no FAB).
 const mapHandle: AppRouteHandle = { hideFab: true, fullBleed: true };
 
+// Account screens (D38): their own chunks, so that `/` loads none of them (D45).
+const lazyWelcome = async () => ({ Component: (await import('./routes/WelcomePage')).WelcomePage });
+const lazyConsent = async () => ({ Component: (await import('./routes/ConsentPage')).ConsentPage });
+const lazySettings = async () => ({
+  Component: (await import('./routes/SettingsPage')).SettingsPage,
+});
+// No « + » over the account forms: nothing to log from there.
+const settingsHandle: AppRouteHandle = { hideFab: true };
+
 // Technical page: API health (outside the app frame).
 const lazyStatus = async () => ({ Component: (await import('./routes/StatusPage')).StatusPage });
 
@@ -67,13 +76,6 @@ const placeholder = (path: string, title: string): RouteObject => ({
   path,
   element: <PlaceholderPage title={title} />,
 });
-
-/** A placeholder outside the app frame (no shell): its own `main`. */
-const standalone = (title: string, message: string) => (
-  <main id="main-content">
-    <PlaceholderPage title={title} message={message} />
-  </main>
-);
 
 export interface RouteDependencies {
   queryClient: QueryClient;
@@ -139,20 +141,20 @@ export function createRoutes({
       action: logoutAction({ authServices, queryClient }),
       errorElement: <RouteErrorPage />,
     },
-    // Onboarding (D38): a session is needed, a complete profile is not. Real pages at lot 6b.
+    // Onboarding (D38): a session is needed, a complete profile is not.
     {
       path: '/welcome',
       loader: requireOnboardingStep(session, 'profile-required'),
       HydrateFallback: SessionPending,
       errorElement: <RouteErrorPage />,
-      element: standalone('Bienvenue', 'Le premier lancement de ton carnet arrive bientôt.'),
+      lazy: lazyWelcome,
     },
     {
       path: '/consent',
       loader: requireOnboardingStep(session, 'consent-required'),
       HydrateFallback: SessionPending,
       errorElement: <RouteErrorPage />,
-      element: standalone('Consentement', 'Le renouvellement de ton consentement arrive bientôt.'),
+      lazy: lazyConsent,
     },
     {
       // The app: a session and a complete profile, or a redirect (`requireSession`).
@@ -173,7 +175,7 @@ export function createRoutes({
         placeholder('/buddies', 'Binômes'),
         placeholder('/search', 'Recherche'),
         placeholder('/notifications', 'Notifications'),
-        placeholder('/settings', 'Paramètres'),
+        { path: '/settings', lazy: lazySettings, handle: settingsHandle },
         {
           path: '*',
           element: <PlaceholderPage title="Page introuvable" message="Cette page n’existe pas." />,

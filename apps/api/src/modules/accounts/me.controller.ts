@@ -14,7 +14,7 @@ import {
 import type { Request, Response } from 'express';
 import { clientIpKey } from '../../common/auth/client-ip';
 import { AllowIncompleteProfile } from '../../common/auth/allow-incomplete-profile.decorator';
-import { requireSessionId, type AuthContext } from '../../common/auth/auth-context';
+import type { AuthContext } from '../../common/auth/auth-context';
 import { CurrentAuth, CurrentDiverId } from '../../common/auth/current-diver-id.decorator';
 import type { DiverId } from '../../common/auth/diver-id';
 import { SessionCookies } from '../../common/auth/session-cookie';
@@ -117,11 +117,11 @@ export class MeController {
   }
 }
 
-/** The caller of a password-checked account route (`requireSessionId`: never the dev stub). */
+/** The caller of a password-checked account route: its session is rotated or ended. */
 function callerOf(auth: AuthContext, request: Request): AccountCaller {
   return {
     accountId: auth.accountId,
-    sessionId: requireSessionId(auth),
+    sessionId: auth.sessionId,
     ip: clientIpKey(request.ip),
   };
 }

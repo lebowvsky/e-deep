@@ -156,12 +156,9 @@ export function resetFakes(): void {
 export async function createAuthTestApp({
   secureCookies,
   trustProxy = 0,
-  devAuthStub = false,
 }: {
   secureCookies: boolean;
   trustProxy?: number;
-  /** The `DEV_AUTH_STUB` fallback (`NODE_ENV=test`), answered by `devAuthStubFake`. */
-  devAuthStub?: boolean;
 }): Promise<NestExpressApplication> {
   const moduleRef = await Test.createTestingModule({
     controllers: [
@@ -172,7 +169,7 @@ export async function createAuthTestApp({
       CertificationLevelsController,
     ],
     providers: [
-      ...accessControlProviders({ secureCookies, devAuthStub }),
+      ...accessControlProviders({ secureCookies }),
       MeService,
       { provide: AuthenticationService, useValue: fakes.authentication },
       { provide: RegistrationService, useValue: fakes.registration },

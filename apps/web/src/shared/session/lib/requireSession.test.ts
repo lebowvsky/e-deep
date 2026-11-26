@@ -65,6 +65,22 @@ describe('requireSession', () => {
     expect(redirectedTo(result)).toBe(path);
   });
 
+  it.each([
+    ['profile-required', '/welcome'],
+    ['consent-required', '/consent'],
+  ] as const)(
+    'sends a %s profile to %s with the page refused as next',
+    async (onboarding, path) => {
+      const result = await requireSession(signedIn({ ...NEW_ACCOUNT_FIXTURE, onboarding }))(
+        request('/dives/d127?from=log#notes'),
+      );
+
+      expect(redirectedTo(result)).toBe(
+        `${path}?next=${encodeURIComponent('/dives/d127?from=log#notes')}`,
+      );
+    },
+  );
+
   it('reuses the cached /me without calling the API again', async () => {
     let calls = 0;
     const fake = createFakeAuthClient();
@@ -90,7 +106,9 @@ describe('requireSession', () => {
       refetchType: 'none',
     });
 
-    expect(redirectedTo(await requireSession(dependencies)(request('/dives')))).toBe('/consent');
+    expect(redirectedTo(await requireSession(dependencies)(request('/dives')))).toBe(
+      '/consent?next=%2Fdives',
+    );
   });
 
   it('fails, without redirecting, when the session cannot be checked', async () => {
@@ -110,6 +128,21 @@ describe('requireOnboardingStep', () => {
     ['/consent', 'consent-required', 'complete', '/dashboard'],
   ] as const)(
     '%s, for a %s step, with a %s profile → %s',
+    async (path, step, onboarding, target) => {
+      const loader = requireOnboardingStep(signedIn({ ...ME_FIXTURE, onboarding }), step);
+
+      expect(redirectedTo(await loader(request(path)))).toBe(target);
+    },
+  );
+
+  it.each([
+    ['/welcome?next=%2Fdives', 'profile-required', 'consent-required', '/consent?next=%2Fdives'],
+    ['/consent?next=%2Fdives', 'consent-required', 'profile-required', '/welcome?next=%2Fdives'],
+    ['/welcome?next=%2Fdives', 'profile-required', 'complete', '/dives'],
+    ['/welcome?next=%2F%2Fevil.com', 'profile-required', 'complete', '/dashboard'],
+    ['/welcome?next=%2F%2Fevil.com', 'profile-required', 'consent-required', '/consent'],
+  ] as const)(
+    '%s, for a %s step, with a %s profile → %s (next kept when safe)',
     async (path, step, onboarding, target) => {
       const loader = requireOnboardingStep(signedIn({ ...ME_FIXTURE, onboarding }), step);
 
@@ -147,11 +180,11 @@ describe('redirectIfAuthenticated', () => {
     expect(redirectedTo(result)).toBe(target);
   });
 
-  it('sends a diver still in onboarding to their step, not to next', async () => {
+  it('sends a diver still in onboarding to their step first, next carried along', async () => {
     const result = await redirectIfAuthenticated(signedIn(NEW_ACCOUNT_FIXTURE))(
       request('/login?next=%2Fdives'),
     );
 
-    expect(redirectedTo(result)).toBe('/welcome');
+    expect(redirectedTo(result)).toBe('/welcome?next=%2Fdives');
   });
 });

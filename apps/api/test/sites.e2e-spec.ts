@@ -54,7 +54,7 @@ const sites = {
   merge: jest.fn(),
   remove: jest.fn(),
 };
-/** The session cookie of the request; `undefined`: none (the `DEV_AUTH_STUB` is off). */
+/** The session cookie of the request; `undefined`: none. */
 let cookie: string | undefined;
 
 const NOT_FOUND = { message: 'Site not found', error: 'Not Found', statusCode: 404 };

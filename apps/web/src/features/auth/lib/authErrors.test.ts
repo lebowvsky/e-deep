@@ -32,7 +32,10 @@ describe('toSubmitFailure', () => {
     ['too-short', '15 caractères minimum.'],
     ['too-long', '128 caractères maximum.'],
     ['compromised', 'Ce mot de passe est trop courant. Choisis-en un autre.'],
-    ['contains-identity', 'Ton mot de passe ne doit pas contenir ton e-mail ni ton prénom.'],
+    [
+      'contains-identity',
+      'Ton mot de passe ne doit pas contenir ton e-mail, ton prénom ni ton nom.',
+    ],
     ['unknown-code', 'Ce mot de passe n’est pas accepté.'],
   ])('says why the password %s is refused', (code, message) => {
     const failure = refused({ code: 'validation-failed', fieldErrors: { password: [code] } });
@@ -43,6 +46,44 @@ describe('toSubmitFailure', () => {
     });
     expect(failure).toMatchObject({ compromised: code === 'compromised' ? SENT.password : null });
   });
+
+  it('applies the password policy to the new password of a change', () => {
+    const sent = { currentPassword: 'ancien', newPassword: 'motdepasse-courant' };
+    const failure = toSubmitFailure(
+      new AuthError({ code: 'validation-failed', fieldErrors: { newPassword: ['compromised'] } }),
+      sent,
+      NOW,
+    );
+
+    expect(failure).toEqual({
+      code: 'invalid-fields',
+      fields: {
+        newPassword: {
+          value: sent.newPassword,
+          message: 'Ce mot de passe est trop courant. Choisis-en un autre.',
+        },
+      },
+      compromised: sent.newPassword,
+    });
+  });
+
+  it.each(['too-long', 'compromised', 'contains-identity'])(
+    'never says the policy of a new password about the account’s own one (%s)',
+    (code) => {
+      const failure = toSubmitFailure(
+        new AuthError({ code: 'validation-failed', fieldErrors: { password: [code] } }),
+        SENT,
+        NOW,
+        'current',
+      );
+
+      expect(failure).toEqual({
+        code: 'invalid-fields',
+        fields: { password: { value: SENT.password, message: 'Mot de passe incorrect.' } },
+        compromised: null,
+      });
+    },
+  );
 
   it('cannot show a refusal on a field the form does not have', () => {
     expect(

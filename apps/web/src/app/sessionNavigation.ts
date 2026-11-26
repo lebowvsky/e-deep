@@ -2,7 +2,7 @@ import type { DataRouter } from 'react-router';
 import type { SessionErrorPolicy } from '@/shared/lib/queryClient';
 import { sessionKeys } from '@/shared/session/api/meApi';
 import { sessionEventOf } from '@/shared/session/lib/sessionErrors';
-import { LOGIN_PATH, loginPath, ONBOARDING_PATHS } from '@/shared/session/lib/sessionPaths';
+import { LOGIN_PATH, loginPath, onboardingPath } from '@/shared/session/lib/sessionPaths';
 
 export interface SessionNavigation extends SessionErrorPolicy {
   /** The session is over: to the login page, back here once signed in. */
@@ -24,20 +24,27 @@ function isOnLogin({ state }: SessionRouter): boolean {
  * it. Both moves replace the page in the history: « Retour » must not lead back to a refused page.
  */
 export function createSessionNavigation(getRouter: () => SessionRouter): SessionNavigation {
+  /** The page shown: the `next` of the page it is left for. */
+  const currentPath = ({ state }: SessionRouter) => {
+    const { pathname, search, hash } = state.location;
+    return `${pathname}${search}${hash}`;
+  };
   const leaveForLogin = () => {
     const router = getRouter();
     // Several failing queries call it at once: the next ones find the login page on its way.
     if (isOnLogin(router)) return;
-    const { pathname, search, hash } = router.state.location;
-    void router.navigate(loginPath(`${pathname}${search}${hash}`), { replace: true });
+    void router.navigate(loginPath(currentPath(router)), { replace: true });
   };
   return {
     classify: sessionEventOf,
     sessionKey: sessionKeys.all,
     leaveForLogin,
     onUnauthenticated: leaveForLogin,
-    // The loader of the target page reads the fresh `/me` and lets the diver stay or moves them on.
-    onOnboardingRequired: (status) =>
-      void getRouter().navigate(ONBOARDING_PATHS[status], { replace: true }),
+    // The loader of the target page reads the fresh `/me` and lets the diver stay or moves them on;
+    // once the step is done, back to the page refused.
+    onOnboardingRequired: (status) => {
+      const router = getRouter();
+      void router.navigate(onboardingPath(status, currentPath(router)), { replace: true });
+    },
   };
 }

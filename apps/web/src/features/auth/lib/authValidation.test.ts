@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { currentPasswordError, emailError, firstNameError } from './authValidation';
+import {
+  certificationLevelError,
+  currentPasswordError,
+  emailError,
+  firstNameError,
+  healthConsentError,
+  lastNameError,
+} from './authValidation';
 
 describe('emailError', () => {
   it('asks for an e-mail, then a valid one', () => {
@@ -21,5 +28,20 @@ describe('currentPasswordError', () => {
   it('only needs a password to try', () => {
     expect(currentPasswordError('')).toBe('Saisis ton mot de passe.');
     expect(currentPasswordError('court')).toBeNull();
+  });
+});
+
+describe('the first launch', () => {
+  it('lets the last name empty, up to 100 characters', () => {
+    expect(lastNameError('')).toBeNull();
+    expect(lastNameError('é'.repeat(100))).toBeNull();
+    expect(lastNameError('a'.repeat(101))).toBe('100 caractères maximum.');
+  });
+
+  it('needs a level and the consent', () => {
+    expect(certificationLevelError('')).toBe('Choisis ton niveau.');
+    expect(certificationLevelError('ffessm-n2')).toBeNull();
+    expect(healthConsentError(false)).toMatch(/^Coche la case pour continuer/);
+    expect(healthConsentError(true)).toBeNull();
   });
 });

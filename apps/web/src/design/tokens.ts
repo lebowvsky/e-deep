@@ -405,6 +405,9 @@ export const layout = {
   previewPhoneOverlapX: 110,
   previewPhoneOverlapY: 40,
   ctaHeightXl: 52, // full-width calls to action of the landing page on phones
+  // Account (docs/plans/auth-screens.md · /settings, no mockup)
+  settingsMaxWidth: 640, // reading width of the column of section cards
+  settingsTermWidth: 140, // « Prénom et nom », « E-mail », « Niveau » beside their value
 } as const;
 
 // Icon sizes (px) — TS only: used as SVG width/height attributes.

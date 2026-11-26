@@ -65,8 +65,15 @@ export interface ApiClient {
   put<T>(path: string, body: unknown, guard: TypeGuard<T>, options?: RequestOptions): Promise<T>;
   /** Sends `body` as JSON (none when `undefined`) and expects an empty answer (`204`). */
   postNoContent(path: string, body?: unknown, options?: RequestOptions): Promise<void>;
-  /** Expects an empty answer (`204`): any body is ignored. */
-  delete(path: string, options?: RequestOptions): Promise<void>;
+  /** Sends `body` as JSON and expects an empty answer (`204`). */
+  putNoContent(path: string, body: unknown, options?: RequestOptions): Promise<void>;
+  /** Expects an empty answer (`204`): any body is ignored. `body`: sent as JSON (`DELETE /me`). */
+  delete(path: string, options?: DeleteOptions): Promise<void>;
+}
+
+export interface DeleteOptions extends RequestOptions {
+  /** A JSON body, for the rare deletions that need one (the password of `DELETE /api/me`). */
+  body?: unknown;
 }
 
 export interface ApiClientConfig {
@@ -240,6 +247,7 @@ export function createApiClient({
     put: (path, body, guard, options) => send('PUT', path, readBody(guard), { ...options, body }),
     postNoContent: (path, body, options) =>
       send('POST', path, ignoreBody, body === undefined ? options : { ...options, body }),
+    putNoContent: (path, body, options) => send('PUT', path, ignoreBody, { ...options, body }),
     delete: (path, options) => send('DELETE', path, ignoreBody, options),
   };
 }

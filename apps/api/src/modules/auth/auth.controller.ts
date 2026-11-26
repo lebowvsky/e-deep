@@ -3,7 +3,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UseGuards } fro
 import type { Request, Response } from 'express';
 import { clientIpKey } from '../../common/auth/client-ip';
 import { AllowIncompleteProfile } from '../../common/auth/allow-incomplete-profile.decorator';
-import { requireSessionId, type AuthContext } from '../../common/auth/auth-context';
+import type { AuthContext } from '../../common/auth/auth-context';
 import { CurrentAuth } from '../../common/auth/current-diver-id.decorator';
 import { NoStoreGuard } from '../../common/auth/no-store.guard';
 import { Public } from '../../common/auth/public.decorator';
@@ -99,8 +99,6 @@ export class AuthController {
     @CurrentAuth() auth: AuthContext,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
-    // The dev stub has no session to end: 401, like the other session routes.
-    requireSessionId(auth);
     // Revoked first: on a failure, the 500 keeps the cookie of the sessions still alive.
     await this.authentication.signOutEverywhere(auth.accountId);
     this.cookies.clear(response, 'web');

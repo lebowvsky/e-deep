@@ -32,3 +32,24 @@ export function newPasswordError(password: string): string | null {
   if (length < PASSWORD_MIN_LENGTH) return `${PASSWORD_MIN_LENGTH} caractères minimum.`;
   return length > PASSWORD_MAX_LENGTH ? `${PASSWORD_MAX_LENGTH} caractères maximum.` : null;
 }
+
+/** `/welcome`: the last name is optional (D36), but bounded like the API's column. */
+export const LAST_NAME_MAX_LENGTH = 100;
+
+export function lastNameError(lastName: string): string | null {
+  return [...lastName.trim()].length > LAST_NAME_MAX_LENGTH
+    ? `${LAST_NAME_MAX_LENGTH} caractères maximum.`
+    : null;
+}
+
+/** `/welcome`: `''` is the « Choisis ton niveau » placeholder of the list. */
+export function certificationLevelError(levelId: string): string | null {
+  return levelId === '' ? 'Choisis ton niveau.' : null;
+}
+
+/** `/welcome` and `/consent`: the dedicated, unticked by default, mandatory box (D38). */
+export function healthConsentError(isGiven: boolean): string | null {
+  return isGiven
+    ? null
+    : 'Coche la case pour continuer : sans ton accord, ton carnet ne peut pas enregistrer tes plongées.';
+}

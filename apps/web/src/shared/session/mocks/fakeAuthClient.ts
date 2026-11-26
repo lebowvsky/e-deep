@@ -1,7 +1,9 @@
 // An `AuthClient` in memory, for the tests and the dev `?state=` forcing only (D41): never imported
 // by the app's providers, so no simulated session reaches the bundle. It plays the cases of the
-// landing spec: valid credentials, an account that already exists, too many attempts.
-import type { CertificationLevelRef, MeResponse } from '@e-deep/shared';
+// landing spec: valid credentials, an account that already exists, too many attempts; and those of
+// the account screens (docs/plans/auth-screens.md): a wrong current password, a deleted account.
+import type { CertificationLevelOption, MeResponse } from '@e-deep/shared';
+import { ApiError } from '@/shared/lib/apiClient';
 import { AuthError, type AuthClient, type AuthFailure } from '../authClient';
 import { ME_FIXTURE } from './me';
 
@@ -13,21 +15,25 @@ export const FAKE_CREDENTIALS = {
 
 const MIN_PASSWORD_LENGTH = 15;
 
-/** Levels selectable at `/welcome` in the fake, by id. */
-const FAKE_LEVELS: Readonly<Record<string, CertificationLevelRef>> = {
-  'ffessm-n1': { agency: 'FFESSM', code: 'N1', label: 'Niveau 1' },
-  'ffessm-n2': { agency: 'FFESSM', code: 'N2', label: 'Niveau 2' },
-};
+/** Levels selectable at `/welcome` in the fake. */
+export const FAKE_LEVELS: readonly CertificationLevelOption[] = [
+  { id: 'ffessm-n1', agency: 'FFESSM', code: 'N1', label: 'Niveau 1' },
+  { id: 'ffessm-n2', agency: 'FFESSM', code: 'N2', label: 'Niveau 2' },
+  { id: 'ffessm-n3', agency: 'FFESSM', code: 'N3', label: 'Niveau 3' },
+  { id: 'padi-ow', agency: 'PADI', code: 'OW', label: 'Open Water' },
+];
 
 export interface FakeAuthClientOptions {
   /** The session at start: signed in as `ME_FIXTURE` by default, `null` for none. */
   session?: MeResponse | null;
-  /** Failed logins before `too-many-attempts`. */
+  /** Failed password checks (login, password change, deletion) before `too-many-attempts`. */
   maxFailedLogins?: number;
   /** `Retry-After` of the throttled answers, in seconds. */
   retryAfterS?: number;
   /** `false`: closed beta, sign-up refused (D39). */
   registrationOpen?: boolean;
+  /** `false`: the levels cannot be loaded (`/welcome` shows its retry banner). */
+  levelsAvailable?: boolean;
 }
 
 export interface FakeAuthClient extends AuthClient {
@@ -42,6 +48,7 @@ export function createFakeAuthClient({
   maxFailedLogins = 5,
   retryAfterS = 60,
   registrationOpen = true,
+  levelsAvailable = true,
 }: FakeAuthClientOptions = {}): FakeAuthClient {
   let session = initialSession;
   let failedLogins = 0;
@@ -53,6 +60,21 @@ export function createFakeAuthClient({
   const signedIn = (me: MeResponse) => {
     session = me;
     return Promise.resolve(me);
+  };
+
+  /**
+   * Checks the password of the signed-in account, throttled like the logins: the refusal, `null`
+   * when it is the right one.
+   */
+  const checkPassword = (password: string): AuthFailure | null => {
+    if (session === null) return { code: 'unauthenticated' };
+    if (failedLogins >= maxFailedLogins) return { code: 'too-many-attempts', retryAfterS };
+    if (accounts.get(session.account.email)?.password !== password) {
+      failedLogins += 1;
+      return { code: 'invalid-credentials' };
+    }
+    failedLogins = 0;
+    return null;
   };
 
   return {
@@ -109,13 +131,14 @@ export function createFakeAuthClient({
     completeOnboarding({ lastName, certificationLevelId, policyVersion }) {
       if (session === null) return refuse({ code: 'unauthenticated' });
       if (session.onboarding === 'complete') return refuse({ code: 'onboarding-complete' });
-      const level = FAKE_LEVELS[certificationLevelId];
-      if (level === undefined) {
+      const option = FAKE_LEVELS.find(({ id }) => id === certificationLevelId);
+      if (option === undefined) {
         return refuse({
           code: 'validation-failed',
           fieldErrors: { certificationLevelId: ['invalid'] },
         });
       }
+      const level = { agency: option.agency, code: option.code, label: option.label };
       return signedIn({
         ...session,
         diver: { ...session.diver, lastName, level },
@@ -131,6 +154,36 @@ export function createFakeAuthClient({
         consent: { policyVersion, grantedAt: new Date().toISOString() },
         onboarding: session.diver.level === null ? 'profile-required' : 'complete',
       });
+    },
+
+    certificationLevels() {
+      return levelsAvailable
+        ? Promise.resolve({ levels: [...FAKE_LEVELS] })
+        : Promise.reject(new ApiError('network', 'The API is unreachable.'));
+    },
+
+    changePassword({ currentPassword, newPassword }) {
+      const refused = checkPassword(currentPassword);
+      if (refused !== null) return refuse(refused);
+      if (newPassword.length < MIN_PASSWORD_LENGTH) {
+        return refuse({ code: 'validation-failed', fieldErrors: { newPassword: ['too-short'] } });
+      }
+      const account = session === null ? undefined : accounts.get(session.account.email);
+      if (account !== undefined) account.password = newPassword;
+      return Promise.resolve();
+    },
+
+    logoutAll() {
+      session = null;
+      return Promise.resolve();
+    },
+
+    deleteAccount({ password }) {
+      const refused = checkPassword(password);
+      if (refused !== null) return refuse(refused);
+      if (session !== null) accounts.delete(session.account.email);
+      session = null;
+      return Promise.resolve();
     },
   };
 }

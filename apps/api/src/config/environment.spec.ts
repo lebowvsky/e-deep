@@ -15,20 +15,15 @@ const BASE = {
   ALLOWED_ORIGINS: 'http://localhost:5173',
 };
 
-describe('EnvironmentVariables.DEV_AUTH_STUB', () => {
-  it('is disabled by default', () => {
-    expect(validateEnvironment(EnvironmentVariables, BASE).DEV_AUTH_STUB).toBe(false);
-  });
-
-  it('is only enabled by the exact value "true"', () => {
-    expect(
-      validateEnvironment(EnvironmentVariables, { ...BASE, DEV_AUTH_STUB: 'true' }).DEV_AUTH_STUB,
-    ).toBe(true);
-    for (const value of ['false', '1', 'yes', '']) {
-      expect(
-        validateEnvironment(EnvironmentVariables, { ...BASE, DEV_AUTH_STUB: value }).DEV_AUTH_STUB,
-      ).toBe(false);
-    }
+describe('validateEnvironment', () => {
+  it('ignores a variable the schema does not declare (no whitelist: leftover lines do not block)', () => {
+    expect(() =>
+      validateEnvironment(EnvironmentVariables, {
+        ...BASE,
+        NODE_ENV: 'production',
+        LEFTOVER_VARIABLE: 'true',
+      }),
+    ).not.toThrow();
   });
 });
 
@@ -145,48 +140,6 @@ describe('EnvironmentVariables.SESSION_COOKIE_SECURE', () => {
           .SESSION_COOKIE_SECURE,
       ).toBe(true);
     }
-  });
-});
-
-describe('EnvironmentVariables.DEV_AUTH_STUB in production', () => {
-  it('is refused, naming the variables but none of their values', () => {
-    let error: unknown;
-    try {
-      validateEnvironment(EnvironmentVariables, {
-        ...BASE,
-        NODE_ENV: 'production',
-        DEV_AUTH_STUB: 'true',
-      });
-    } catch (caught) {
-      error = caught;
-    }
-
-    expect(error).toBeInstanceOf(EnvironmentValidationError);
-    const { message } = error as EnvironmentValidationError;
-    expect(message).toContain('DEV_AUTH_STUB');
-    expect(message).toContain('devAuthStubForbiddenInProduction');
-    for (const value of Object.values(BASE)) {
-      expect(message).not.toContain(value);
-    }
-    expect(message).not.toMatch(/\b(true|production)\b/);
-  });
-
-  it('is allowed in development and test', () => {
-    for (const NODE_ENV of ['development', 'test']) {
-      expect(
-        validateEnvironment(EnvironmentVariables, { ...BASE, NODE_ENV, DEV_AUTH_STUB: 'true' })
-          .DEV_AUTH_STUB,
-      ).toBe(true);
-    }
-  });
-
-  it('accepts production when the stub is disabled', () => {
-    const environment = validateEnvironment(EnvironmentVariables, {
-      ...BASE,
-      NODE_ENV: 'production',
-    });
-    expect(environment.NODE_ENV).toBe('production');
-    expect(environment.DEV_AUTH_STUB).toBe(false);
   });
 });
 
