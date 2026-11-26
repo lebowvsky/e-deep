@@ -7,6 +7,7 @@ import type { AuthTab } from '@/features/auth/types';
 import { FeaturesSection } from '@/features/home/components/FeaturesSection';
 import { FinalCta } from '@/features/home/components/FinalCta';
 import { HeroSection } from '@/features/home/components/HeroSection';
+import { LandingNotice } from '@/features/home/components/LandingNotice';
 import { ProductPreview } from '@/features/home/components/ProductPreview';
 import { StepsSection } from '@/features/home/components/StepsSection';
 import { APP_NAME, pageTitle } from '@/shared/config/app';
@@ -76,6 +77,8 @@ export function HomePage() {
   return (
     <PublicLayout landing>
       <title>{TITLES[isAuthPage ? tab : 'landing']}</title>
+      {/* After a deletion of the account (route state): the landing page says it is done. */}
+      {!isAuthPage && <LandingNotice />}
       <HeroSection
         aside={
           isDesktop && (

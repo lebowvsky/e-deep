@@ -265,3 +265,14 @@ export function formatCountdown(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
+
+const longDate = new Intl.DateTimeFormat('fr-FR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
+/** An instant, on the device's calendar: "2026-11-20T09:00:00.000Z" → "20 novembre 2026" */
+export function formatLongDate(iso: string): string {
+  return longDate.format(new Date(iso));
+}

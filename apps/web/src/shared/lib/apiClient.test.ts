@@ -108,6 +108,25 @@ describe('createApiClient — writes', () => {
     expect(new Headers(init.headers).has('Content-Type')).toBe(false);
   });
 
+  it('sends a DELETE with a JSON body when given one', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(new Response(null, { status: 204 })));
+
+    await expect(client.delete('me', { body: { password: 'p' } })).resolves.toBeUndefined();
+    const init = initOf(fetchMock);
+    expect(init.method).toBe('DELETE');
+    expect(init.body).toBe(JSON.stringify({ password: 'p' }));
+    expect(new Headers(init.headers).get('Content-Type')).toBe('application/json');
+  });
+
+  it('sends a PUT with a JSON body and resolves on an empty 204', async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(new Response(null, { status: 204 })));
+
+    await expect(client.putNoContent('me/password', { a: 1 })).resolves.toBeUndefined();
+    const init = initOf(fetchMock);
+    expect(init.method).toBe('PUT');
+    expect(init.body).toBe(JSON.stringify({ a: 1 }));
+  });
+
   it('reads the code of a refused DELETE', async () => {
     stubFetch(() =>
       Promise.resolve(Response.json({ statusCode: 409, code: 'site-in-use' }, { status: 409 })),

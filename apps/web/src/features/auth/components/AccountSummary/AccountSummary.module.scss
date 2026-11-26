@@ -1,0 +1,40 @@
+@use '@/styles/tokens' as *;
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  margin: 0;
+}
+
+// Term above its value on phones, side by side from the tablet.
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+
+  @include from($bp-tablet) {
+    flex-direction: row;
+    gap: $space-4;
+    align-items: baseline;
+  }
+}
+
+.term {
+  @include type($type-body-sm);
+
+  color: $color-text-low;
+
+  @include from($bp-tablet) {
+    flex: 0 0 $layout-settings-term-width;
+  }
+}
+
+.value {
+  @include type($type-body);
+
+  min-width: 0;
+  margin: 0;
+  color: $color-text-high;
+  overflow-wrap: anywhere;
+}

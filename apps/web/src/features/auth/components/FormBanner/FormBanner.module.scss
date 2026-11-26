@@ -9,6 +9,19 @@
   background: $color-danger-soft;
   border-radius: $radius-md;
   box-shadow: inset 0 0 0 1px $color-danger-line;
+
+  // Focused by script only, to be read: its ring would only frame the message again.
+  &:focus {
+    outline: none;
+  }
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: $space-2;
+  align-items: flex-start;
 }
 
 .icon {

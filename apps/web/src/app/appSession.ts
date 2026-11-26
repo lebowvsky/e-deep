@@ -1,6 +1,6 @@
 import type { DataRouter } from 'react-router';
 import { purgeAllDrafts } from '@/features/dives/form/draftPurge';
-import { createQueryClient } from '@/shared/lib/queryClient';
+import { createQueryClient, leaveLostSession } from '@/shared/lib/queryClient';
 import type { AuthClient } from '@/shared/session/authClient';
 import type { AuthServices } from '@/shared/session/authServices';
 import { clearCacheOnRemoteLogout, type AuthBroadcast } from '@/shared/session/lib/authBroadcast';
@@ -25,6 +25,7 @@ export function createAppSession({ authClient, broadcast, getRouter }: AppSessio
     broadcast,
     // Every feature that keeps something on the device: the dive drafts only, so far.
     purgeDeviceData: () => purgeAllDrafts(),
+    onSessionLost: () => leaveLostSession(queryClient, navigation),
   };
   // Another tab signed out: drop this tab's cache and leave. Its drafts are already gone, and a
   // form unmounting here cannot write one again (`purgeAllDrafts` advances the drafts' epoch).

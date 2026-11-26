@@ -4,7 +4,7 @@ import { FormField } from '@/shared/ui/FormField';
 import { TextInput } from '@/shared/ui/TextInput';
 import { textOf, useAuthAction } from '../../hooks/useAuthAction';
 import { useSignup } from '../../hooks/useSignup';
-import { bannerMessage, serverFieldError, type AuthField } from '../../lib/authErrors';
+import { bannerMessage, serverFieldError } from '../../lib/authErrors';
 import { emailError, firstNameError, newPasswordError } from '../../lib/authValidation';
 import { AuthSubmitButton } from '../AuthSubmitButton';
 import { FormBanner } from '../FormBanner';
@@ -23,7 +23,9 @@ export interface SignupFormProps {
 /** Where a new account goes: the first launch (level, health consent, D38). */
 const AFTER_SIGNUP_PATH = '/welcome';
 
-const FIELD_ORDER: readonly AuthField[] = ['firstName', 'email', 'password'];
+type SignupField = 'firstName' | 'email' | 'password';
+
+const FIELD_ORDER: readonly SignupField[] = ['firstName', 'email', 'password'];
 
 /**
  * Minimal sign-up (accueil.md · Inscription, D35, D36): first name, e-mail, password, checked on
@@ -35,13 +37,13 @@ export function SignupForm({ email, onEmailChange, autoFocus = false }: SignupFo
   const { search } = useLocation();
   const [firstName, setFirstName] = useState('');
   const [password, setPassword] = useState('');
-  const [touched, setTouched] = useState<Partial<Record<AuthField, true>>>({});
+  const [touched, setTouched] = useState<Partial<Record<SignupField, true>>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const criteriaId = useId();
   const firstNameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
-  const focusField = (field: AuthField) => {
+  const focusField = (field: SignupField) => {
     const refs = { firstName: firstNameRef, email: emailRef, password: passwordRef };
     refs[field].current?.focus();
   };
@@ -60,18 +62,18 @@ export function SignupForm({ email, onEmailChange, autoFocus = false }: SignupFo
   const { failure } = attempt;
   const banner = bannerMessage(failure, retryLeft);
 
-  const sent: Record<AuthField, string> = {
+  const sent: Record<SignupField, string> = {
     firstName: firstName.trim(),
     email: email.trim(),
     password,
   };
-  const localErrors: Record<AuthField, string | null> = {
+  const localErrors: Record<SignupField, string | null> = {
     firstName: firstNameError(firstName),
     email: emailError(email),
     password: newPasswordError(password),
   };
-  const shows = (field: AuthField) => isSubmitted || touched[field] === true;
-  const messageOf = (field: AuthField) =>
+  const shows = (field: SignupField) => isSubmitted || touched[field] === true;
+  const messageOf = (field: SignupField) =>
     (shows(field) ? localErrors[field] : null) ?? serverFieldError(failure, field, sent[field]);
   const isEmailTaken = failure?.code === 'email-taken' && failure.email === sent.email;
   const isCompromised = failure?.code === 'invalid-fields' && failure.compromised === password;
@@ -97,7 +99,7 @@ export function SignupForm({ email, onEmailChange, autoFocus = false }: SignupFo
     }
   }, [attempt]);
 
-  const touch = (field: AuthField) => () =>
+  const touch = (field: SignupField) => () =>
     setTouched((current) => ({ ...current, [field]: true }));
 
   return (

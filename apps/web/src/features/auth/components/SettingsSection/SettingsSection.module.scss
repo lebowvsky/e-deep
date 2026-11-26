@@ -1,0 +1,14 @@
+@use '@/styles/tokens' as *;
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.title {
+  @include type($type-h-3);
+
+  margin: 0;
+  color: $color-text-high;
+}

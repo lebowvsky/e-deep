@@ -27,7 +27,7 @@ const authClient =
   import.meta.env.DEV && devState !== null
     ? lazyAuthClient(async () =>
         (await import('@/shared/session/mocks/fakeAuthClient')).createFakeAuthClient(
-          devAuthOptions(devState),
+          await devAuthOptions(devState),
         ),
       )
     : createHttpAuthClient(apiClient);

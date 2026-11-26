@@ -108,4 +108,61 @@ describe('fakeAuthClient', () => {
     });
     expect(me.onboarding).toBe('complete');
   });
+
+  it('lists the levels, or fails to when asked', async () => {
+    await expect(createFakeAuthClient().certificationLevels()).resolves.toMatchObject({
+      levels: expect.arrayContaining([expect.objectContaining({ id: 'ffessm-n2' })]) as unknown,
+    });
+    await expect(
+      createFakeAuthClient({ levelsAvailable: false }).certificationLevels(),
+    ).rejects.toMatchObject({ kind: 'network' });
+  });
+
+  it('changes the password once the current one is right', async () => {
+    const client = createFakeAuthClient();
+    const wrong = await refusalOf(
+      client.changePassword({ currentPassword: 'nope', newPassword: 'y'.repeat(20) }),
+    );
+    expect(isAuthFailure(wrong, 'invalid-credentials')).toBe(true);
+    const short = await refusalOf(
+      client.changePassword({ currentPassword: FAKE_CREDENTIALS.password, newPassword: 'court' }),
+    );
+    expect(isAuthFailure(short, 'validation-failed') && short.failure.fieldErrors).toEqual({
+      newPassword: ['too-short'],
+    });
+
+    await client.changePassword({
+      currentPassword: FAKE_CREDENTIALS.password,
+      newPassword: 'y'.repeat(20),
+    });
+    await client.logout();
+    const old = await refusalOf(client.login({ ...FAKE_CREDENTIALS, rememberMe: false }));
+    expect(isAuthFailure(old, 'invalid-credentials')).toBe(true);
+    await expect(
+      client.login({ email: FAKE_CREDENTIALS.email, password: 'y'.repeat(20), rememberMe: false }),
+    ).resolves.toEqual(ME_FIXTURE);
+  });
+
+  it('throttles the password checks of the account screens', async () => {
+    const client = createFakeAuthClient({ maxFailedLogins: 1, retryAfterS: 30 });
+    await refusalOf(client.deleteAccount({ password: 'nope' }));
+
+    const error = await refusalOf(client.deleteAccount({ password: FAKE_CREDENTIALS.password }));
+    expect(isAuthFailure(error, 'too-many-attempts') && error.failure.retryAfterS).toBe(30);
+  });
+
+  it('deletes the account with the right password: no session, no login any more', async () => {
+    const client = createFakeAuthClient();
+    await client.deleteAccount({ password: FAKE_CREDENTIALS.password });
+
+    expect(client.session).toBeNull();
+    const error = await refusalOf(client.login({ ...FAKE_CREDENTIALS, rememberMe: false }));
+    expect(isAuthFailure(error, 'invalid-credentials')).toBe(true);
+  });
+
+  it('closes the session on logout-all', async () => {
+    const client = createFakeAuthClient();
+    await client.logoutAll();
+    expect(client.session).toBeNull();
+  });
 });

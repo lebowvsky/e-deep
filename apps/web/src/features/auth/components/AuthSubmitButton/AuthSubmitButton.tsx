@@ -9,17 +9,20 @@ export interface AuthSubmitButtonProps {
   pendingLabel: string;
   /** Seconds before a new try is allowed (`429`); `0`: allowed. */
   retryLeft: number;
+  /** Nothing can be sent yet, for a reason said elsewhere (the levels of `/welcome` not loaded). */
+  isBlocked?: boolean;
   children: ReactNode;
 }
 
 /**
- * Submit of the sign-in and sign-up forms: full width, 48px. While the call runs or the API asks
- * to wait, it stays focusable but submits nothing (`aria-disabled`; the form refuses the submit).
+ * Submit of the auth forms: full width, 48px. While the call runs, the API asks to wait or the form
+ * is blocked, it stays focusable but submits nothing (`aria-disabled`; the form refuses the submit).
  */
 export function AuthSubmitButton({
   isPending,
   pendingLabel,
   retryLeft,
+  isBlocked = false,
   children,
 }: AuthSubmitButtonProps) {
   const isWaiting = retryLeft > 0;
@@ -29,7 +32,7 @@ export function AuthSubmitButton({
       variant="primary"
       size="lg"
       className={styles.submit}
-      aria-disabled={isPending || isWaiting || undefined}
+      aria-disabled={isPending || isWaiting || isBlocked || undefined}
       aria-busy={isPending || undefined}
     >
       {isPending ? pendingLabel : children}

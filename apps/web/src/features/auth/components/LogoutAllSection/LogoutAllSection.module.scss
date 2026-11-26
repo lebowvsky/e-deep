@@ -1,0 +1,13 @@
+@use '@/styles/tokens' as *;
+
+.text {
+  @include type($type-body);
+
+  margin: 0;
+  color: $color-text-med;
+}
+
+// Its own width, on the left.
+.button {
+  align-self: flex-start;
+}

@@ -45,6 +45,19 @@ export interface SessionErrorPolicy {
 }
 
 /**
+ * The reaction to a session found closed (`401`), whoever finds it (a query, a mutation, or a call
+ * made outside the cache such as the account deletion, `endSession`): nothing of the logbook stays
+ * in memory (D41), then `/login?next=…`.
+ */
+export function leaveLostSession(
+  queryClient: QueryClient,
+  policy: Pick<SessionErrorPolicy, 'onUnauthenticated'>,
+): void {
+  queryClient.clear();
+  policy.onUnauthenticated();
+}
+
+/**
  * The query client of the app. With a `policy`, every failed query or mutation goes through it: a
  * `401` clears the whole cache, mutations included (the logbook of a closed session must not stay
  * in memory, D41). The queries marked `SELF_HANDLED_SESSION_META` are left to their caller.
@@ -55,8 +68,7 @@ export function createQueryClient(policy?: SessionErrorPolicy): QueryClient {
     const kind = policy.classify(error);
     if (kind === null) return;
     if (kind === 'unauthenticated') {
-      queryClient.clear();
-      policy.onUnauthenticated();
+      leaveLostSession(queryClient, policy);
       return;
     }
     // Marked stale without a refetch: the screen in place keeps its diver until it is left.

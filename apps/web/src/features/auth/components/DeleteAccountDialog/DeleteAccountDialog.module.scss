@@ -1,0 +1,14 @@
+@use '@/styles/tokens' as *;
+
+// Between the description and the buttons of the dialog.
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  margin-top: $space-5;
+}
+
+.countdown {
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
+}

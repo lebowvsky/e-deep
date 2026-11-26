@@ -49,6 +49,42 @@
   color: $color-text-high;
 }
 
+// Onboarding: the brand on top (not a link: every way out of the page leads back to it).
+.brand {
+  @include type($type-brand);
+
+  display: inline-flex;
+  gap: $space-2;
+  align-items: center;
+  min-height: $layout-hit-target;
+  padding: 0 $space-2;
+  color: $color-text-high;
+}
+
+// From the tablet, the page in a centred card (auth card look: surface2, strong ring, raised).
+.onboarding {
+  .title {
+    margin-top: 0;
+  }
+
+  @include from($bp-tablet) {
+    .header {
+      justify-content: center;
+      padding-top: $space-8;
+    }
+
+    .content {
+      @include card(2);
+
+      padding: $layout-card-pad-lg;
+      margin-block: $space-6 $space-11;
+      box-shadow:
+        inset 0 0 0 1px $color-line-strong,
+        $shadow-raised;
+    }
+  }
+}
+
 .subtitle {
   @include type($type-body-lg);
 
@@ -67,9 +103,11 @@
   color: $color-text-med;
   text-align: center;
 
-  // The way to the other screen — accent, 500.
-  a {
+  // The way to the other screen, or out (« Se déconnecter ») — accent, 500.
+  a,
+  button {
     @include focus-ring;
+    @include hit-area;
     @include type($type-body-med);
 
     color: $color-accent;

@@ -24,6 +24,7 @@ export function testAuthServices(authClient: AuthClient): AuthServices {
     authClient,
     broadcast: createAuthBroadcast(() => null),
     purgeDeviceData: () => undefined,
+    onSessionLost: () => undefined,
   };
 }
 

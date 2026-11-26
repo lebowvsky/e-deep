@@ -27,6 +27,7 @@ import {
   formatUnderwaterTime,
   formatUtcOffset,
   splitMinutes,
+  formatLongDate,
 } from './format';
 
 describe('format', () => {
@@ -163,5 +164,11 @@ describe('formatCountdown', () => {
   it('shows minutes and two-digit seconds', () => {
     expect(formatCountdown(125)).toBe('2:05');
     expect(formatCountdown(9)).toBe('0:09');
+  });
+});
+
+describe('formatLongDate', () => {
+  it('writes the day, the month in full and the year', () => {
+    expect(formatLongDate('2026-11-20T12:00:00.000Z')).toBe('20 novembre 2026');
   });
 });

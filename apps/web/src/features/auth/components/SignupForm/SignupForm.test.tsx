@@ -172,7 +172,7 @@ describe('SignupForm — refusals', () => {
   it.each([
     [
       { password: ['contains-identity'] },
-      'Ton mot de passe ne doit pas contenir ton e-mail ni ton prénom.',
+      'Ton mot de passe ne doit pas contenir ton e-mail, ton prénom ni ton nom.',
     ],
     [{ password: ['too-long'] }, '128 caractères maximum.'],
     [{ firstName: ['too-long'] }, 'Saisis un prénom de 1 à 40 caractères.'],
