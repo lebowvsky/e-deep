@@ -23,7 +23,6 @@ const SETTINGS: Readonly<Record<string, unknown>> = {
   NODE_ENV: 'test',
   SESSION_COOKIE_SECURE: true,
   REGISTRATION_ENABLED: false,
-  DEV_AUTH_STUB: false,
   ALLOWED_ORIGINS: ['http://localhost:5173'],
 };
 

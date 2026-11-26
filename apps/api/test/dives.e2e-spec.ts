@@ -114,7 +114,7 @@ const SUMMARY: DiveSummary = {
 
 /** Raw queries of `DiveLogService` (through the transaction manager). */
 const query = jest.fn<Promise<unknown>, [string, unknown[]]>();
-/** The session cookie of the request; `undefined`: none (the `DEV_AUTH_STUB` is off). */
+/** The session cookie of the request; `undefined`: none. */
 let cookie: string | undefined;
 
 /** Stands in for the database: no connection, the real `DiveLogService` runs on it. */

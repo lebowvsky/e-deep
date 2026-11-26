@@ -1,5 +1,4 @@
 import type { DataSource } from 'typeorm';
-import { DevAuthStub } from '../../src/common/auth/dev-auth-stub';
 import { asDiverId } from '../../src/common/auth/diver-id';
 import { DiveEvent } from '../../src/modules/dives/dive-event.entity';
 import { DashboardService } from '../../src/modules/dashboard/dashboard.service';
@@ -148,37 +147,5 @@ describe('dashboard', () => {
     const result = await dashboard.getDashboard(asDiverId(diver.id), NOW);
 
     expect(result.user.lastName).toBeNull();
-  });
-
-  describe('DevAuthStub (development fallback of the SessionGuard)', () => {
-    let stub: DevAuthStub;
-
-    beforeAll(() => {
-      stub = new DevAuthStub(dataSource);
-    });
-
-    it('finds the account of the first diver created', async () => {
-      const first = await fixtures.diver();
-      const second = await fixtures.diver();
-      await fixtures.account(second.id, { email: 'second@example.test' });
-      const account = await fixtures.account(first.id, { email: 'first@example.test' });
-
-      await expect(stub.firstDiverAccount()).resolves.toEqual({
-        accountId: account.id,
-        diverId: first.id,
-      });
-    });
-
-    it('finds nothing when the first diver has no account', async () => {
-      await fixtures.diver();
-      const second = await fixtures.diver();
-      await fixtures.account(second.id);
-
-      await expect(stub.firstDiverAccount()).resolves.toBeNull();
-    });
-
-    it('finds nothing when there is no diver', async () => {
-      await expect(stub.firstDiverAccount()).resolves.toBeNull();
-    });
   });
 });

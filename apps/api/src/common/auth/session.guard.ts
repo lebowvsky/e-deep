@@ -1,9 +1,7 @@
 import type { AccountRole } from '@e-deep/shared';
-import { Inject, Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request, Response } from 'express';
-import type { AppConfigService } from '../../config/app-config.service';
 import { STAFF_ROLES } from '../../modules/accounts/account-lists';
 import { OnboardingService } from '../../modules/accounts/onboarding.service';
 import type { SessionAudience } from '../../modules/auth/session-audiences';
@@ -15,13 +13,7 @@ import {
   UnauthenticatedError,
 } from '../errors/domain-errors';
 import { ALLOW_INCOMPLETE_PROFILE_KEY } from './allow-incomplete-profile.decorator';
-import {
-  attachAuthContext,
-  authContextOfSession,
-  devStubAuthContext,
-  type AuthContext,
-} from './auth-context';
-import { DevAuthStub } from './dev-auth-stub';
+import { attachAuthContext, authContextOfSession, type AuthContext } from './auth-context';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import { audienceOfPath, routePath } from './route-audience';
 import { ROLES_KEY } from './roles.decorator';
@@ -35,8 +27,7 @@ const AUDIENCE_ROLES = {
 
 interface Authenticated {
   readonly auth: AuthContext;
-  /** `null` for the `DEV_AUTH_STUB` fallback: nothing to touch. */
-  readonly session: ResolvedSession | null;
+  readonly session: ResolvedSession;
 }
 
 /**
@@ -46,9 +37,7 @@ interface Authenticated {
  *    guard's, the pipes', the handler's);
  * 2. the audience from the route path (`/api/admin/*`: admin cookie only, any other: web cookie
  *    only), then the session of that cookie (`SessionService.resolve`): `401 unauthenticated`
- *    without a single live one. DEVELOPMENT fallback (until lot 6): no web cookie at all (under
- *    either name, empty ones included),
- *    `DEV_AUTH_STUB=true` and `NODE_ENV≠production` act for the first diver;
+ *    without a single live one;
  * 3. the role (`@Roles`, or the audience's roles by default): `403 forbidden` otherwise;
  * 4. the activity (`touch`), once the role is accepted;
  * 5. on a web route without `@AllowIncompleteProfile()` (the dive log): the onboarding status,
@@ -59,22 +48,12 @@ interface Authenticated {
  */
 @Injectable()
 export class SessionGuard implements CanActivate {
-  private readonly devStubEnabled: boolean;
-
   constructor(
     private readonly reflector: Reflector,
     private readonly cookies: SessionCookies,
     private readonly sessions: SessionService,
     private readonly onboarding: OnboardingService,
-    private readonly devAuthStub: DevAuthStub,
-    @Inject(ConfigService) config: AppConfigService,
-  ) {
-    // The environment validation already refuses the stub in production; checked again here so
-    // that no configuration path can turn it on there.
-    this.devStubEnabled =
-      config.get('DEV_AUTH_STUB', { infer: true }) &&
-      config.get('NODE_ENV', { infer: true }) !== 'production';
-  }
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (context.getType() !== 'http') {
@@ -94,9 +73,7 @@ export class SessionGuard implements CanActivate {
     if (!this.allowedRoles(context, audience).includes(auth.role)) {
       throw new ForbiddenError();
     }
-    if (session !== null) {
-      await this.sessions.touch(session);
-    }
+    await this.sessions.touch(session);
     if (audience === 'web' && !this.flag(context, ALLOW_INCOMPLETE_PROFILE_KEY)) {
       await this.assertOnboarded(auth);
     }
@@ -104,20 +81,8 @@ export class SessionGuard implements CanActivate {
     return true;
   }
 
-  /**
-   * The context of the audience's session (and the session, to touch it); the stub fallback, with
-   * no session, when no web cookie is presented at all.
-   */
+  /** The context of the audience's session, and the session itself (to touch it). */
   private async authenticate(request: Request, audience: SessionAudience): Promise<Authenticated> {
-    if (this.devStubEnabled && audience === 'web') {
-      if (!this.cookies.presentsAnyCookie(request, audience)) {
-        const account = await this.devAuthStub.firstDiverAccount();
-        if (account === null) {
-          throw new UnauthenticatedError();
-        }
-        return { auth: devStubAuthContext(account), session: null };
-      }
-    }
     const token = this.cookies.token(request, audience);
     const session = token === null ? null : await this.sessions.resolve(token, audience);
     if (session === null) {

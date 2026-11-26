@@ -35,7 +35,7 @@ import {
   setCookies,
   singleSetCookie,
 } from './support/auth-app';
-import { WEB_COOKIE, devAuthStubFake, signIn } from './support/access-control';
+import { WEB_COOKIE, signIn } from './support/access-control';
 
 const PASSWORD = 'coral reef at dawn, twice';
 /** Planted in refused bodies: no error body may echo it (D-26). */
@@ -745,42 +745,5 @@ describe('client IP key behind a trusted proxy (trustProxy: 1)', () => {
     expect(fakes.authentication.loginDiver).toHaveBeenCalledWith(
       expect.objectContaining({ ip: key }),
     );
-  });
-});
-
-describe('DEV_AUTH_STUB fallback on the session-ending routes (until lot 6)', () => {
-  let app: NestExpressApplication;
-
-  beforeAll(async () => {
-    app = await createAuthTestApp({ secureCookies: false, devAuthStub: true });
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  beforeEach(() => {
-    resetFakes();
-    devAuthStubFake.firstDiverAccount.mockResolvedValue({
-      accountId: ACCOUNT_ID,
-      diverId: DIVER_ID,
-    });
-  });
-
-  it('acts for the first diver without a cookie (GET /api/me)', async () => {
-    await sameOrigin(app).get('/api/me').expect(200);
-  });
-
-  it.each<['post' | 'put' | 'delete', string, object]>([
-    ['post', '/api/auth/logout-all', {}],
-    ['put', '/api/me/password', { currentPassword: 'x', newPassword: 'y' }],
-    ['delete', '/api/me', { password: 'x' }],
-  ])('%s %s: 401, there is no session to end', async (method, path, body) => {
-    const response = await sameOrigin(app)[method](path).send(body).expect(401);
-
-    expect(response.body).toStrictEqual({ statusCode: 401, code: 'unauthenticated' });
-    expect(fakes.authentication.signOutEverywhere).not.toHaveBeenCalled();
-    expect(fakes.accounts.changePassword).not.toHaveBeenCalled();
-    expect(fakes.accounts.deleteAccount).not.toHaveBeenCalled();
   });
 });

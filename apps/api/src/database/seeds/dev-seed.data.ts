@@ -1,8 +1,8 @@
 /**
  * Fictitious development data, one account per diver (`<key>@example.test`, password
- * `SEED_PASSWORD`). Marine Rousseau (the first diver, the one of the `DEV_AUTH_STUB`) has the dive log
- * of the "Mes plongées" mocks (`dive-log.data.ts`, absolute dates); the two other accounts, linked
- * to two of her buddies, get a few generated dives. Deterministic: a fixed-seed PRNG drives their
+ * `SEED_PASSWORD`). Marine Rousseau (the first diver) has the dive log of the "Mes plongées"
+ * mocks (`dive-log.data.ts`, absolute dates); the two other accounts, linked to two of her
+ * buddies, get a few generated dives. Deterministic: a fixed-seed PRNG drives their
  * measures, and their dates are relative to the day the seed runs.
  */
 import { toLocalDateTime } from '../../modules/dives/dive-contract.mapper';
