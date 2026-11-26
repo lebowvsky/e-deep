@@ -151,6 +151,59 @@ describe('auth schema', () => {
     });
   });
 
+  describe('staff TOTP (AddStaffTotp)', () => {
+    it('adds totp_secret (text) and totp_last_used_step (bigint), nullable without default', async () => {
+      const columns = await selectRows<{
+        name: string;
+        type: string;
+        nullable: string;
+        default: string | null;
+      }>(
+        dataSource,
+        `SELECT column_name AS name, data_type AS type, is_nullable AS nullable, column_default AS default
+           FROM information_schema.columns
+          WHERE table_name = 'accounts' AND column_name LIKE 'totp_%' ORDER BY column_name`,
+      );
+      expect(columns).toEqual([
+        { name: 'totp_last_used_step', type: 'bigint', nullable: 'YES', default: null },
+        { name: 'totp_secret', type: 'text', nullable: 'YES', default: null },
+      ]);
+    });
+
+    it.each([
+      ['a secret', { totpSecret: 'v1.a.b.c' }],
+      ['a last used step', { totpLastUsedStep: 59_000_000 }],
+    ])('refuses a diver account with %s', async (_case, values: Partial<Account>) => {
+      const diver = await fixtures.diver();
+      await expect(fixtures.account(diver.id, values)).rejects.toEqual(
+        violating('ck_accounts__totp_staff_only'),
+      );
+    });
+
+    it('accepts a staff account with a secret and a step, or with neither', async () => {
+      const enrolled = await fixtures.account(null, {
+        role: 'admin',
+        totpSecret: 'v1.a.b.c',
+        totpLastUsedStep: 59_000_000,
+      });
+      const notEnrolled = await fixtures.account(null, { role: 'support' });
+
+      expect(enrolled).toMatchObject({ totpSecret: 'v1.a.b.c', totpLastUsedStep: 59_000_000 });
+      expect(notEnrolled).toMatchObject({ totpSecret: null, totpLastUsedStep: null });
+    });
+
+    it('reads a step beyond 2^31 back as a number', async () => {
+      const account = await fixtures.account(null, { totpLastUsedStep: 2 ** 40 });
+      expect(account.totpLastUsedStep).toBe(2 ** 40);
+    });
+
+    it('accepts the totp_reset auth event', async () => {
+      const account = await fixtures.account(null);
+      const event = await fixtures.authEvent(account.id, { type: 'totp_reset' });
+      expect(event).toMatchObject({ accountId: account.id, type: 'totp_reset' });
+    });
+  });
+
   describe('sessions', () => {
     it.each([31, 33, 0])('refuses a token hash of %i bytes', async (length) => {
       const account = await fixtures.account(null);
@@ -354,11 +407,53 @@ describe('auth schema', () => {
       return row?.definition;
     }
 
-    it('reverts AddAccountCreatedAuthEvent only once no account_created event is left, then migrates again', async () => {
+    async function totpColumns(): Promise<string[]> {
+      return names(
+        "SELECT column_name AS name FROM information_schema.columns WHERE table_name = 'accounts' AND column_name LIKE 'totp_%'",
+      );
+    }
+
+    it('reverts AddStaffTotp only once no totp_reset event is left, dropping the secrets, then migrates again', async () => {
+      expect(await lastMigration()).toBe('AddStaffTotp1795734645682');
+      const staff = await fixtures.account(null, {
+        role: 'admin',
+        totpSecret: 'v1.a.b.c',
+        totpLastUsedStep: 1,
+      });
+      const reset = await fixtures.authEvent(staff.id, { type: 'totp_reset' });
+
+      await expect(dataSource.undoLastMigration({ transaction: 'all' })).rejects.toThrow(
+        'some auth events are totp_reset',
+      );
+      expect(await lastMigration()).toBe('AddStaffTotp1795734645682');
+      expect(await totpColumns()).toEqual(['totp_last_used_step', 'totp_secret']);
+
+      await dataSource.query('DELETE FROM auth_events WHERE id = $1', [reset.id]);
+      await dataSource.undoLastMigration({ transaction: 'all' });
       expect(await lastMigration()).toBe('AddAccountCreatedAuthEvent1795505541116');
+      expect(await totpColumns()).toEqual([]);
+      expect(
+        await names(
+          "SELECT conname AS name FROM pg_constraint WHERE conname = 'ck_accounts__totp_staff_only'",
+        ),
+      ).toEqual([]);
+      expect(await authEventTypeCheck()).not.toContain('totp_reset');
+      expect(await authEventTypeCheck()).toContain("'account_created'");
+      expect(await count('accounts')).toBe(1);
+
+      await dataSource.runMigrations({ transaction: 'each' });
+      expect(await lastMigration()).toBe('AddStaffTotp1795734645682');
+      expect(await totpColumns()).toEqual(['totp_last_used_step', 'totp_secret']);
+      expect(await authEventTypeCheck()).toContain("'totp_reset'");
+    });
+
+    it('reverts AddAccountCreatedAuthEvent only once no account_created event is left, then migrates again', async () => {
+      // Inserted first: the `Account` entity maps the TOTP columns that AddStaffTotp's revert drops.
       const account = await fixtures.account((await fixtures.diver()).id);
       const created = await fixtures.authEvent(account.id, { type: 'account_created' });
       await fixtures.authEvent(account.id, { type: 'login_succeeded' });
+      await dataSource.undoLastMigration({ transaction: 'all' });
+      expect(await lastMigration()).toBe('AddAccountCreatedAuthEvent1795505541116');
 
       await expect(dataSource.undoLastMigration({ transaction: 'all' })).rejects.toThrow(
         'some auth events are account_created',
@@ -376,11 +471,12 @@ describe('auth schema', () => {
       expect(await count('auth_events')).toBe(1);
 
       await dataSource.runMigrations({ transaction: 'each' });
-      expect(await lastMigration()).toBe('AddAccountCreatedAuthEvent1795505541116');
+      expect(await lastMigration()).toBe('AddStaffTotp1795734645682');
       expect(await authEventTypeCheck()).toContain("'account_created'");
     });
 
     it('reverts AllowIncompleteDiverProfile only once every profile is complete, then migrates again', async () => {
+      await dataSource.undoLastMigration({ transaction: 'all' });
       await dataSource.undoLastMigration({ transaction: 'all' });
       expect(await lastMigration()).toBe('AllowIncompleteDiverProfile1795191584720');
       const incomplete = await fixtures.incompleteDiver();
@@ -413,6 +509,7 @@ describe('auth schema', () => {
       await fixtures.account(diver.id);
       await dataSource.undoLastMigration({ transaction: 'all' });
       await dataSource.undoLastMigration({ transaction: 'all' });
+      await dataSource.undoLastMigration({ transaction: 'all' });
 
       await dataSource.undoLastMigration({ transaction: 'all' });
 
@@ -434,7 +531,7 @@ describe('auth schema', () => {
       expect(await count('divers')).toBe(1);
 
       await dataSource.runMigrations({ transaction: 'each' });
-      expect(await lastMigration()).toBe('AddAccountCreatedAuthEvent1795505541116');
+      expect(await lastMigration()).toBe('AddStaffTotp1795734645682');
       expect(
         await names(
           "SELECT tablename AS name FROM pg_tables WHERE schemaname = 'public' AND tablename = ANY($1)",

@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import type { DataSource, EntityManager } from 'typeorm';
 import { InvalidCredentialsError, TooManyAttemptsError } from '../../common/errors/domain-errors';
@@ -7,6 +8,9 @@ import { AuthenticationService } from './authentication.service';
 import type { LoginThrottle, ThrottleDecision } from './login-throttle';
 import type { PasswordCheck, PasswordHasher } from './password/password-hasher';
 import type { IssuedSession, SessionService } from './session.service';
+import { StaffTotp } from './totp/staff-totp';
+import { hotp, totpStepAt } from './totp/totp';
+import { TotpSecretCipher } from './totp/totp-secret-cipher';
 
 const PASSWORD = 'a long enough passphrase';
 const ISSUED: IssuedSession = {
@@ -22,30 +26,61 @@ const DIVER = {
   diverId: 'diver-1',
   passwordHash: 'stored-diver-hash',
 } as Account;
+const NOW = new Date('2026-11-27T10:00:10.000Z');
+const STEP = totpStepAt(NOW);
+const CIPHER = new TotpSecretCipher(randomBytes(32));
+const TOTP_SECRET = randomBytes(20);
 const STAFF = {
   id: 'account-staff',
   email: 'support@example.test',
   role: 'support',
   diverId: null,
   passwordHash: 'stored-staff-hash',
+  totpSecret: CIPHER.encrypt(TOTP_SECRET, 'account-staff'),
+  totpLastUsedStep: null,
 } as Account;
+/** The code the authenticator of STAFF shows `offset` steps from now. */
+const codeAt = (offset = 0): string => hotp(TOTP_SECRET, STEP + offset);
+const WRONG_CODE = codeAt() === '000000' ? '000001' : '000000';
 
 function setup({
   accounts = [DIVER, STAFF],
   check = 'match',
   needsRehash = false,
   decision = { allowed: true },
+  stepAccepted = true,
+  cipher = CIPHER,
 }: {
   accounts?: Account[];
   check?: PasswordCheck;
   needsRehash?: boolean;
   decision?: ThrottleDecision;
+  /** Outcome of the conditional `UPDATE` of `totp_last_used_step` (false: a concurrent login won). */
+  stepAccepted?: boolean;
+  cipher?: TotpSecretCipher | null;
 } = {}) {
+  const acceptStep = jest.fn().mockResolvedValue({ affected: stepAccepted ? 1 : 0 });
+  const stepUpdate = {
+    update: jest.fn(),
+    set: jest.fn(),
+    where: jest.fn(),
+    andWhere: jest.fn(),
+    execute: acceptStep,
+  };
+  for (const chained of [
+    stepUpdate.update,
+    stepUpdate.set,
+    stepUpdate.where,
+    stepUpdate.andWhere,
+  ]) {
+    chained.mockReturnValue(stepUpdate);
+  }
   const manager = {
     findOneBy: jest.fn((_entity: unknown, { email }: { email: string }) =>
       Promise.resolve(accounts.find((account) => account.email === email) ?? null),
     ),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
+    createQueryBuilder: () => stepUpdate,
   };
   const dataSource = {
     manager,
@@ -75,14 +110,22 @@ function setup({
     throttle as unknown as LoginThrottle,
     sessions as unknown as SessionService,
     authEvents as unknown as AuthEventsService,
+    new StaffTotp(cipher, { now: () => NOW }),
   );
-  return { service, manager, hasher, throttle, sessions, authEvents };
+  return { service, manager, hasher, throttle, sessions, authEvents, stepUpdate };
 }
 
 const web = (email: string, password = PASSWORD) => ({
   email,
   password,
   rememberMe: true,
+  ip: '203.0.113.7',
+});
+
+const admin = (email: string, totpCode = codeAt()) => ({
+  email,
+  password: PASSWORD,
+  totpCode,
   ip: '203.0.113.7',
 });
 
@@ -98,7 +141,8 @@ describe('AuthenticationService', () => {
   afterEach(() => {
     // D40: an event name and a reason code only, never an id, an email nor a password.
     const messages = logged.flatMap((spy) => spy.mock.calls.flat().map(String));
-    for (const secret of [DIVER.id, DIVER.email, STAFF.id, STAFF.email, PASSWORD, 'nobody']) {
+    const secrets = [DIVER.id, DIVER.email, STAFF.id, STAFF.email, PASSWORD, 'nobody', codeAt()];
+    for (const secret of [...secrets, STAFF.totpSecret ?? 'unset']) {
       expect(messages.join('\n')).not.toContain(secret);
     }
     jest.restoreAllMocks();
@@ -155,14 +199,7 @@ describe('AuthenticationService', () => {
   it('refuses a diver account on the admin, after a real verification', async () => {
     const { service, sessions, hasher } = setup();
 
-    await expect(
-      service.loginStaff({
-        email: DIVER.email,
-        password: PASSWORD,
-        totpCode: '123456',
-        ip: '203.0.113.7',
-      }),
-    ).rejects.toThrow(InvalidCredentialsError);
+    await expect(service.loginStaff(admin(DIVER.email))).rejects.toThrow(InvalidCredentialsError);
     expect(hasher.check).toHaveBeenCalledWith(PASSWORD, 'stored-diver-hash');
     expect(sessions.createIn).not.toHaveBeenCalled();
   });
@@ -178,15 +215,90 @@ describe('AuthenticationService', () => {
   it('signs staff in on the admin with a short session', async () => {
     const { service, sessions } = setup();
 
-    await service.loginStaff({
-      email: STAFF.email,
-      password: PASSWORD,
-      totpCode: '123456',
-      ip: '203.0.113.7',
-    });
+    await service.loginStaff(admin(STAFF.email));
 
     expect(sessions.createIn).toHaveBeenCalledWith(expect.anything(), STAFF.id, 'admin', {
       rememberMe: false,
+    });
+  });
+
+  describe('staff TOTP (D42)', () => {
+    it('accepts the step of the code with a conditional UPDATE before the session', async () => {
+      const { service, stepUpdate, sessions } = setup();
+
+      await service.loginStaff(admin(STAFF.email, codeAt(-1)));
+
+      expect(stepUpdate.set).toHaveBeenCalledWith({ totpLastUsedStep: STEP - 1 });
+      expect(stepUpdate.where).toHaveBeenCalledWith('id = :id', { id: STAFF.id });
+      expect(stepUpdate.andWhere).toHaveBeenCalledWith(
+        '(totp_last_used_step IS NULL OR totp_last_used_step < :step)',
+        { step: STEP - 1 },
+      );
+      // Bound to the secret the code was checked against (no session after a concurrent reset).
+      expect(stepUpdate.andWhere).toHaveBeenCalledWith('totp_secret = :secret', {
+        secret: STAFF.totpSecret,
+      });
+      expect(stepUpdate.execute.mock.invocationCallOrder[0]).toBeLessThan(
+        sessions.createIn.mock.invocationCallOrder[0] ?? 0,
+      );
+    });
+
+    it.each([
+      ['a wrong code', setup, WRONG_CODE],
+      ['a code two steps old', setup, codeAt(-2)],
+      [
+        'a code of the step already accepted',
+        () => setup({ accounts: [{ ...STAFF, totpLastUsedStep: STEP }] }),
+        codeAt(),
+      ],
+      [
+        'an older code still inside the window',
+        () => setup({ accounts: [{ ...STAFF, totpLastUsedStep: STEP }] }),
+        codeAt(-1),
+      ],
+      [
+        'a code accepted meanwhile by a concurrent login (UPDATE affects no row)',
+        () => setup({ stepAccepted: false }),
+        codeAt(),
+      ],
+      [
+        'a staff account without a secret',
+        () => setup({ accounts: [{ ...STAFF, totpSecret: null }] }),
+        codeAt(),
+      ],
+      ['any code without TOTP_ENCRYPTION_KEY', () => setup({ cipher: null }), codeAt()],
+    ])('answers %s like a wrong password', async (_case, arrange, code) => {
+      const { service, sessions, authEvents } = arrange();
+
+      await expect(service.loginStaff(admin(STAFF.email, code))).rejects.toThrow(
+        InvalidCredentialsError,
+      );
+      expect(authEvents.record).toHaveBeenCalledWith(STAFF.id, 'login_failed');
+      expect(sessions.createIn).not.toHaveBeenCalled();
+    });
+
+    it('never checks the code after a wrong password: no step is consumed', async () => {
+      const { service, stepUpdate } = setup({ check: 'mismatch' });
+
+      await expect(service.loginStaff(admin(STAFF.email))).rejects.toThrow(InvalidCredentialsError);
+      expect(stepUpdate.execute).not.toHaveBeenCalled();
+    });
+
+    it('counts a refused code in the throttle, like any attempt', async () => {
+      const { service, throttle } = setup();
+
+      await expect(service.loginStaff(admin(STAFF.email, WRONG_CODE))).rejects.toThrow(
+        InvalidCredentialsError,
+      );
+      expect(throttle.consume).toHaveBeenCalledWith({ ip: '203.0.113.7', email: STAFF.email });
+    });
+
+    it('never asks a TOTP code on the web', async () => {
+      const { service, stepUpdate } = setup();
+
+      await service.loginDiver(web(DIVER.email));
+
+      expect(stepUpdate.execute).not.toHaveBeenCalled();
     });
   });
 
@@ -240,13 +352,7 @@ describe('AuthenticationService', () => {
     it('revokes an admin cookie on an admin login', async () => {
       const { service, sessions } = setup();
 
-      await service.loginStaff({
-        email: STAFF.email,
-        password: PASSWORD,
-        totpCode: '123456',
-        ip: '203.0.113.7',
-        replacedTokens: ['old-admin'],
-      });
+      await service.loginStaff({ ...admin(STAFF.email), replacedTokens: ['old-admin'] });
 
       expect(sessions.revokeIn).toHaveBeenCalledWith(expect.anything(), 'old-admin', 'admin');
     });

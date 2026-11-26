@@ -34,7 +34,7 @@ export async function resetPasswordCommand(
 async function main(): Promise<string> {
   const args = commandArguments();
   parseResetPasswordArguments(args);
-  const context = await openCliContext();
+  const context = await openCliContext({ enrolsTotp: false });
   const reader = stdinPasswordReader();
   try {
     return await resetPasswordCommand(context.provisioning, args, reader.read);

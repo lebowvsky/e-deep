@@ -96,6 +96,7 @@ const CONSTRAINTS = [
   'ck_accounts__password_hash',
   'ck_accounts__role',
   'ck_accounts__diver_role',
+  'ck_accounts__totp_staff_only',
   'pk_sessions',
   'fk_sessions__account_id',
   'uq_sessions__token_hash',
@@ -121,6 +122,7 @@ const MIGRATIONS = [
   'CreateAuthSchema1795191490987',
   'AllowIncompleteDiverProfile1795191584720',
   'AddAccountCreatedAuthEvent1795505541116',
+  'AddStaffTotp1795734645682',
 ];
 
 const INDEXES: Record<string, string> = {

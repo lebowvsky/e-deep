@@ -15,8 +15,8 @@ export class AdminLoginRequestDto implements AdminLoginRequest {
   password: string;
 
   /**
-   * Required and format-checked (`format`) now, but NOT verified until lot 7: see the
-   * `TODO(lot 7)` of `AuthenticationService`.
+   * Six digits (`format`) here; verified against the account's secret, with anti-replay, by
+   * `AuthenticationService.loginStaff` (D42).
    */
   @Required()
   @IsString()

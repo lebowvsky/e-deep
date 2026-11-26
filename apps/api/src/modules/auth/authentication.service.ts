@@ -10,6 +10,7 @@ import { LoginThrottle } from './login-throttle';
 import { PasswordHasher } from './password/password-hasher';
 import type { SessionAudience } from './session-audiences';
 import { SessionService, type IssuedSession } from './session.service';
+import { StaffTotp, type TotpFailureReason } from './totp/staff-totp';
 
 /** What every login carries besides its body. */
 interface LoginContext {
@@ -33,10 +34,7 @@ export interface DiverLoginInput extends LoginContext {
 export interface StaffLoginInput extends LoginContext {
   readonly email: string;
   readonly password: string;
-  /**
-   * Six digits, format checked by the DTO only. NOT verified until lot 7 (D42): see the
-   * `TODO(lot 7)` in `login`.
-   */
+  /** The current TOTP code of the account (D42); never logged. */
   readonly totpCode: string;
 }
 
@@ -48,20 +46,23 @@ export interface LoginResult {
 
 /** Logged reason of a failed login; the answer is always the same `invalid-credentials`. */
 type LoginFailureReason =
-  'unknown-account' | 'wrong-password' | 'wrong-audience' | 'malformed-hash';
+  'unknown-account' | 'wrong-password' | 'wrong-audience' | 'malformed-hash' | TotpFailureReason;
 
 interface AudienceRule {
   readonly audience: SessionAudience;
   readonly accepts: (role: AccountRole) => boolean;
   readonly rememberMe: boolean;
+  /** The TOTP code of a staff login, checked after the password; `null` on the web. */
+  readonly totpCode: string | null;
 }
 
 /**
  * Sign-in and sign-out of the two audiences (D33, D35, D42). A login rotates the session: the
  * cookies already presented are revoked with it. Every failure is the same `invalid-credentials`:
- * unknown email, wrong password, or an account of the other audience (a staff account on the web,
- * a diver on the admin). The work is the same too: an unknown email still costs a full Argon2id
- * verification, against the boot-time dummy hash.
+ * unknown email, wrong password, an account of the other audience (a staff account on the web,
+ * a diver on the admin), or, on the admin, a wrong, replayed or unverifiable TOTP code. The work is
+ * the same too: an unknown email still costs a full Argon2id verification, against the boot-time
+ * dummy hash. The TOTP code is only checked once the password is right.
  *
  * Logs carry the event name and a reason code only (D40).
  */
@@ -75,6 +76,7 @@ export class AuthenticationService {
     private readonly throttle: LoginThrottle,
     private readonly sessions: SessionService,
     private readonly authEvents: AuthEventsService,
+    private readonly staffTotp: StaffTotp,
   ) {}
 
   /**
@@ -86,6 +88,7 @@ export class AuthenticationService {
       audience: 'web',
       accepts: (role) => role === 'diver',
       rememberMe: input.rememberMe,
+      totpCode: null,
     });
   }
 
@@ -99,6 +102,7 @@ export class AuthenticationService {
       accepts: (role) => role !== 'diver',
       // Staff sessions are always short (D42).
       rememberMe: false,
+      totpCode: input.totpCode,
     });
   }
 
@@ -163,10 +167,12 @@ export class AuthenticationService {
       return this.fail(account.id, 'wrong-password');
     }
 
-    // TODO(lot 7, D42): verify the staff TOTP code (`StaffLoginInput.totpCode`) here, before any
-    // session is created; a wrong or replayed code ends in `this.fail(account.id, …)` with a new
-    // `LoginFailureReason`. Until then the code is only format-checked by the DTO: an admin login
-    // is password-only. No staff account exists before lot 4's `account:create-staff`.
+    if (rule.totpCode !== null) {
+      const totpFailure = await this.acceptTotp(account, rule.totpCode);
+      if (totpFailure !== null) {
+        return this.fail(account.id, totpFailure);
+      }
+    }
 
     // Hashed before the transaction: no connection is held during the Argon2id work.
     const rehashed = this.hasher.needsRehash(account.passwordHash)
@@ -187,6 +193,36 @@ export class AuthenticationService {
     });
     this.logger.log('login_succeeded');
     return { account: toAuthenticatedAccount(account), session };
+  }
+
+  /**
+   * Checks the TOTP code, then accepts its step with a conditional `UPDATE` (RFC 6238 §5.2): of
+   * two concurrent logins with the same code, only one updates the row, the other is a replay. The
+   * `UPDATE` is also bound to the stored secret the code was checked against (its ciphertext is
+   * unique per enrolment: random IV): an `account:reset-totp` committed since the account was read
+   * (new secret, step cleared, sessions revoked) makes it match no row, so no session outlives the
+   * reset. The step is consumed even if the session creation fails afterwards: the holder waits
+   * for the next code (fail closed).
+   *
+   * @returns `null` once accepted, otherwise the logged reason of the refusal.
+   */
+  private async acceptTotp(account: Account, code: string): Promise<TotpFailureReason | null> {
+    const check = this.staffTotp.check(account, code);
+    if (!check.ok) {
+      return check.reason;
+    }
+    const result = await this.dataSource.manager
+      .createQueryBuilder()
+      .update(Account)
+      .set({ totpLastUsedStep: check.step })
+      .where('id = :id', { id: account.id })
+      .andWhere('(totp_last_used_step IS NULL OR totp_last_used_step < :step)', {
+        step: check.step,
+      })
+      // A successful check implies a non-null secret; `= NULL` would match nothing anyway.
+      .andWhere('totp_secret = :secret', { secret: account.totpSecret })
+      .execute();
+    return result.affected === 1 ? null : 'totp-replayed';
   }
 
   private async fail(accountId: string | null, reason: LoginFailureReason): Promise<never> {

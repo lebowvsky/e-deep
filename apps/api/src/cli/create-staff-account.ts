@@ -1,13 +1,22 @@
 /**
  * `pnpm --filter api run account:create-staff <support|admin> <email>` (D39, D42): creates a staff
- * account of the back office. The password is typed twice on stdin, without echo. Prints a generic
- * line, never the email nor the password. The TOTP enrolment comes with lot 7.
+ * account of the back office, enrolled in TOTP. The password is typed twice on stdin, without
+ * echo. Requires `TOTP_ENCRYPTION_KEY`. Prints the `otpauth://` enrolment URI **once**, for the
+ * authenticator app of the account holder: it carries the TOTP secret and the email (label), on the
+ * operator's terminal only, never in a log: refused, before anything is created, when stdout is not
+ * an interactive terminal (piped, redirected). Never prints the password.
  */
 import type { StaffRole } from '@e-deep/shared';
 import { STAFF_ROLES } from '../modules/accounts/account-lists';
 import type { AccountProvisioningService } from '../modules/accounts/account-provisioning.service';
 import { CliUsageError, commandArguments, openCliContext, runCli } from './cli-runtime';
 import { promptNewPassword, stdinPasswordReader, type PasswordReader } from './password-prompt';
+import {
+  assertEnrolmentTerminal,
+  enrolmentOutput,
+  stdoutIsTerminal,
+  type TerminalCheck,
+} from './totp-enrolment-output';
 
 const USAGE = 'Usage: account:create-staff <support|admin> <email>';
 
@@ -27,28 +36,37 @@ export function parseCreateStaffArguments(args: readonly string[]): CreateStaffA
 }
 
 /**
- * The command itself, without stdin nor database setup: the arguments, then the password read by
- * `read`. Shared by the entry point and the tests (authorization matrix).
+ * The command itself, without stdin nor database setup: the arguments, the terminal check
+ * (`isTerminal`, before the password is even asked), then the password read by `read`. Shared by
+ * the entry point and the tests (authorization matrix).
  */
 export async function createStaffAccountCommand(
   provisioning: AccountProvisioningService,
   args: readonly string[],
   read: PasswordReader,
+  isTerminal: TerminalCheck,
 ): Promise<string> {
   const { role, email } = parseCreateStaffArguments(args);
+  assertEnrolmentTerminal(isTerminal);
   const password = await promptNewPassword(read);
-  await provisioning.createStaffAccount({ role, email, password });
-  return 'Staff account created.';
+  const enrolment = await provisioning.createStaffAccount({ role, email, password });
+  return enrolmentOutput('Staff account created.', enrolment);
 }
 
 async function main(): Promise<string> {
   const args = commandArguments();
-  // Checked before connecting: a typo costs no database round-trip.
+  // Checked before connecting: a typo or a redirected output costs no database round-trip.
   parseCreateStaffArguments(args);
-  const context = await openCliContext();
+  assertEnrolmentTerminal(stdoutIsTerminal);
+  const context = await openCliContext({ enrolsTotp: true });
   const reader = stdinPasswordReader();
   try {
-    return await createStaffAccountCommand(context.provisioning, args, reader.read);
+    return await createStaffAccountCommand(
+      context.provisioning,
+      args,
+      reader.read,
+      stdoutIsTerminal,
+    );
   } finally {
     reader.close();
     await context.close();
