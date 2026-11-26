@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # Keeps the SHA-pinned third-party actions (and the `# vX` comments) up to date.
+  - package-ecosystem: github-actions
+    directories: ['/', '/.github/actions/*']
+    schedule:
+      interval: weekly
+    # Lets a compromised release be caught upstream before it lands here (zizmor default).
+    cooldown:
+      default-days: 7
+    groups:
+      actions-minor:
+        patterns: ['*']
+        update-types: ['minor', 'patch']

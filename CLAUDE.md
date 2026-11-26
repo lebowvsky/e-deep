@@ -19,11 +19,15 @@ pnpm dev:api | dev:web | dev:admin
 
 pnpm lint && pnpm typecheck && pnpm test && pnpm build   # à lancer avant chaque commit
 pnpm --filter web run check:public-bundle   # + avant chaque commit web : `/` n'embarque pas l'app connectée
-pnpm format                         # Prettier (format:check ; pas encore de CI)
+pnpm format                         # Prettier (format:check, vérifié en CI)
 
 pnpm --filter api run migration:generate src/database/migrations/<Nom>
 pnpm --filter <api|web|admin> run <script>
 ```
+
+CI : `.github/workflows/ci.yml` rejoue sur chaque PR vers `main` les commandes ci-dessus
+(format:check, lint, typecheck, test, build, check:public-bundle) et `test:db` sur un PostgreSQL
+jetable. Actions épinglées par SHA, mises à jour par Dependabot.
 
 ## Règles qui piègent
 
