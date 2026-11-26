@@ -21,7 +21,7 @@ export function PublicLayout({ children, landing = false }: PublicLayoutProps) {
         Aller au contenu
       </a>
       <PublicHeader anchors={landing} />
-      <main id="main-content" className={cx(styles.main, !landing && styles.column)}>
+      <main id="main-content" className={cx(styles.main, !landing && styles.column)} tabIndex={-1}>
         {children}
       </main>
       <PublicFooter />

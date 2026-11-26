@@ -1,9 +1,8 @@
 import type { DataRouter } from 'react-router';
-import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
-import { useAuth } from '@/features/auth/hooks/useAuth';
 import { purgeAllDrafts } from '@/features/dives/form/draftPurge';
 import { createLocalDraftStore, storageKeyOf } from '@/features/dives/form/draftStore';
 import { validValues } from '@/features/dives/mocks/diveFormFixture';
@@ -14,6 +13,7 @@ import { ApiError, type ApiClient } from '@/shared/lib/apiClient';
 import { sessionKeys } from '@/shared/session/api/meApi';
 import type { AuthClient } from '@/shared/session/authClient';
 import { createAuthBroadcast } from '@/shared/session/lib/authBroadcast';
+import { endSession } from '@/shared/session/lib/endSession';
 import { createFakeAuthClient, FAKE_CREDENTIALS } from '@/shared/session/mocks/fakeAuthClient';
 import { ME_FIXTURE } from '@/shared/session/mocks/me';
 import { createHttpSitesRepository } from '@/shared/sites/api/httpSitesRepository';
@@ -288,18 +288,8 @@ describe('logout wiring of the app', () => {
     const told = vi.fn();
     otherTab.onLogout(told);
 
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: ({ children }) => (
-        <TestProviders
-          client={fakeApiClient({})}
-          queryClient={app.queryClient}
-          authServices={app.authServices}
-        >
-          {children}
-        </TestProviders>
-      ),
-    });
-    await act(() => result.current.logout());
+    // The app's own services (`createAppSession`): its draft purge and its channel.
+    await endSession(app.authServices, app.queryClient);
 
     expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).toBeNull();
     expect(told).toHaveBeenCalledOnce();
@@ -392,6 +382,34 @@ describe('logout from the app (route action)', () => {
     expect(queryClient.getQueryData(sessionKeys.me())).toEqual(ME_FIXTURE);
     expect(localStorage.getItem(storageKeyOf(ME_FIXTURE.diver.id, 'new'))).not.toBeNull();
     expect(told).not.toHaveBeenCalled();
+  });
+
+  it('still says so when the drawer was closed before the API answered (phones)', async () => {
+    const user = userEvent.setup();
+    const authClient = createFakeAuthClient();
+    let fail: (error: Error) => void = () => undefined;
+    vi.spyOn(authClient, 'logout').mockReturnValue(
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      }),
+    );
+    renderApp('/dashboard', { authClient, get: () => new Promise<never>(() => undefined) });
+    await screen.findByRole('heading', { level: 1, name: 'Tableau de bord' });
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir le menu' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', {
+        name: 'Déconnexion',
+      }),
+    );
+    // The drawer closes (and unmounts its user card) while the sign-out is under way.
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Menu' })).toBeNull();
+    act(() => fail(new ApiError('network', 'The API is unreachable.')));
+
+    expect(
+      await screen.findByText('La déconnexion n’a pas abouti. Vérifie ton réseau et réessaie.'),
+    ).toBeTruthy();
   });
 });
 

@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { useAppConfig } from '@/shared/config/appConfigContext';
 import { cx } from '@/shared/lib/classNames';
 import { Brand } from '@/shared/ui/Brand';
@@ -16,6 +16,8 @@ export interface PublicHeaderProps {
  */
 export function PublicHeader({ anchors = false }: PublicHeaderProps) {
   const { privacy } = useAppConfig();
+  // The query (`next`) goes along to the sign-in.
+  const { search } = useLocation();
   const links = [
     { id: LANDING_ANCHORS.steps, label: 'Comment ça marche' },
     { id: LANDING_ANCHORS.features, label: 'Fonctionnalités' },
@@ -38,7 +40,7 @@ export function PublicHeader({ anchors = false }: PublicHeaderProps) {
           </ul>
         </nav>
       )}
-      <Link to="/login" className={cx(styles.login, anchors && styles.loginPhoneOnly)}>
+      <Link to={`/login${search}`} className={cx(styles.login, anchors && styles.loginPhoneOnly)}>
         Se connecter
       </Link>
     </header>

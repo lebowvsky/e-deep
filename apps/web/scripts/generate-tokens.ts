@@ -49,6 +49,9 @@ for (const [k, v] of Object.entries(tokens.motion.dur)) add(`dur-${k}`, `${v}ms`
 scss.push('\n// Opacity');
 for (const [k, v] of Object.entries(tokens.opacity)) add(`opacity-${kebab(k)}`, String(v));
 
+scss.push('\n// Stacking levels (unitless)');
+for (const [k, v] of Object.entries(tokens.zIndex)) add(`z-${kebab(k)}`, String(v));
+
 scss.push('\n// Breakpoints (SCSS only — CSS vars do not work in media queries)');
 for (const [k, v] of Object.entries(tokens.breakpoint)) scss.push(`$bp-${k}: ${px(v)};`);
 

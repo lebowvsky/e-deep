@@ -6,14 +6,12 @@ import { createApiClient } from '@/shared/lib/apiClient';
 import { env } from '@/shared/lib/env';
 import { createHttpAuthClient } from '@/shared/session/api/httpAuthClient';
 import { createAuthBroadcast } from '@/shared/session/lib/authBroadcast';
-import { createHttpSitesRepository } from '@/shared/sites/api/httpSitesRepository';
 import { createAppSession } from './appSession';
 import { devAppConfig, devAuthOptions } from './devState';
 import { lazyAuthClient } from './lazyAuthClient';
 import { createRoutes } from './routes';
 
 export const apiClient = createApiClient({ baseUrl: env.apiBaseUrl });
-export const sitesRepository = createHttpSitesRepository(apiClient);
 
 /**
  * Development only: a page opened with `?state=…` (comparison with the mockups, screenshots) gets

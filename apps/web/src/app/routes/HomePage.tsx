@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router';
+import { useMatch } from 'react-router';
 import { PublicLayout } from '@/app/layout/PublicLayout';
 import { breakpoint } from '@/design/tokens';
 import { AuthCard } from '@/features/auth/components/AuthCard';
@@ -41,7 +41,9 @@ interface CardRequest {
  * (title, landmarks, tabs or not), hence `useMediaQuery` (exception listed in apps/web/CLAUDE.md).
  */
 export function HomePage() {
-  const { pathname } = useLocation();
+  // Route patterns rather than `pathname`: `/signup/` is `/signup` too.
+  const isSignup = useMatch('/signup') !== null;
+  const isLogin = useMatch('/login') !== null;
   const { features } = useAppConfig();
   const isDesktop = useMediaQuery(DESKTOP_UP);
   const prefersReducedMotion = useMediaQuery(REDUCED_MOTION);
@@ -49,8 +51,8 @@ export function HomePage() {
   const [cardRequest, setCardRequest] = useState<CardRequest | null>(null);
   const servedRequest = useRef(0);
   const cardRef = useRef<HTMLDivElement>(null);
-  const tab: AuthTab = pathname === '/signup' ? 'signup' : 'login';
-  const isAuthPage = pathname !== '/';
+  const tab: AuthTab = isSignup ? 'signup' : 'login';
+  const isAuthPage = isSignup || isLogin;
 
   // The final call to action: once its tab shows, the card comes back into view and its first
   // field takes the focus (DOM scroll and focus: the effect's external system).

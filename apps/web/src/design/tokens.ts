@@ -226,6 +226,11 @@ export const opacity = {
   disabled: 0.45, // missing previous / next dive tile (dive-detail.jsx)
 } as const;
 
+// Stacking levels (unitless). The app's bars (10) and drawer (20) still hold their own values.
+export const zIndex = {
+  skipLink: 30, // above everything once focused
+} as const;
+
 export const breakpoint = {
   mobile: 375, // baseline
   tablet: 768, // sidebar appears
@@ -437,6 +442,7 @@ export const tokens = {
   gradient,
   motion,
   opacity,
+  zIndex,
   breakpoint,
   layout,
   iconSize,

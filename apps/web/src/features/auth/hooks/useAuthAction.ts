@@ -42,6 +42,8 @@ export function useAuthAction<V extends SubmittedValues>({
         await run(values);
         return { failure: null, count: previous.count + 1 };
       } catch (error) {
+        // The refused values (password included) stay in this state until the next submission,
+        // in memory only: they say which field the API refused, never logged nor stored.
         const failure = toSubmitFailure(error, values, Date.now());
         onFailure?.(failure);
         return { failure, count: previous.count + 1 };

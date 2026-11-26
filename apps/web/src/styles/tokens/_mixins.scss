@@ -226,3 +226,27 @@
     }
   }
 }
+
+// « Aller au contenu »: hidden until focused, then an accent pill at the top left of the screen
+// (WCAG 2.4.1). The target is the page's `<main id="main-content" tabindex="-1">`.
+@mixin skip-link {
+  @include visually-hidden;
+  @include type($type-body-med);
+
+  &:focus {
+    position: fixed;
+    top: $space-3;
+    left: $space-3;
+    z-index: $z-skip-link;
+    width: auto;
+    height: auto;
+    padding: $space-3 $space-4;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    color: $color-accent-ink;
+    white-space: normal;
+    background: $color-accent;
+    border-radius: $radius-md;
+  }
+}

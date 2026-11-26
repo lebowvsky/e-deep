@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { useLocation } from 'react-router';
 import { useAppConfig } from '@/shared/config/appConfigContext';
 import { cx } from '@/shared/lib/classNames';
 import { ButtonLink } from '@/shared/ui/Button';
@@ -22,10 +23,12 @@ export interface FinalCtaProps {
 export function FinalCta({ onChoose }: FinalCtaProps) {
   const titleId = useId();
   const { features } = useAppConfig();
+  // The query (`next`) goes along, as with the card's tabs.
+  const { search } = useLocation();
   const inPage = onChoose !== undefined;
   // In the page, the tab changes the URL without a new history entry, as the card's tabs do.
   const linkProps = (choice: AuthChoice) => ({
-    to: `/${choice}`,
+    to: `/${choice}${search}`,
     size: 'lg' as const,
     replace: inPage,
     preventScrollReset: inPage,

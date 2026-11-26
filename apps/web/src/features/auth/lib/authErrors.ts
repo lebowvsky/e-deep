@@ -17,8 +17,12 @@ export interface FieldFailure {
 export type SubmitFailure =
   /** Wrong e-mail or password: one message for both (no account enumeration). */
   | { code: 'invalid-credentials' }
-  /** Throttled (D35); `until` in epoch ms from `Retry-After`, `null` when the API did not say. */
-  | { code: 'too-many-attempts'; until: number | null }
+  /**
+   * Throttled (D35); `until` in epoch ms from `Retry-After`, `null` when the API did not say.
+   * `retryIn` (« 2 min ») is the wait as said once, at the refusal: the banner is an alert, it must
+   * not change, and be announced again, every second; the button counts down.
+   */
+  | { code: 'too-many-attempts'; until: number | null; retryIn: string | null }
   /** Closed beta (D39), though the front offered the form. */
   | { code: 'registration-closed' }
   | { code: 'email-taken'; email: string }
@@ -80,10 +84,13 @@ export function toSubmitFailure(
       case 'invalid-credentials':
         return { code: 'invalid-credentials' };
       case 'too-many-attempts':
-        return {
-          code: 'too-many-attempts',
-          until: failure.retryAfterS === null ? null : now + failure.retryAfterS * 1000,
-        };
+        return failure.retryAfterS === null
+          ? { code: 'too-many-attempts', until: null, retryIn: null }
+          : {
+              code: 'too-many-attempts',
+              until: now + failure.retryAfterS * 1000,
+              retryIn: formatRetryDelay(failure.retryAfterS),
+            };
       case 'registration-closed':
         return { code: 'registration-closed' };
       case 'email-taken':
@@ -105,7 +112,8 @@ export function toSubmitFailure(
 
 /**
  * Text of the banner above the fields, `null` when there is none: no failure, a failure said on a
- * field, or a throttling whose delay is over (`retryLeft`, seconds, from `useCountdown`).
+ * field, or a throttling whose delay is over (`retryLeft`, seconds, from `useCountdown`: it only
+ * decides whether the banner stays, never its words).
  */
 export function bannerMessage(failure: SubmitFailure | null, retryLeft: number): string | null {
   switch (failure?.code) {
@@ -114,10 +122,8 @@ export function bannerMessage(failure: SubmitFailure | null, retryLeft: number):
     case 'invalid-credentials':
       return 'E-mail ou mot de passe incorrect. Vérifie ta saisie ou réinitialise ton mot de passe.';
     case 'too-many-attempts':
-      if (failure.until === null) return 'Trop de tentatives. Réessaie dans quelques minutes.';
-      return retryLeft > 0
-        ? `Trop de tentatives. Réessaie dans ${formatRetryDelay(retryLeft)}.`
-        : null;
+      if (failure.retryIn === null) return 'Trop de tentatives. Réessaie dans quelques minutes.';
+      return retryLeft > 0 ? `Trop de tentatives. Réessaie dans ${failure.retryIn}.` : null;
     case 'registration-closed':
       return 'Les inscriptions ne sont pas encore ouvertes.';
     case 'network':

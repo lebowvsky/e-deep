@@ -4,7 +4,7 @@ import type { CurrentDiver } from '@/shared/session/types';
 import { formatDiverLevel, formatFullName, formatInitials } from '@/shared/lib/format';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Icon } from '@/shared/ui/Icon';
-import { LogoutButton, useLogoutFeedback } from '../LogoutButton';
+import { LogoutButton } from '../LogoutButton';
 import styles from './UserCard.module.scss';
 
 export interface UserCardProps {
@@ -17,7 +17,6 @@ export interface UserCardProps {
 /** Signed-in diver: avatar, name, level, and the account action. */
 export function UserCard({ user, action = 'menu', onNavigate }: UserCardProps) {
   const fullName = formatFullName(user.firstName, user.lastName);
-  useLogoutFeedback();
 
   return (
     <div className={styles.card}>
@@ -30,7 +29,7 @@ export function UserCard({ user, action = 'menu', onNavigate }: UserCardProps) {
         <UserMenu onNavigate={onNavigate} />
       ) : (
         <LogoutButton className={styles.action} aria-label="Déconnexion">
-          <Icon name="logout" size="md" />
+          {() => <Icon name="logout" size="md" />}
         </LogoutButton>
       )}
     </div>
@@ -87,8 +86,12 @@ function UserMenu({ onNavigate }: { onNavigate?: (() => void) | undefined }) {
           <li>
             {/* Stays open while signing out: a failure leaves the diver where they were. */}
             <LogoutButton className={styles.menuItem}>
-              <Icon name="logout" size="md" />
-              Déconnexion
+              {(isPending) => (
+                <>
+                  <Icon name="logout" size="md" />
+                  {isPending ? 'Déconnexion…' : 'Déconnexion'}
+                </>
+              )}
             </LogoutButton>
           </li>
         </ul>

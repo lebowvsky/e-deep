@@ -3,7 +3,7 @@ import { isAuthFailure } from '../authClient';
 import type { AuthServices } from '../authServices';
 
 /**
- * Signs the diver out (D41), for `useAuth().logout` and the `/logout` route action alike: the API
+ * Signs the diver out (D41), for the `/logout` route action (and any later caller): the API
  * closes the session, then nothing of it stays in this tab (queries and mutations: the bodies of
  * the dive writes are health data too), on the device (drafts) or in the other tabs.
  *

@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import { RouterProvider } from 'react-router';
 import { vi } from 'vitest';
 import { appConfig, type AppConfig } from '@/shared/config/app';
+import type { AuthClient } from '@/shared/session/authClient';
 import { createFakeAuthClient } from '@/shared/session/mocks/fakeAuthClient';
 import { ToastProvider } from '@/shared/ui/Toast';
 import { createTestAppRouter } from './appRouter';
@@ -12,6 +13,8 @@ import { TestProviders } from './TestProviders';
 export interface RenderPublicRouteOptions {
   /** No session by default: these are the visitor's pages. */
   session?: MeResponse | null;
+  /** The auth port; a fake with `session` by default. */
+  authClient?: AuthClient;
   /** The product configuration: the sign-up open, the rest as in the app. */
   signup?: boolean;
   offline?: boolean;
@@ -26,11 +29,12 @@ export function renderPublicRoute(
     signup = true,
     offline = appConfig.features.offline,
     privacyCopy = appConfig.privacy.copy,
+    authClient = createFakeAuthClient({ session }),
   }: RenderPublicRouteOptions = {},
 ) {
   const config: AppConfig = { features: { signup, offline }, privacy: { copy: privacyCopy } };
   const { router, queryClient, authServices } = createTestAppRouter(path, {
-    authClient: createFakeAuthClient({ session }),
+    authClient,
     features: config.features,
   });
   render(

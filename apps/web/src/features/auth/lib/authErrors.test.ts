@@ -12,10 +12,12 @@ describe('toSubmitFailure', () => {
     expect(refused({ code: 'too-many-attempts', retryAfterS: 90 })).toEqual({
       code: 'too-many-attempts',
       until: NOW + 90_000,
+      retryIn: '2 min',
     });
     expect(refused({ code: 'too-many-attempts', retryAfterS: null })).toEqual({
       code: 'too-many-attempts',
       until: null,
+      retryIn: null,
     });
   });
 
@@ -69,10 +71,12 @@ describe('toSubmitFailure', () => {
 
 describe('bannerMessage', () => {
   it('says the throttling while it lasts, then nothing', () => {
-    const failure = { code: 'too-many-attempts', until: NOW + 120_000 } as const;
+    const failure = { code: 'too-many-attempts', until: NOW + 120_000, retryIn: '2 min' } as const;
     expect(bannerMessage(failure, 120)).toBe('Trop de tentatives. Réessaie dans 2 min.');
+    // The words stay those of the refusal while the button counts down.
+    expect(bannerMessage(failure, 30)).toBe('Trop de tentatives. Réessaie dans 2 min.');
     expect(bannerMessage(failure, 0)).toBeNull();
-    expect(bannerMessage({ code: 'too-many-attempts', until: null }, 0)).toBe(
+    expect(bannerMessage({ code: 'too-many-attempts', until: null, retryIn: null }, 0)).toBe(
       'Trop de tentatives. Réessaie dans quelques minutes.',
     );
   });

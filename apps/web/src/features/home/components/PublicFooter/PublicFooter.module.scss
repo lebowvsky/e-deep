@@ -25,10 +25,11 @@
   }
 }
 
+// Rows touch: each link is 44px high itself, so wrapped rows never overlap their targets.
 .links {
   display: flex;
   flex-wrap: wrap;
-  gap: $space-3 $space-5;
+  gap: 0 $space-5;
   padding: 0;
   margin: 0;
   list-style: none;
@@ -40,9 +41,11 @@
 
 .link {
   @include focus-ring;
-  @include hit-area;
   @include type($type-body-compact);
 
+  display: inline-flex;
+  align-items: center;
+  min-height: $layout-hit-target;
   color: $color-text-low;
   border-radius: $radius-xs;
 

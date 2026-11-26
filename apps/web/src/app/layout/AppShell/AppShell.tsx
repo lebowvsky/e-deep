@@ -4,8 +4,10 @@ import { breakpoint } from '@/design/tokens';
 import { cx } from '@/shared/lib/classNames';
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import { useCurrentDiver } from '@/shared/session/hooks/useCurrentDiver';
+import { SitesRepositoryScope } from '@/shared/sites/repository/SitesRepositoryScope';
 import { Drawer } from '../Drawer';
 import { Fab } from '../Fab';
+import { useLogoutFeedback } from '../LogoutButton';
 import { hasHandleFlag } from '../routeHandle';
 import { Sidebar } from '../Sidebar';
 import { TopBar } from '../TopBar';
@@ -34,6 +36,8 @@ export function AppShell() {
   const ownMobileBars = hasHandleFlag(matches, 'ownMobileBars');
   const hideFab = hasHandleFlag(matches, 'hideFab');
   const fullBleed = hasHandleFlag(matches, 'fullBleed');
+  // Here, not in `UserCard`: the drawer that holds it on phones unmounts once closed.
+  useLogoutFeedback();
 
   // Client-side navigation: move focus to the new content so screen readers announce it.
   useEffect(() => {
@@ -46,35 +50,41 @@ export function AppShell() {
   const behindDrawer = drawerOpen && !isTabletUp;
 
   return (
-    <div className={styles.shell}>
-      <a className={styles.skipLink} href="#main-content">
-        Aller au contenu
-      </a>
-      {isTabletUp ? (
-        <Sidebar user={user} />
-      ) : (
-        !ownMobileBars && (
-          <>
-            <TopBar
-              inert={behindDrawer}
-              drawerId={drawerId}
-              drawerOpen={drawerOpen}
-              onOpenMenu={() => setDrawerOpen(true)}
-            />
-            <Drawer id={drawerId} open={drawerOpen} onClose={closeDrawer} user={user} />
-          </>
-        )
-      )}
-      <main
-        ref={mainRef}
-        id="main-content"
-        className={cx(styles.main, ownMobileBars && styles.ownBars, fullBleed && styles.fullBleed)}
-        tabIndex={-1}
-        inert={behindDrawer}
-      >
-        <Outlet />
-      </main>
-      {!isTabletUp && !onDivePage && !hideFab && <Fab inert={behindDrawer} />}
-    </div>
+    <SitesRepositoryScope>
+      <div className={styles.shell}>
+        <a className={styles.skipLink} href="#main-content">
+          Aller au contenu
+        </a>
+        {isTabletUp ? (
+          <Sidebar user={user} />
+        ) : (
+          !ownMobileBars && (
+            <>
+              <TopBar
+                inert={behindDrawer}
+                drawerId={drawerId}
+                drawerOpen={drawerOpen}
+                onOpenMenu={() => setDrawerOpen(true)}
+              />
+              <Drawer id={drawerId} open={drawerOpen} onClose={closeDrawer} user={user} />
+            </>
+          )
+        )}
+        <main
+          ref={mainRef}
+          id="main-content"
+          className={cx(
+            styles.main,
+            ownMobileBars && styles.ownBars,
+            fullBleed && styles.fullBleed,
+          )}
+          tabIndex={-1}
+          inert={behindDrawer}
+        >
+          <Outlet />
+        </main>
+        {!isTabletUp && !onDivePage && !hideFab && <Fab inert={behindDrawer} />}
+      </div>
+    </SitesRepositoryScope>
   );
 }

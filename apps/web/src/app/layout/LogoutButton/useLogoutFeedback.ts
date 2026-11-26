@@ -8,8 +8,8 @@ export const LOGOUT_FAILED_MESSAGE =
 
 /**
  * Announces a failed sign-out (toast): the session is still open, nothing was cleared. Call it once,
- * in a component that stays mounted with the app frame (`UserCard`): the sign-out form may sit in a
- * menu that closes.
+ * in the app frame (`AppShell`), which stays mounted: the sign-out button sits in a menu or a
+ * drawer that may close, and unmount it, before the API answers.
  */
 export function useLogoutFeedback(): void {
   const fetcher = useFetcher({ key: LOGOUT_FETCHER_KEY });

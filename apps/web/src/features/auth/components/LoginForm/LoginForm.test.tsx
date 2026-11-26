@@ -142,7 +142,12 @@ describe('LoginForm — refusals', () => {
     await user.type(passwordInput(), 'x{Enter}');
     expect(login).toHaveBeenCalledOnce();
 
-    await act(() => vi.advanceTimersByTimeAsync(3000));
+    // The alert keeps its words (not announced again every second); the button counts down.
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(screen.getByRole('alert').textContent).toBe('Trop de tentatives. Réessaie dans 3 s.');
+    expect(submit().textContent).toContain('0:02');
+
+    await act(() => vi.advanceTimersByTimeAsync(2000));
 
     expect(screen.queryByRole('alert')).toBeNull();
     expect(submit().getAttribute('aria-disabled')).toBeNull();

@@ -58,23 +58,5 @@
 }
 
 .skipLink {
-  @include visually-hidden;
-  @include type($type-body-med);
-
-  &:focus {
-    position: fixed;
-    top: $space-3;
-    left: $space-3;
-    z-index: 30;
-    width: auto;
-    height: auto;
-    padding: $space-3 $space-4;
-    margin: 0;
-    overflow: visible;
-    clip: auto;
-    color: $color-accent-ink;
-    white-space: normal;
-    background: $color-accent;
-    border-radius: $radius-md;
-  }
+  @include skip-link;
 }

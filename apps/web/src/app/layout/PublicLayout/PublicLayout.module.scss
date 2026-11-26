@@ -15,30 +15,17 @@
 }
 
 .skipLink {
-  @include visually-hidden;
-  @include type($type-body-med);
-
-  &:focus {
-    position: fixed;
-    top: $space-3;
-    left: $space-3;
-    z-index: 30;
-    width: auto;
-    height: auto;
-    padding: $space-3 $space-4;
-    margin: 0;
-    overflow: visible;
-    clip: auto;
-    color: $color-accent-ink;
-    white-space: normal;
-    background: $color-accent;
-    border-radius: $radius-md;
-  }
+  @include skip-link;
 }
 
 .main {
   flex: 1;
   width: 100%;
+
+  // Reached by the skip link to start reading there: no ring around the whole page.
+  &:focus {
+    outline: none;
+  }
 }
 
 // A single readable column (placeholders, legal pages).

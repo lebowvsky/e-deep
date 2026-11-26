@@ -161,6 +161,35 @@ describe('final call to action', () => {
   });
 });
 
+describe('final call to action and next', () => {
+  it('keeps next on its links', async () => {
+    stubDesktop();
+    renderPublicRoute('/login?next=%2Fstats');
+    await screen.findByRole('heading', { level: 2, name: 'Content de te revoir' });
+
+    const hrefs = within(finalCta())
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+    expect(hrefs).toEqual(['/login?next=%2Fstats', '/signup?next=%2Fstats']);
+  });
+});
+
+describe('wording of the promises (product owner, 2026-11-26)', () => {
+  it('promises the filters and the dive team the app has', async () => {
+    stubDesktop();
+    renderPublicRoute('/');
+    await screen.findByRole('heading', { level: 1 });
+
+    expect(screen.getByText(/filtres par région et profondeur\./)).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Note avec qui tu plonges, et retrouve tes binômes les plus fréquents sur ton tableau de bord.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/combien de fois/)).toBeNull();
+  });
+});
+
 describe('landing page (< 1024px)', () => {
   it('offers its two ways in instead of the card', async () => {
     renderPublicRoute('/');

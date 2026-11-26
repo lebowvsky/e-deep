@@ -28,7 +28,7 @@ export const STEPS: readonly Step[] = [
   {
     index: '02',
     title: 'Retrouve-la en deux clics',
-    text: 'Carnet numéroté comme ton carnet papier, filtres par région, profondeur, palanquée.',
+    text: 'Carnet numéroté comme ton carnet papier, filtres par région et profondeur.',
     icon: 'book',
   },
   {
@@ -56,7 +56,7 @@ const CORE_FEATURES: readonly Feature[] = [
   {
     id: 'buddies',
     title: 'Ta palanquée',
-    text: 'Retrouve avec qui tu as plongé, et combien de fois.',
+    text: 'Note avec qui tu plonges, et retrouve tes binômes les plus fréquents sur ton tableau de bord.',
     icon: 'users',
   },
   {
