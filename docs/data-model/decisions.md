@@ -11,6 +11,10 @@
 > champs obligatoires au push.
 > **Révision du 2026-11-18** : API d'écriture des plongées (D-23 à D-26) ; le porteur garde LWW
 > strict en ligne (D-25).
+> **Révision du 2026-11-19** : API des sites (D-27 à D-33).
+> **Révision du 2026-11-20** : authentification (D-34 à D-38 ; plan `docs/plans/auth.md`, D33 à D45
+> d'`ARCHITECTURE.md`), livrée du 2026-11-20 au 2026-11-27 ; D-08 complété par le modèle cible du
+> partage ; questions ouvertes 5 et 11 fermées.
 > **Numérotation** : les décisions du modèle s'écrivent `D-xx` (avec tiret) ; celles
 > d'`ARCHITECTURE.md` §10 s'écrivent `Dxx` (sans tiret). D-13 à D-22 ici ne sont pas D13 à D22
 > là-bas.
@@ -35,26 +39,26 @@
 
 ## Hypothèses
 
-| Id   | Hypothèse                                                                                                                                                                                                                                                                                                                                                                                           | Impact si fausse                                                                 | À valider avec                                                                          |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| H-01 | Un compte = un plongeur ; pas d'organisation (club, structure) ni de multi-tenant                                                                                                                                                                                                                                                                                                                   | Ajout d'une table `clubs` (voir évolutions D-08)                                 | Produit                                                                                 |
-| H-02 | Les comptes sont créés **en ligne** (inscription) ; seuls sites, plongées et binômes se créent hors ligne                                                                                                                                                                                                                                                                                           | Si création de compte hors ligne : `divers.id` généré client aussi               | Produit                                                                                 |
-| H-03 | L'identité d'authentification (email, fournisseur OAuth…) sera ajoutée avec le module auth ; elle n'est pas modélisée ici faute de source                                                                                                                                                                                                                                                           | Ajout de colonnes / table `auth_identities` (migration additive)                 | Tech                                                                                    |
-| H-04 | Un site peut exister sans événement (créé avant, ou dont les plongées ont été supprimées)                                                                                                                                                                                                                                                                                                           | Si interdit : nettoyage applicatif des sites orphelins                           | Produit                                                                                 |
-| H-05 | Lier un binôme à un compte E-Deep **ne partage rien** : le compte lié ne voit pas les plongées du propriétaire. Un propriétaire ne lie un compte qu'à un seul de ses contacts. Le lien se fait **en ligne** (recherche du compte)                                                                                                                                                                   | Partage → participations partagées avec consentement (évolutions D-08)           | Produit + DPO                                                                           |
-| H-06 | ~~Le niveau affiché sur « Dernière plongée » est le niveau courant~~                                                                                                                                                                                                                                                                                                                                | —                                                                                | **Résolue par D-09** : snapshot du niveau sur la participation                          |
-| H-07 | Température et visibilité sont **facultatives** (souvent non relevées), alors que le type front les déclare obligatoires. Profondeur, durée, mélange, paliers, site et date restent obligatoires                                                                                                                                                                                                    | Passer les colonnes en `NOT NULL`                                                | Produit                                                                                 |
-| H-08 | Une participation peut n'avoir aucun binôme saisi                                                                                                                                                                                                                                                                                                                                                   | Si au moins un binôme est obligatoire : invariant applicatif                     | Produit                                                                                 |
-| H-09 | `Buddy.accentColor` est de la présentation, dérivée de l'id côté front ; elle n'est pas stockée                                                                                                                                                                                                                                                                                                     | Colonne `avatar_color` si l'utilisateur choisit la couleur                       | Design                                                                                  |
-| H-10 | Bornes de saisie : prof. 0–350 m, durée 1–1440 min, temp. -5–45 °C, visibilité 0–100 m, noms 1–100/120 caractères, notes ≤ 5000                                                                                                                                                                                                                                                                     | Ajuster les `CHECK`                                                              | Produit                                                                                 |
-| H-11 | Supprimer un site utilisé par un événement non supprimé est refusé (409) ; l'utilisateur doit d'abord changer le site des plongées                                                                                                                                                                                                                                                                  | Si cascade souhaitée : tombstoner les plongées en même temps                     | Produit                                                                                 |
-| H-12 | Les tombstones sont purgées physiquement après **90 jours** (horizon de purge) ; un client dont le dernier pull est plus ancien refait une synchronisation complète avant tout push (D-12 d)                                                                                                                                                                                                        | Durée à ajuster ; sans purge, les tombstones s'accumulent (RGPD)                 | Tech + DPO                                                                              |
-| H-13 | ~~Les dates sont affichées dans le fuseau de l'appareil qui consulte~~                                                                                                                                                                                                                                                                                                                              | —                                                                                | **Résolue par D-10** : `dive_events.utc_offset_minutes`                                 |
-| H-14 | Volume par plongeur : quelques centaines à quelques milliers de plongées. Les statistiques se calculent à la volée                                                                                                                                                                                                                                                                                  | Au-delà : agrégats mensuels ou copie de `started_at` (D-08)                      | Tech                                                                                    |
-| H-15 | ~~Le niveau snapshot d'une participation peut référencer un niveau désactivé ; seul le niveau courant doit être actif~~                                                                                                                                                                                                                                                                             | —                                                                                | **Résolue par D-09** (révision : niveau fixé à la saisie, désactivé ou supérieur admis) |
-| H-16 | En MVP, supprimer une plongée tombstone à la fois l'événement et la participation (le créateur est l'unique participant)                                                                                                                                                                                                                                                                            | Avec le partage : retirer sa participation sans toucher à l'événement des autres | Produit                                                                                 |
-| H-17 | Bornes des champs du détail : air -40–60 °C, eau en surface -5–45 °C, palier de sécurité 1–60 min et 0–20 m, bloc 0–30 L et 0–350 bar, combinaison 0–15 mm, lest 0–40 kg, O₂ 0–100 %, effectif 1–9999, étiquette 1–80 caractères, structure et zone 1–120 caractères                                                                                                                                | Ajuster les `CHECK` (migration)                                                  | Produit                                                                                 |
-| H-18 | Valeurs des listes fermées, dont la maquette ne montre qu'un exemple : météo `SUNNY` (Ensoleillé), `CLOUDY` (Nuageux), `OVERCAST` (Couvert), `RAIN` (Pluie) ; mer `CALM` (Calme), `SLIGHT` (Peu agitée), `MODERATE` (Agitée), `ROUGH` (Forte) ; courant `NONE` (Nul), `WEAK` (Faible), `MODERATE` (Moyen), `STRONG` (Fort) ; combinaison `WET` (Humide), `SEMI_DRY` (Semi-étanche), `DRY` (Étanche) | Modifier les `CHECK` et les unions avant la première saisie réelle (D-14)        | **Validée** (2026-11-17) : valeurs et libellés retenus tels quels                       |
+| Id   | Hypothèse                                                                                                                                                                                                                                                                                                                                                                                           | Impact si fausse                                                                 | À valider avec                                                                               |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| H-01 | Un compte = un plongeur ; pas d'organisation (club, structure) ni de multi-tenant                                                                                                                                                                                                                                                                                                                   | Ajout d'une table `clubs` (voir évolutions D-08)                                 | Produit                                                                                      |
+| H-02 | Les comptes sont créés **en ligne** (inscription) ; seuls sites, plongées et binômes se créent hors ligne                                                                                                                                                                                                                                                                                           | Si création de compte hors ligne : `divers.id` généré client aussi               | Produit                                                                                      |
+| H-03 | ~~L'identité d'authentification (email, fournisseur OAuth…) sera ajoutée avec le module auth ; elle n'est pas modélisée ici faute de source~~                                                                                                                                                                                                                                                       | —                                                                                | **Résolue par D-34** (table `accounts`, email et mot de passe, sans fournisseur OAuth en V1) |
+| H-04 | Un site peut exister sans événement (créé avant, ou dont les plongées ont été supprimées)                                                                                                                                                                                                                                                                                                           | Si interdit : nettoyage applicatif des sites orphelins                           | Produit                                                                                      |
+| H-05 | Lier un binôme à un compte E-Deep **ne partage rien** : le compte lié ne voit pas les plongées du propriétaire. Un propriétaire ne lie un compte qu'à un seul de ses contacts. Le lien se fait **en ligne** (recherche du compte)                                                                                                                                                                   | Partage → participations partagées avec consentement (évolutions D-08)           | Produit + DPO                                                                                |
+| H-06 | ~~Le niveau affiché sur « Dernière plongée » est le niveau courant~~                                                                                                                                                                                                                                                                                                                                | —                                                                                | **Résolue par D-09** : snapshot du niveau sur la participation                               |
+| H-07 | Température et visibilité sont **facultatives** (souvent non relevées), alors que le type front les déclare obligatoires. Profondeur, durée, mélange, paliers, site et date restent obligatoires                                                                                                                                                                                                    | Passer les colonnes en `NOT NULL`                                                | Produit                                                                                      |
+| H-08 | Une participation peut n'avoir aucun binôme saisi                                                                                                                                                                                                                                                                                                                                                   | Si au moins un binôme est obligatoire : invariant applicatif                     | Produit                                                                                      |
+| H-09 | `Buddy.accentColor` est de la présentation, dérivée de l'id côté front ; elle n'est pas stockée                                                                                                                                                                                                                                                                                                     | Colonne `avatar_color` si l'utilisateur choisit la couleur                       | Design                                                                                       |
+| H-10 | Bornes de saisie : prof. 0–350 m, durée 1–1440 min, temp. -5–45 °C, visibilité 0–100 m, noms 1–100/120 caractères, notes ≤ 5000                                                                                                                                                                                                                                                                     | Ajuster les `CHECK`                                                              | Produit                                                                                      |
+| H-11 | Supprimer un site utilisé par un événement non supprimé est refusé (409) ; l'utilisateur doit d'abord changer le site des plongées                                                                                                                                                                                                                                                                  | Si cascade souhaitée : tombstoner les plongées en même temps                     | Produit                                                                                      |
+| H-12 | Les tombstones sont purgées physiquement après **90 jours** (horizon de purge) ; un client dont le dernier pull est plus ancien refait une synchronisation complète avant tout push (D-12 d)                                                                                                                                                                                                        | Durée à ajuster ; sans purge, les tombstones s'accumulent (RGPD)                 | Tech + DPO                                                                                   |
+| H-13 | ~~Les dates sont affichées dans le fuseau de l'appareil qui consulte~~                                                                                                                                                                                                                                                                                                                              | —                                                                                | **Résolue par D-10** : `dive_events.utc_offset_minutes`                                      |
+| H-14 | Volume par plongeur : quelques centaines à quelques milliers de plongées. Les statistiques se calculent à la volée                                                                                                                                                                                                                                                                                  | Au-delà : agrégats mensuels ou copie de `started_at` (D-08)                      | Tech                                                                                         |
+| H-15 | ~~Le niveau snapshot d'une participation peut référencer un niveau désactivé ; seul le niveau courant doit être actif~~                                                                                                                                                                                                                                                                             | —                                                                                | **Résolue par D-09** (révision : niveau fixé à la saisie, désactivé ou supérieur admis)      |
+| H-16 | En MVP, supprimer une plongée tombstone à la fois l'événement et la participation (le créateur est l'unique participant)                                                                                                                                                                                                                                                                            | Avec le partage : retirer sa participation sans toucher à l'événement des autres | Produit                                                                                      |
+| H-17 | Bornes des champs du détail : air -40–60 °C, eau en surface -5–45 °C, palier de sécurité 1–60 min et 0–20 m, bloc 0–30 L et 0–350 bar, combinaison 0–15 mm, lest 0–40 kg, O₂ 0–100 %, effectif 1–9999, étiquette 1–80 caractères, structure et zone 1–120 caractères                                                                                                                                | Ajuster les `CHECK` (migration)                                                  | Produit                                                                                      |
+| H-18 | Valeurs des listes fermées, dont la maquette ne montre qu'un exemple : météo `SUNNY` (Ensoleillé), `CLOUDY` (Nuageux), `OVERCAST` (Couvert), `RAIN` (Pluie) ; mer `CALM` (Calme), `SLIGHT` (Peu agitée), `MODERATE` (Agitée), `ROUGH` (Forte) ; courant `NONE` (Nul), `WEAK` (Faible), `MODERATE` (Moyen), `STRONG` (Fort) ; combinaison `WET` (Humide), `SEMI_DRY` (Semi-étanche), `DRY` (Étanche) | Modifier les `CHECK` et les unions avant la première saisie réelle (D-14)        | **Validée** (2026-11-17) : valeurs et libellés retenus tels quels                            |
 
 ## Décisions
 
@@ -301,6 +305,25 @@
     sans autre participation seront alors supprimés explicitement par le service avant le
     `DELETE FROM divers`. **Le MVP garde `CASCADE`** : un événement n'y a que la participation de
     son créateur, donc RG-22 est trivialement respectée.
+
+- **Modèle cible du partage, avec les comptes** (révision du **2026-11-20**, D43
+  d'`ARCHITECTURE.md`, `docs/plans/auth.md` §8). L'authentification ne livre **pas** le partage :
+  la règle « un seul participant » reste dans les services, et aucune route ne permet de chercher
+  ou de lier un autre compte. Le partage, feature distincte, devra réunir :
+  1. le **statut d'invitation** sur la participation (`pending`, `accepted`, `declined`) ;
+  2. un **consentement propre** du compte invité : la participation créée pour lui contient ses
+     données de santé, saisies par un tiers ; elle n'entre dans son carnet qu'une fois acceptée. Ce
+     consentement s'ajoute à son consentement santé (D-36), qui ne le couvre pas ;
+  3. la **recherche ou le lien d'un compte** (question ouverte 11), à concevoir avec ce
+     consentement : `buddies.linked_diver_id` (RG-06) reste aujourd'hui sans route d'écriture vers
+     un autre compte ;
+  4. **RG-22** dans `DiversService.deleteAccountIn(manager, …)` : `DELETE /api/me` passe par
+     `AccountsService.deleteAccount`, qui appelle `deleteAccountIn` dans sa transaction ; le
+     transfert des événements partagés s'y insère avant le `DELETE FROM divers` (qui supprime aussi
+     le compte, ses sessions et ses consentements par cascade), puis
+     `fk_dive_events__creator_id` passe en `RESTRICT` ;
+  5. le **pull élargi** aux événements créés par d'autres, avec l'exposition ou le snapshot du site
+     privé du créateur (point ci-dessus).
 
 ### D-09 — Référentiel des niveaux de certification
 
@@ -728,7 +751,8 @@ Révision du **2026-11-18**.
   - L'id de la **participation** n'est pas envoyé : le serveur réutilise celle du plongeur pour
     l'événement, sinon en tire une. Au `PUT`, le **snapshot de niveau** de la participation (D-09)
     est conservé.
-  - **Propriété** : le plongeur vient de `CurrentDiverGuard`. Un `PUT` sur une plongée absente,
+  - **Propriété** : le plongeur vient de `CurrentDiverGuard` (depuis l'authentification : du
+    `SessionGuard` global, via `@CurrentDiverId()`, D37 d'`ARCHITECTURE.md`). Un `PUT` sur une plongée absente,
     supprimée ou d'un autre plongeur → **404** générique (pas de création ni de restauration par
     `PUT`). Un site, un binôme ou un niveau inconnu **ou** d'un autre plongeur → même **422**
     `invalid-reference`.
@@ -779,6 +803,12 @@ Révision du **2026-11-18**.
     | `duplicate-observation`, `too-many-observations`                                  | 400    |
     | `identifier-conflict`, `buddy-link-conflict`, `site-in-use`, `full-sync-required` | 409    |
     | `invalid-reference`, `inactive-certification-level`, `merge-into-self` (D-33)     | 422    |
+    | `unauthenticated`, `invalid-credentials` (authentification, D-34)                 | 401    |
+    | `registration-closed`, `onboarding-required`, `consent-required`, `forbidden`     | 403    |
+    | `email-taken`, `onboarding-complete`                                              | 409    |
+    | `payload-too-large`                                                               | 413    |
+    | `unsupported-media-type`                                                          | 415    |
+    | `too-many-attempts` (avec `Retry-After`)                                          | 429    |
     | `unsupported-contract-value` (bug de mapping du serveur)                          | 500    |
 
 - **Réversibilité** : élevée.
@@ -871,8 +901,101 @@ NOT NULL`. `upsertDiveIn` **redirige** un site fusionné vers sa cible (avant D-
   `id` du corps, absent / supprimé / d'un autre → 404), `POST /api/sites/:id/merge` (D-29 ; cible =
   source → **422 `merge-into-self`**, nouveau code ; cible absente, supprimée ou d'un autre → 422
   `invalid-reference`), `DELETE /api/sites/:id` (D-31). Contrats `packages/shared/src/sites.ts` ;
-  DTO couvrant tous les `CHECK` (D-26) ; propriétaire par `CurrentDiverGuard`, `no-store`.
+  DTO couvrant tous les `CHECK` (D-26) ; propriétaire par `CurrentDiverGuard` (remplacé depuis par
+  le `SessionGuard` et `@CurrentDiverId()`, D37), `no-store`.
 - **Réversibilité** : élevée (routes additives).
+
+### D-34 — Compte de connexion : table `accounts` séparée de `divers`
+
+Révision du **2026-11-20** (authentification, `docs/plans/auth.md` §2 ; D36, D42 d'`ARCHITECTURE.md`).
+
+- **Contexte** : `divers` n'avait ni email ni identifiant de connexion (H-03), et D28 avait écarté
+  une entité `User`. Il faut un compte plongeur et un compte staff (backoffice), sans donnée de
+  santé côté staff.
+- **Options étudiées** : colonnes d'authentification sur `divers` (le futur pull du plongeur
+  transporterait un hash, et un staff devrait être un plongeur) ; table `auth_identities`
+  multi-fournisseurs (aucun fournisseur tiers en V1) ; **table `accounts` distincte**.
+- **Décision** :
+  - `accounts(id, diver_id UNIQUE NULL → divers CASCADE, email UNIQUE, password_hash, role, email_verified_at, password_changed_at, totp_secret, totp_last_used_step, created_at, updated_at)`, `id` serveur (`uuidv7()`), trigger `set_updated_at()` ;
+  - `email` en `text` normalisé (`ck_accounts__email` : `lower(btrim(email))`, 3 à 254 caractères,
+    `@` après le premier caractère), sans `citext` ; l'API n'accepte que l'ASCII pendant la bêta ;
+  - `role` en `text + CHECK` (`diver`, `support`, `admin`, D-14), et
+    `ck_accounts__diver_role` : `(role = 'diver') = (diver_id IS NOT NULL)`. **Un compte staff n'a
+    pas de plongeur**, un compte plongeur en a exactement un (RG-38) ;
+  - `password_hash` au format PHC Argon2id (`ck_accounts__password_hash`) ;
+  - `email_verified_at` préparé pour le lot email, jamais posé en V1 (D39) ;
+  - **second facteur du staff** (migration `AddStaffTotp`, lot 7) : `totp_secret text NULL`
+    (AES-256-GCM, format `v1.<iv>.<tag>.<chiffré>`, id du compte en données authentifiées : un
+    secret recopié sur un autre compte ne se déchiffre plus) et `totp_last_used_step bigint NULL`
+    (anti-rejeu : un pas n'est accepté que s'il est plus récent, par un `UPDATE` conditionné aussi
+    au secret lu). `ck_accounts__totp_staff_only` : `role <> 'diver' OR (totp_secret IS NULL AND totp_last_used_step IS NULL)`. Un compte staff sans secret ne se connecte pas (RG-39).
+- **Conséquences** : `Diver` reste le propriétaire des données, `Account` n'est qu'un moyen de
+  connexion (amende D28). L'effacement reste un `DELETE FROM divers` (D-07) qui emporte le compte.
+  Les tables de l'authentification ne sont pas synchronisées.
+- **Réversibilité** : élevée (tables additives) ; le `down()` d'`AddStaffTotp` perd les secrets.
+
+### D-35 — Session serveur opaque : table `sessions`
+
+- **Contexte** : authentification maison par session (D33), deux audiences (D34).
+- **Décision** : `sessions(id, account_id → accounts CASCADE, token_hash bytea UNIQUE, audience, created_at, last_seen_at, expires_at)`. Le token (32 octets aléatoires) n'est **jamais stocké** :
+  seulement son SHA-256 (`ck_sessions__token_hash` : 32 octets), lu par index unique à chaque
+  requête. `audience IN ('web','admin')`. `expires_at` = expiration absolue ; l'expiration par
+  inactivité se déduit de `last_seen_at` et de l'audience (30 jours web, 30 minutes admin),
+  configurée dans le code, non stockée ; `last_seen_at` est écrit au plus une fois par heure (web)
+  ou par minute (admin). Une session web sans « Rester connecté » se reconnaît à
+  `expires_at - created_at ≤ 24 h` : aucune colonne de plus. Index `idx_sessions__account_id`
+  (révocation de toutes les sessions) et `idx_sessions__expires_at` (purge).
+- **Conséquences** : révocation immédiate (logout, changement de mot de passe, réinitialisation,
+  suppression du compte) ; `PurgeService` supprime les sessions expirées ou inactives.
+- **Réversibilité** : élevée.
+
+### D-36 — Consentement santé versionné : table `consents`
+
+- **Contexte** : base légale des données de santé (art. 9.2.a, D38), recueillie à `/welcome`.
+- **Options étudiées** : booléen et date sur `divers` (perd l'historique des versions) ; **table
+  dédiée, une ligne par version acceptée**.
+- **Décision** : `consents(id, diver_id → divers CASCADE, purpose, policy_version, granted_at, withdrawn_at)` ; `purpose IN ('health_data_processing')`, `policy_version` de 1 à 32 caractères
+  (type `HealthPolicyVersion` du contrat), `withdrawn_at >= granted_at`. Index unique partiel
+  `uq_consents__live (diver_id, purpose) WHERE withdrawn_at IS NULL` : un seul consentement vivant
+  par finalité (RG-41). `idx_consents__diver_id` couvre la FK pour toutes les lignes, retirées
+  comprises : la cascade de l'effacement ne parcourt pas la table. Un nouveau consentement pose
+  `withdrawn_at` sur l'ancien puis insère le nouveau, dans une transaction.
+- **Conséquences** : pas de retrait seul en V1 : retirer son consentement, c'est supprimer son
+  compte. Le statut d'onboarding (`profile-required`, `consent-required`, `complete`) est calculé
+  par l'API à partir du niveau du plongeur et du consentement vivant, jamais stocké.
+- **Réversibilité** : élevée.
+
+### D-37 — Trace de sécurité : table `auth_events`
+
+- **Contexte** : traçabilité recommandée par la CNIL (6 mois à 1 an), sans donnée réseau (D40).
+- **Décision** : `auth_events(id, account_id NULL → accounts CASCADE, type, occurred_at)`, **sans
+  IP ni user-agent**. `type` en `text + CHECK` : `login_succeeded`, `login_failed`,
+  `login_throttled`, `logout`, `sessions_revoked`, `password_changed`,
+  `password_reset_by_operator`, `consent_granted`, `account_deleted`, `account_created`
+  (inscription d'un plongeur et création d'un compte staff par `account:create-staff` ; migration
+  `AddAccountCreatedAuthEvent` : l'inscription était tracée en `login_succeeded`) et
+  `totp_reset` (`AddStaffTotp`). `account_id` est `NULL` pour `account_deleted` (le compte a
+  disparu), `login_throttled` et un `login_failed` sur un email inconnu. Index
+  `idx_auth_events__account_id` (FK) et `idx_auth_events__occurred_at` (purge après 180 jours par
+  `PurgeService`).
+- **Conséquences** : la trace d'un compte disparait avec lui (cascade), sauf l'événement
+  `account_deleted`, anonyme. Un nouveau type demande une migration qui réécrit le `CHECK` à la main
+  (le générateur compare les `CHECK` par nom) ; son `down()` échoue s'il reste des lignes du type.
+- **Réversibilité** : élevée.
+
+### D-38 — Profil incomplet : `divers.last_name` et `certification_level_id` facultatifs
+
+- **Contexte** : l'inscription minimale de l'accueil ne demande que prénom, email et mot de passe ;
+  le niveau (et le nom, facultatif) est saisi au premier lancement (`/welcome`, D38).
+- **Décision** : migration `AllowIncompleteDiverProfile` : `divers.last_name` et
+  `divers.certification_level_id` deviennent `NULL`, `ck_divers__last_name` accepte `NULL`
+  (réécrit à la main). Aucun remplissage : les plongeurs existants sont complets.
+  `dive_participations.certification_level_id` reste `NOT NULL` : une plongée ne s'écrit qu'après
+  `/welcome` (RG-43), avec son snapshot de niveau (D-09).
+- **Conséquences** : révise RG-01 (0 ou 1 niveau courant, 1 avant le carnet). L'API refuse le carnet
+  (`403 onboarding-required`) tant que le niveau manque ; les lectures du carnet passent par un type
+  `CompleteDiver`. Le `down()` échoue tant qu'un profil incomplet existe.
+- **Réversibilité** : moyenne (le retour en `NOT NULL` exige de compléter les profils).
 
 ## Dénormalisations et snapshots
 
@@ -928,7 +1051,9 @@ Données de plongée absentes des sources, **non ajoutées** :
    météo, mer, courant. Restent ouverts : ordinateur, type (exploration, formation, épave), rôle
    (hors périmètre de la spec du détail).
 4. **Incidents** et données médicales (`ARCHITECTURE.md` §9) : entité dédiée, accès renforcé ?
-5. **Authentification** : email, fournisseur, rôles (admin du backoffice) ? (H-03)
+5. ~~**Authentification** : email, fournisseur, rôles (admin du backoffice) ? (H-03)~~ : résolue
+   par D-34 à D-37 (et D33 à D45 d'`ARCHITECTURE.md`) : email et mot de passe sans fournisseur
+   tiers, rôles `diver`, `support`, `admin`, staff sans plongeur et avec TOTP, bêta sans email.
 6. **Notifications** (cloche avec pastille) : quel contenu ? (invitations à une plongée partagée ?)
 7. **Recherche** : sur quoi (sites, notes, binômes) ? Déterminera `pg_trgm` ou plein texte.
 8. ~~**`stats.mainArea`**~~ : résolue par D-20 (`dive_sites.area`, zone la plus fréquente
@@ -936,8 +1061,11 @@ Données de plongée absentes des sources, **non ajoutées** :
 9. ~~**Région**~~ : résolue par D27 d'`ARCHITECTURE.md` (`dive_sites.locality` à côté de la
    région).
 10. ~~**Fuseau**~~ : résolue par D-10.
-11. **Lien binôme ↔ compte** : comment trouver un compte (pseudo, email, QR code), faut-il son
-    consentement pour être lié ? Le même consentement servira à l'invitation (D-08). (H-05)
+11. ~~**Lien binôme ↔ compte** : comment trouver un compte (pseudo, email, QR code), faut-il son
+    consentement pour être lié ? Le même consentement servira à l'invitation (D-08). (H-05)~~ :
+    fermée par D43 d'`ARCHITECTURE.md` et le modèle cible de D-08 : aucune route ne cherche ni ne
+    lie un compte tant que le partage n'existe pas ; le lien exigera le consentement du compte
+    lié, et son moyen (pseudo, email, QR code) sera choisi avec la feature partage.
 12. **Filtres de période de la carte** : portent-ils sur la date des plongées (hypothèse retenue) ?
 13. **Avatar** : URL externe ou fichier uploadé (table `media`, stockage objet) ?
 14. **Carte** : Leaflet ou MapLibre GL ? (sans impact sur le schéma)
