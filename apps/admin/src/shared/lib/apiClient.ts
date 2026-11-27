@@ -1,7 +1,23 @@
+import { isRecord } from './guards';
+
 /** Runtime check that turns an unknown response body into a typed value. */
 export type TypeGuard<T> = (value: unknown) => value is T;
 
 export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'invalid-response';
+
+/** Path of a field in the request body → codes of its constraints. */
+export type ApiFieldErrorCodes = Record<string, string[]>;
+
+export interface ApiErrorOptions {
+  status?: number | undefined;
+  /** Business code of the error body (`invalid-credentials`), when the API sent one. */
+  code?: string | undefined;
+  /** Per-field codes of a `validation-failed` body. */
+  fieldErrors?: ApiFieldErrorCodes | undefined;
+  /** Seconds to wait before trying again (`Retry-After` of a `429 too-many-attempts`). */
+  retryAfterS?: number | undefined;
+  cause?: unknown;
+}
 
 /** Expected failure of an API call, safe to describe to the user. */
 export class ApiError extends Error {
@@ -9,56 +25,175 @@ export class ApiError extends Error {
   readonly kind: ApiErrorKind;
   /** HTTP status, only for `http` errors. */
   readonly status: number | undefined;
+  /** Only for `http` errors whose body carries one. */
+  readonly code: string | undefined;
+  /** Only for `http` errors whose body carries them. */
+  readonly fieldErrors: ApiFieldErrorCodes | undefined;
+  /** Only for `http` errors whose response carries a readable `Retry-After`. */
+  readonly retryAfterS: number | undefined;
 
-  constructor(kind: ApiErrorKind, message: string, options?: { status?: number; cause?: unknown }) {
-    super(message, { cause: options?.cause });
+  constructor(kind: ApiErrorKind, message: string, options: ApiErrorOptions = {}) {
+    super(message, { cause: options.cause });
     this.kind = kind;
-    this.status = options?.status;
+    this.status = options.status;
+    this.code = options.code;
+    this.fieldErrors = options.fieldErrors;
+    this.retryAfterS = options.retryAfterS;
   }
 }
 
+/** An `http` error of `status`, with `code` in its body when one is given. */
+export function isApiHttpError(error: unknown, status: number, code?: string): error is ApiError {
+  return (
+    error instanceof ApiError &&
+    error.kind === 'http' &&
+    error.status === status &&
+    (code === undefined || error.code === code)
+  );
+}
+
+/** What a `401` / `403` tells about the session: signed out, or a role that is not enough. */
+export type SessionEvent = 'unauthenticated' | 'forbidden';
+
 export interface RequestOptions {
-  /** Lets the caller cancel the request (e.g. on unmount). */
-  signal?: AbortSignal;
+  /** Lets the caller cancel the request (e.g. on unmount, or a navigation interrupted). */
+  signal?: AbortSignal | undefined;
 }
 
 export interface ApiClient {
   get<T>(path: string, guard: TypeGuard<T>, options?: RequestOptions): Promise<T>;
+  /** Sends `body` as JSON. */
+  post<T>(path: string, body: unknown, guard: TypeGuard<T>, options?: RequestOptions): Promise<T>;
+  /** Sends `body` as JSON (none when `undefined`) and expects an empty answer (`204`). */
+  postNoContent(path: string, body?: unknown, options?: RequestOptions): Promise<void>;
 }
 
 export interface ApiClientConfig {
   baseUrl: string;
   /** Maximum duration of a request before it fails with a `timeout` error. */
   timeoutMs?: number;
+  /**
+   * Called on any `401` / `403`, before the call rejects: the app leaves for `/login` or
+   * `/forbidden`. The call is never retried. Left out by the clients of the session loaders and of
+   * the login form, which handle these statuses themselves.
+   */
+  onSessionError?: (event: SessionEvent) => void;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
-/** Minimal JSON client over native `fetch`: timeout, HTTP errors and body validation at the boundary. */
+type Method = 'GET' | 'POST';
+
+/** Longest wait taken from `Retry-After`: a broken or hostile value never locks the form for long. */
+export const MAX_RETRY_AFTER_S = 3600;
+
+/** `delta-seconds`, or an IMF-fixdate (`Sun, 06 Nov 1994 08:49:37 GMT`), RFC 9110 §10.2.3. */
+const DELTA_SECONDS = /^\d{1,10}$/;
+const IMF_FIXDATE =
+  /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+
+/**
+ * `Retry-After` in seconds, at most `MAX_RETRY_AFTER_S`: a delay (`120`) or an IMF-fixdate; a date
+ * already past gives `0`. `undefined` when absent or in any other form.
+ */
+export function parseRetryAfter(
+  value: string | null,
+  now: number = Date.now(),
+): number | undefined {
+  if (value === null) return undefined;
+  const trimmed = value.trim();
+  let seconds: number;
+  if (DELTA_SECONDS.test(trimmed)) {
+    seconds = Number(trimmed);
+  } else if (IMF_FIXDATE.test(trimmed)) {
+    const date = Date.parse(trimmed);
+    if (Number.isNaN(date)) return undefined;
+    seconds = Math.max(0, Math.ceil((date - now) / 1000));
+  } else {
+    return undefined;
+  }
+  return Math.min(seconds, MAX_RETRY_AFTER_S);
+}
+
+const isString = (value: unknown): value is string => typeof value === 'string';
+
+const isFieldErrorCodes = (value: unknown): value is ApiFieldErrorCodes =>
+  isRecord(value) &&
+  Object.values(value).every((codes) => Array.isArray(codes) && codes.every(isString));
+
+/** What an error body (`{ statusCode, code, fieldErrors? }`) may tell; anything else is ignored. */
+function readErrorBody(value: unknown): Pick<ApiErrorOptions, 'code' | 'fieldErrors'> {
+  if (!isRecord(value)) return {};
+  return {
+    ...(isString(value.code) ? { code: value.code } : {}),
+    ...(isFieldErrorCodes(value.fieldErrors) ? { fieldErrors: value.fieldErrors } : {}),
+  };
+}
+
+/** The JSON body of a failed response, `undefined` when there is none or it is not JSON. */
+async function errorBodyOf(response: Response): Promise<unknown> {
+  try {
+    return (await response.json()) as unknown;
+  } catch {
+    // An error page of a proxy, an empty body: the status alone describes the failure.
+    return undefined;
+  }
+}
+
+function retryAfterOf(response: Response): Pick<ApiErrorOptions, 'retryAfterS'> {
+  const retryAfterS = parseRetryAfter(response.headers.get('Retry-After'));
+  return retryAfterS === undefined ? {} : { retryAfterS };
+}
+
+const SESSION_EVENTS: Partial<Record<number, SessionEvent>> = {
+  401: 'unauthenticated',
+  403: 'forbidden',
+};
+
+/**
+ * Minimal JSON client over native `fetch`: timeout, the session cookie, HTTP errors (with the code,
+ * field errors and `Retry-After` of the response) and body validation at the boundary.
+ */
 export function createApiClient({
   baseUrl,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  onSessionError,
 }: ApiClientConfig): ApiClient {
   // A trailing slash makes `new URL('health', base)` append instead of replacing the last segment.
   const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
 
-  async function get<T>(path: string, guard: TypeGuard<T>, options: RequestOptions = {}) {
+  /** Sends the request and settles its failures; `read` turns the successful response into the result. */
+  async function send<T>(
+    method: Method,
+    path: string,
+    read: (response: Response, url: URL) => Promise<T>,
+    { body, signal: callerSignal }: RequestOptions & { body?: unknown } = {},
+  ): Promise<T> {
     const url = new URL(path.replace(/^\/+/, ''), base);
     const timeoutSignal = AbortSignal.timeout(timeoutMs);
-    const signal = options.signal
-      ? AbortSignal.any([options.signal, timeoutSignal])
-      : timeoutSignal;
+    const signal = callerSignal ? AbortSignal.any([callerSignal, timeoutSignal]) : timeoutSignal;
+    // The admin session cookie (D34) goes with every call: the API is on the front's origin.
+    const init: RequestInit =
+      body === undefined
+        ? { method, headers: { Accept: 'application/json' }, credentials: 'same-origin', signal }
+        : {
+            method,
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            credentials: 'same-origin',
+            signal,
+          };
 
     let response: Response;
     try {
-      response = await fetch(url, { headers: { Accept: 'application/json' }, signal });
+      response = await fetch(url, init);
     } catch (error) {
       if (timeoutSignal.aborted) {
         throw new ApiError('timeout', `The API did not answer within ${timeoutMs} ms.`, {
           cause: error,
         });
       }
-      if (options.signal?.aborted) {
+      if (callerSignal?.aborted) {
         // Cancelled by the caller: not an API failure, propagate the AbortError untouched.
         throw error;
       }
@@ -66,25 +201,44 @@ export function createApiClient({
     }
 
     if (!response.ok) {
-      throw new ApiError('http', `The API answered with HTTP ${response.status}.`, {
+      const error = new ApiError('http', `The API answered with HTTP ${response.status}.`, {
         status: response.status,
+        ...readErrorBody(await errorBodyOf(response)),
+        ...retryAfterOf(response),
       });
+      const sessionEvent = SESSION_EVENTS[response.status];
+      if (sessionEvent !== undefined) onSessionError?.(sessionEvent);
+      throw error;
     }
 
-    let body: unknown;
-    try {
-      body = await response.json();
-    } catch (error) {
-      throw new ApiError('invalid-response', 'The API answered with invalid JSON.', {
-        cause: error,
-      });
-    }
-
-    if (!guard(body)) {
-      throw new ApiError('invalid-response', `Unexpected response shape for ${url.pathname}.`);
-    }
-    return body;
+    return read(response, url);
   }
 
-  return { get };
+  /** The JSON body of a successful response, checked by `guard`. */
+  const readBody =
+    <T>(guard: TypeGuard<T>) =>
+    async (response: Response, url: URL): Promise<T> => {
+      let data: unknown;
+      try {
+        data = await response.json();
+      } catch (error) {
+        throw new ApiError('invalid-response', 'The API answered with invalid JSON.', {
+          cause: error,
+        });
+      }
+
+      if (!guard(data)) {
+        throw new ApiError('invalid-response', `Unexpected response shape for ${url.pathname}.`);
+      }
+      return data;
+    };
+
+  const ignoreBody = () => Promise.resolve();
+
+  return {
+    get: (path, guard, options) => send('GET', path, readBody(guard), options),
+    post: (path, body, guard, options) => send('POST', path, readBody(guard), { ...options, body }),
+    postNoContent: (path, body, options) =>
+      send('POST', path, ignoreBody, body === undefined ? options : { ...options, body }),
+  };
 }

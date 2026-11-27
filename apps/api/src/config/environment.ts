@@ -6,14 +6,17 @@ import {
   IsInt,
   IsNotEmpty,
   IsString,
+  IsOptional,
   IsUrl,
   Matches,
   Max,
   Min,
+  ValidateBy,
   validateSync,
   type ValidationError,
 } from 'class-validator';
 import { DEFAULT_PURGE_HORIZON_DAYS } from '../common/sync/sync-settings';
+import { parseTotpEncryptionKey } from '../modules/auth/totp/totp-secret-cipher';
 
 const MIN_PORT = 1;
 const MAX_PORT = 65_535;
@@ -46,6 +49,22 @@ export class DatabaseEnvironment {
   @IsString()
   @IsNotEmpty()
   DATABASE_NAME: string;
+}
+
+/**
+ * `TOTP_ENCRYPTION_KEY` (D42): the canonical base64 of exactly 32 bytes (AES-256-GCM key of the
+ * staff TOTP secrets). Generate one with
+ * `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`.
+ */
+function IsTotpEncryptionKey(): PropertyDecorator {
+  return ValidateBy({
+    name: 'isTotpEncryptionKey',
+    validator: {
+      validate: (value: unknown) =>
+        typeof value === 'string' && parseTotpEncryptionKey(value) !== null,
+      defaultMessage: () => '$property must be the base64 of 32 bytes',
+    },
+  });
 }
 
 /** Every variable the API reads. Validated once at startup by `ConfigModule`. */
@@ -114,6 +133,23 @@ export class EnvironmentVariables extends DatabaseEnvironment {
   })
   @IsBoolean()
   REGISTRATION_ENABLED: boolean = false;
+
+  /**
+   * Key of the staff TOTP secrets (D42, `IsTotpEncryptionKey`). Optional here, because a fresh
+   * install has no staff account; required at boot as soon as one exists (`TotpKeyBootCheck`).
+   */
+  @IsOptional()
+  @IsTotpEncryptionKey()
+  TOTP_ENCRYPTION_KEY?: string;
+}
+
+/**
+ * Variables of the operator commands that enrol a staff second factor (`account:create-staff`,
+ * `account:reset-totp`): the database, and `TOTP_ENCRYPTION_KEY`, required there.
+ */
+export class TotpEnrolmentEnvironment extends DatabaseEnvironment {
+  @IsTotpEncryptionKey()
+  TOTP_ENCRYPTION_KEY: string;
 }
 
 /** Thrown when the environment does not match its schema. Its message is safe to log. */

@@ -7,7 +7,7 @@ import {
   OnboardingCompleteError,
   TooManyAttemptsError,
 } from '../../src/common/errors/domain-errors';
-import type { Clock } from '../../src/common/time/clock';
+import { systemClock, type Clock } from '../../src/common/time/clock';
 import { Account } from '../../src/modules/accounts/account.entity';
 import { AccountsService } from '../../src/modules/accounts/accounts.service';
 import { OnboardingService } from '../../src/modules/accounts/onboarding.service';
@@ -23,6 +23,7 @@ import {
 } from '../../src/modules/auth/registration.service';
 import { Session } from '../../src/modules/auth/session.entity';
 import { SessionService } from '../../src/modules/auth/session.service';
+import { StaffTotp } from '../../src/modules/auth/totp/staff-totp';
 import { Consent } from '../../src/modules/consents/consent.entity';
 import { ConsentsService } from '../../src/modules/consents/consents.service';
 import { Diver } from '../../src/modules/divers/diver.entity';
@@ -91,7 +92,15 @@ describe('authentication and account services', () => {
       sessions,
       authEvents,
     );
-    authentication = new AuthenticationService(dataSource, hasher, throttle, sessions, authEvents);
+    authentication = new AuthenticationService(
+      dataSource,
+      hasher,
+      throttle,
+      sessions,
+      authEvents,
+      // Web logins only here: the staff second factor is covered by `staff-totp.db-spec.ts`.
+      new StaffTotp(null, systemClock),
+    );
     onboarding = new OnboardingService(dataSource, divers, consents);
     accounts = new AccountsService(
       dataSource,
@@ -214,6 +223,7 @@ describe('authentication and account services', () => {
         throttle,
         sessions,
         new AuthEventsService(dataSource),
+        new StaffTotp(null, systemClock),
       );
 
       await service.loginDiver({

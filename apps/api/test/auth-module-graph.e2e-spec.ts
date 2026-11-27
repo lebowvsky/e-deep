@@ -30,7 +30,8 @@ const SETTINGS: Readonly<Record<string, unknown>> = {
 const dataSource = {
   options: { type: 'postgres' },
   entityMetadatas: [],
-  manager: { find: jest.fn().mockResolvedValue([]) },
+  // `existsBy`: the boot check of `TOTP_ENCRYPTION_KEY` (absent here), no staff account.
+  manager: { find: jest.fn().mockResolvedValue([]), existsBy: jest.fn().mockResolvedValue(false) },
   getRepository: () => ({}),
 };
 

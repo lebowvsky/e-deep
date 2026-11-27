@@ -14,5 +14,7 @@ export const AUTH_EVENT_TYPES = [
   'account_deleted',
   // The minimal sign-up (`RegistrationService`), migration `AddAccountCreatedAuthEvent`.
   'account_created',
+  // `account:reset-totp`, migration `AddStaffTotp`.
+  'totp_reset',
 ] as const;
 export type AuthEventType = (typeof AUTH_EVENT_TYPES)[number];

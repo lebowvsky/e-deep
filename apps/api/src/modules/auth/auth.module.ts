@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SessionCookies } from '../../common/auth/session-cookie';
-import { CLOCK, systemClock } from '../../common/time/clock';
+import { CLOCK, systemClock, type Clock } from '../../common/time/clock';
 import type { AppConfigService } from '../../config/app-config.service';
 import { DiversModule } from '../divers/divers.module';
 import { AuthEvent } from './auth-event.entity';
@@ -16,10 +16,13 @@ import { PasswordPolicy } from './password/password-policy';
 import { RegistrationService } from './registration.service';
 import { Session } from './session.entity';
 import { SessionService } from './session.service';
+import { StaffTotp } from './totp/staff-totp';
+import { TotpKeyBootCheck } from './totp/totp-key-boot-check';
 
 /**
- * Sessions, sign-in and sign-up (D33 to D35, D39). The password hasher (dummy hash) and the policy
- * (compromised list) are built once at boot by async factories. No controller here: answering the
+ * Sessions, sign-in and sign-up (D33 to D35, D39), the staff second factor (D42). The password
+ * hasher (dummy hash) and the policy (compromised list) are built once at boot by async factories;
+ * the boot fails when a staff account exists without `TOTP_ENCRYPTION_KEY` (`TotpKeyBootCheck`). No controller here: answering the
  * routes needs the account's `MeResponse` (`AccountsModule`, which depends on this module), so the
  * controllers live in `AuthHttpModule`.
  */
@@ -41,6 +44,13 @@ import { SessionService } from './session.service';
     },
     // Monotonic clock by default; one instance per process (in-memory buckets, D35).
     { provide: LoginThrottle, useFactory: () => new LoginThrottle() },
+    {
+      provide: StaffTotp,
+      inject: [ConfigService, CLOCK],
+      useFactory: (config: AppConfigService, clock: Clock): StaffTotp =>
+        StaffTotp.fromEncodedKey(config.get('TOTP_ENCRYPTION_KEY', { infer: true }), clock),
+    },
+    TotpKeyBootCheck,
     SessionService,
     AuthEventsService,
     AuthenticationService,
@@ -52,6 +62,7 @@ import { SessionService } from './session.service';
     PasswordHasher,
     PasswordPolicy,
     LoginThrottle,
+    StaffTotp,
     SessionService,
     AuthEventsService,
     AuthenticationService,

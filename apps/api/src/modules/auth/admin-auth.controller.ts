@@ -12,10 +12,8 @@ import { AdminLoginRequestDto } from './dto/admin-login-request.dto';
 
 /**
  * Sign-in and sign-out of the staff on the back office (§3, D42), with the admin cookie only.
- * Public routes (the `OriginGuard` still applies), every answer `no-store`.
- *
- * The TOTP code is required and format-checked but NOT verified yet: lot 7 (see the `TODO(lot 7)`
- * of `AuthenticationService`).
+ * Public routes (the `OriginGuard` still applies), every answer `no-store`. The password and the
+ * TOTP code are both verified by `AuthenticationService.loginStaff`.
  */
 @Controller('admin/auth')
 @Public()

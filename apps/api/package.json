@@ -19,7 +19,8 @@
     "migration:revert": "nest build && typeorm migration:revert -d dist/database/data-source.js",
     "db:seed": "nest build && node dist/database/seeds/dev-seed.js",
     "account:create-staff": "nest build && node dist/cli/create-staff-account.js",
-    "account:reset-password": "nest build && node dist/cli/reset-password.js"
+    "account:reset-password": "nest build && node dist/cli/reset-password.js",
+    "account:reset-totp": "nest build && node dist/cli/reset-totp.js"
   },
   "dependencies": {
     "@nestjs/common": "^12.4.0",

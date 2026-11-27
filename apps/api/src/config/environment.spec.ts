@@ -1,7 +1,9 @@
 import 'reflect-metadata';
+import { randomBytes } from 'node:crypto';
 import {
   EnvironmentValidationError,
   EnvironmentVariables,
+  TotpEnrolmentEnvironment,
   validateEnvironment,
 } from './environment';
 
@@ -143,10 +145,55 @@ describe('EnvironmentVariables.SESSION_COOKIE_SECURE', () => {
   });
 });
 
+describe('TOTP_ENCRYPTION_KEY', () => {
+  const key = randomBytes(32).toString('base64');
+
+  it('is optional for the API (a fresh install has no staff account)', () => {
+    expect(validateEnvironment(EnvironmentVariables, BASE).TOTP_ENCRYPTION_KEY).toBeUndefined();
+  });
+
+  it('accepts the base64 of 32 bytes', () => {
+    expect(
+      validateEnvironment(EnvironmentVariables, { ...BASE, TOTP_ENCRYPTION_KEY: key })
+        .TOTP_ENCRYPTION_KEY,
+    ).toBe(key);
+  });
+
+  it.each([
+    ['16 bytes', randomBytes(16).toString('base64')],
+    ['64 bytes', randomBytes(64).toString('base64')],
+    ['hex', randomBytes(32).toString('hex')],
+    ['base64url', Buffer.alloc(32, 0xfb).toString('base64url')],
+    ['empty', ''],
+  ])('refuses %s, naming the variable but never the value', (_case, value) => {
+    for (const schema of [EnvironmentVariables, TotpEnrolmentEnvironment]) {
+      const message = validationMessage({ ...BASE, TOTP_ENCRYPTION_KEY: value }, schema);
+
+      expect(message.split('\n')).toContain('  - TOTP_ENCRYPTION_KEY: isTotpEncryptionKey');
+      if (value !== '') {
+        expect(message).not.toContain(value);
+      }
+    }
+  });
+
+  it('is required by the commands that enrol a staff second factor', () => {
+    const message = validationMessage(BASE, TotpEnrolmentEnvironment);
+
+    expect(message.split('\n')).toContain('  - TOTP_ENCRYPTION_KEY: isTotpEncryptionKey');
+    expect(
+      validateEnvironment(TotpEnrolmentEnvironment, { ...BASE, TOTP_ENCRYPTION_KEY: key })
+        .TOTP_ENCRYPTION_KEY,
+    ).toBe(key);
+  });
+});
+
 /** Validates `rawEnvironment`, expecting it to be refused, and returns the error message. */
-function validationMessage(rawEnvironment: Record<string, unknown>): string {
+function validationMessage(
+  rawEnvironment: Record<string, unknown>,
+  schema: typeof EnvironmentVariables | typeof TotpEnrolmentEnvironment = EnvironmentVariables,
+): string {
   try {
-    validateEnvironment(EnvironmentVariables, rawEnvironment);
+    validateEnvironment<object>(schema, rawEnvironment);
   } catch (error) {
     expect(error).toBeInstanceOf(EnvironmentValidationError);
     return (error as EnvironmentValidationError).message;

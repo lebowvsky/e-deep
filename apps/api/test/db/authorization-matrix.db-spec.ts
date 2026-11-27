@@ -16,6 +16,7 @@ import { AppModule } from '../../src/app.module';
 import { createStaffAccountCommand } from '../../src/cli/create-staff-account';
 import { configureApp } from '../../src/configure-app';
 import { AccountProvisioningService } from '../../src/modules/accounts/account-provisioning.service';
+import { authenticatorCode, otpauthUriIn } from '../support/authenticator';
 import { diveWriteRequest } from '../support/dive-write-request';
 import {
   SUPERTEST_METHODS,
@@ -226,15 +227,17 @@ describe('authorization matrix (db)', () => {
     ids.diverA = (await onboard(cookies.a, 'Anders')).diver.id;
     ids.diverB = (await onboard(cookies.b, 'Brandt')).diver.id;
 
-    await createStaffAccountCommand(
+    const enrolment = await createStaffAccountCommand(
       app.get(AccountProvisioningService),
       ['support', EMAILS.s],
       () => Promise.resolve(STAFF_PASSWORD),
+      () => true,
     );
+    const totpCode = authenticatorCode(otpauthUriIn(enrolment), new Date());
     const staffLogin = await server()
       .post('/api/admin/auth/login')
       .set('Sec-Fetch-Site', 'same-origin')
-      .send({ email: EMAILS.s, password: STAFF_PASSWORD, totpCode: '000000' })
+      .send({ email: EMAILS.s, password: STAFF_PASSWORD, totpCode })
       .expect(200);
     cookies.s = cookieOf(staffLogin, 'edeep_admin_sid');
 

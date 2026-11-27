@@ -9,6 +9,7 @@ import {
   Unique,
   type Relation,
 } from 'typeorm';
+import { numericTransformer } from '../../common/database/numeric.transformer';
 import { TimestampedEntity } from '../../common/database/timestamped.entity';
 import { Diver } from '../divers/diver.entity';
 
@@ -28,6 +29,10 @@ import { Diver } from '../divers/diver.entity';
 @Check('ck_accounts__password_hash', "starts_with(password_hash, '$argon2id$')")
 @Check('ck_accounts__role', "role IN ('diver', 'support', 'admin')")
 @Check('ck_accounts__diver_role', "(role = 'diver') = (diver_id IS NOT NULL)")
+@Check(
+  'ck_accounts__totp_staff_only',
+  "role <> 'diver' OR (totp_secret IS NULL AND totp_last_used_step IS NULL)",
+)
 export class Account extends TimestampedEntity {
   @PrimaryColumn('uuid', {
     name: 'id',
@@ -62,4 +67,24 @@ export class Account extends TimestampedEntity {
 
   @Column({ type: 'timestamptz', name: 'password_changed_at', default: () => 'now()' })
   passwordChangedAt: Date;
+
+  /**
+   * Staff TOTP secret (D42), encrypted by `TotpSecretCipher` (AES-256-GCM, bound to the account
+   * id). `NULL` for a diver (`ck_accounts__totp_staff_only`), and for a staff account not enrolled
+   * yet, which then cannot sign in. Never logged nor returned.
+   */
+  @Column({ type: 'text', name: 'totp_secret', nullable: true })
+  totpSecret: string | null;
+
+  /**
+   * Last TOTP time step accepted (anti-replay, RFC 6238 §5.2): a code of this step or an older one
+   * is refused. A step (~5.9e7 in 2026) fits a JS `number`.
+   */
+  @Column({
+    type: 'bigint',
+    name: 'totp_last_used_step',
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  totpLastUsedStep: number | null;
 }

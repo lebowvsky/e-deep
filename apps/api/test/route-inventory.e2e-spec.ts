@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DiscoveryModule } from '@nestjs/core';
@@ -7,6 +8,7 @@ import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { APPLICATION_MODULES } from '../src/application-modules';
 import { configureApp } from '../src/configure-app';
+import { TotpKeyBootCheck } from '../src/modules/auth/totp/totp-key-boot-check';
 import {
   SUPERTEST_METHODS,
   concretePath,
@@ -39,6 +41,8 @@ const SETTINGS: Readonly<Record<string, unknown>> = {
   REGISTRATION_ENABLED: false,
   ALLOWED_ORIGINS: ['http://localhost:5173'],
   SYNC_PURGE_HORIZON_DAYS: 90,
+  // A valid key: the staff TOTP module builds its cipher (its boot check is stubbed below).
+  TOTP_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
 };
 
 /** Fails any query: a refused request must never reach the database. */
@@ -73,7 +77,11 @@ describe('route inventory (e2e, no database)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [FakeInfrastructureModule, DiscoveryModule, ...APPLICATION_MODULES],
-    }).compile();
+    })
+      // Reads the accounts at boot (key required, key decrypts): covered by its own db spec.
+      .overrideProvider(TotpKeyBootCheck)
+      .useValue({ onApplicationBootstrap: () => Promise.resolve() })
+      .compile();
     app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
     configureApp(app, { trustProxy: 0 });
     await app.init();
