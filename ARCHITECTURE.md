@@ -1005,3 +1005,14 @@ Issus de l'authentification (lots 0 à 8, PR #22 à #31, 2026-11-20 → 2026-11-
 - **CI** : les jobs ne sont pas encore des contrôles **requis** sur `main` (protection de branche à
   activer dans GitHub).
 - **Partage** (D43) : hors périmètre, modèle cible dans D-08 (`docs/data-model/decisions.md`).
+
+Issus du cadrage de l'app mobile (2026-11-27) :
+
+- **App mobile** : une app compagnon React Native (Expo), hors ligne, est prévue ; le web reste en
+  ligne. Plan validé, non commencé : `docs/plans/mobile-foundations.md` (paquets runtime
+  `@e-deep/client` et `@e-deep/design-tokens`, fin de D13 ; audience `mobile` en Bearer opaque ;
+  push et pull de synchronisation avec détection de conflit ; suppression d'une plongée ; purge
+  planifiée ; cadrage Expo, SQLCipher et périmètre V1). Ses décisions (D46 à D60, D-39 à D-45) seront
+  reportées au §10 et dans `docs/data-model/decisions.md` au dernier lot. Il amende D13, D22, D25,
+  D33, D34, D37, D42 et §6 ; il relève que les conditions CARTO (clé obligatoire, cache de 30 jours
+  au plus) concernent déjà le web.
