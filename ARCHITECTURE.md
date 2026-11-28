@@ -1056,6 +1056,27 @@ Issus de la mise en ligne (2026-11-28) :
   utilisateur non-root dans le groupe `docker` (équivalent root : à réserver à l'exploitant).
 - **Limites mémoire** : pas de `mem_limit` par service ; à fixer une fois la taille du VPS choisie
   (au repos : api ~56 Mio, Caddy ~67 Mio, PostgreSQL ~33 Mio).
+- **Plusieurs instances de l'API (scaling horizontal)** : l'API n'est pas prête à être répliquée.
+  Deux adaptations sont nécessaires avant de lancer une deuxième instance :
+  - la **limitation de débit** (D35) est en mémoire : chaque instance aurait ses propres compteurs,
+    ce qui multiplie les essais permis par le nombre d'instances. Il faut un stockage partagé
+    (PostgreSQL, ou Redis si la charge le justifie) ;
+  - la **purge** (`PurgeService.purge()`, sessions expirées, `auth_events` de plus de 180 jours,
+    tombstones) devra tourner sur **une seule** instance : tâche planifiée unique, ou verrou
+    (`pg_try_advisory_lock`) si chaque instance la planifie.
+
+  Les sessions sont déjà en base (D33) : elles fonctionnent avec plusieurs instances. Chemin de
+  montée en charge envisagé, une étape seulement quand une mesure l'exige :
+  1. supervision (CPU, RAM, latence p95, requêtes lentes) ;
+  2. VPS plus gros (aucun changement de code) ;
+  3. build en CI + GHCR ;
+  4. PostgreSQL managé (restauration à un instant donné, réplica en lecture ; option `ssl` à
+     rouvrir) ;
+  5. plusieurs instances derrière Caddy, après les deux adaptations ci-dessus ;
+  6. CDN pour les fichiers statiques.
+
+  Kubernetes n'est pas envisagé tant qu'une seule personne exploite l'app.
+
 - **Basic auth admin** : Caddy ne limite pas les essais ; seul le coût de bcrypt les ralentit. Mot de
   passe long et aléatoire obligatoire.
 - **CSP** à élargir pour MapLibre : hôtes CARTO (style, tuiles, sprites, glyphes) dans `connect-src`
