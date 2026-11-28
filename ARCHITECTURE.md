@@ -1105,8 +1105,8 @@ $DC build                                      # api + caddy (fronts compris)
 $DC up -d db
 $DC run --rm api npm run migration:run:prod    # à chaque déploiement, avant up (D65)
 $DC up -d
-$DC run --rm -it api node dist/cli/create-staff-account.js   # premier compte staff (TOTP)
-$DC run --rm -it api node dist/cli/reset-password.js         # idem reset-totp.js
+$DC run --rm -it api node dist/cli/create-staff-account.js admin <email>   # premier compte staff (TOTP)
+$DC run --rm -it api node dist/cli/reset-password.js <email>              # idem reset-totp.js
 $DC ps                                          # seul caddy a des ports
 $DC logs -f api
 ```
