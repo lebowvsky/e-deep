@@ -1,0 +1,89 @@
+# Production stack (ARCHITECTURE.md §12): caddy -> api -> db, on one VPS. Always run with the
+# environment file, from the repo root:
+#   docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml <command>
+# Only Caddy publishes ports: Docker writes its own iptables rules and bypasses ufw, so a
+# published db or api port would be reachable from the Internet whatever the firewall says (D64).
+# Each service gets only its own variables (no shared env_file: Caddy never sees the database
+# password, the API never sees the basic auth hash).
+name: e-deep-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    # SSD storage: with the default (4), the dive log list falls back to a Seq Scan (§11).
+    command: ['postgres', '-c', 'random_page_cost=1.1']
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in deploy/.env.prod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in deploy/.env.prod}
+    volumes:
+      # Postgres >= 18 images store data under /var/lib/postgresql/<major>/docker.
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging: *logging
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    # Built on the VPS for now; pulled from GHCR once the CI publishes it, with no other change.
+    image: ghcr.io/${GHCR_OWNER:-lebowvsky}/e-deep-api:${TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # One hop: Caddy. req.ip and req.protocol come from its X-Forwarded-* headers (D67).
+      TRUST_PROXY: 1
+      SESSION_COOKIE_SECURE: 'true'
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-false}
+      ALLOWED_ORIGINS: https://${WEB_DOMAIN:?Set WEB_DOMAIN},https://${ADMIN_DOMAIN:?Set ADMIN_DOMAIN}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:?Set TOTP_ENCRYPTION_KEY in deploy/.env.prod}
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_NAME: ${POSTGRES_DB}
+    logging: *logging
+
+  caddy:
+    build:
+      context: ..
+      dockerfile: deploy/caddy/Dockerfile
+    image: ghcr.io/${GHCR_OWNER:-lebowvsky}/e-deep-caddy:${TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN}
+      ADMIN_BASIC_AUTH_USER: ${ADMIN_BASIC_AUTH_USER:?Set ADMIN_BASIC_AUTH_USER in deploy/.env.prod}
+      ADMIN_BASIC_AUTH_HASH: ${ADMIN_BASIC_AUTH_HASH:?Set ADMIN_BASIC_AUTH_HASH in deploy/.env.prod}
+    volumes:
+      # Certificates and ACME account: kept across restarts (Let's Encrypt rate limits).
+      - caddy_data:/data
+      - caddy_config:/config
+    logging: *logging
+
+volumes:
+  db-data:
+  caddy_data:
+  caddy_config:

@@ -23,8 +23,8 @@ describe('parseApiBaseUrl', () => {
     },
   );
 
-  it.each(['', undefined])('refuses a missing value (%j)', (value) => {
-    expect(() => parseApiBaseUrl(value, origin)).toThrow(/is not defined/);
+  it.each(['', undefined])('defaults a missing value (%j) to /api on the front origin', (value) => {
+    expect(parseApiBaseUrl(value, origin)).toBe(`${origin}/api`);
   });
 
   it.each(['not a url', 'javascript:alert(1)', 'file:///etc/passwd', 'ftp://example.test/api'])(

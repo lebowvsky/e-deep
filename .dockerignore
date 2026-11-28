@@ -1,0 +1,23 @@
+# Build context of the production images (apps/api/Dockerfile, deploy/caddy/Dockerfile): the repo
+# root. Only sources and manifests go in; everything is installed and built inside the image.
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/.DS_Store
+
+# Secrets: no environment file ever enters an image (the examples are harmless).
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+.git
+.github
+.claude
+docs
+apps/*/.screenshots
+# Design handoff (screenshots, mockups): never imported by the code.
+apps/web/design
+# Future React Native app (docs/plans/mobile-foundations.md): not part of these images.
+apps/mobile

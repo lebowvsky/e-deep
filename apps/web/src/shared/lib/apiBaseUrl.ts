@@ -1,8 +1,11 @@
 const ENV_FILE_HINT = 'Copy apps/web/.env.example to apps/web/.env and set it.';
+/** The API path on the front's own origin (D34): the default, so no variable is needed at build. */
+export const DEFAULT_API_BASE_URL = '/api';
 const HTTP_PROTOCOLS: ReadonlySet<string> = new Set(['http:', 'https:']);
 
 /**
- * Validates `VITE_API_BASE_URL` and returns an absolute base URL for the API client.
+ * Validates `VITE_API_BASE_URL` and returns an absolute base URL for the API client. Missing or
+ * empty, it defaults to `DEFAULT_API_BASE_URL` (`/api`): production builds need no variable.
  *
  * The API is served on the front's own origin (D34): a relative path such as `/api` is
  * forwarded by the Vite proxy in dev and preview, and by the reverse proxy in production.
@@ -16,15 +19,13 @@ const HTTP_PROTOCOLS: ReadonlySet<string> = new Set(['http:', 'https:']);
  *
  * Error messages name the variable only, never its value (same rule as the API).
  *
- * @param value - Raw value of `VITE_API_BASE_URL`.
+ * @param value - Raw value of `VITE_API_BASE_URL` (optional).
  * @param origin - Origin the relative path is resolved against (`window.location.origin`).
  * @returns The absolute API base URL.
- * @throws Error when the value is missing, leaves the origin, or is not an http(s) URL.
+ * @throws Error when the value leaves the origin or is not an http(s) URL.
  */
-export function parseApiBaseUrl(value: string | undefined, origin: string): string {
-  if (!value) {
-    throw new Error(`VITE_API_BASE_URL is not defined. ${ENV_FILE_HINT}`);
-  }
+export function parseApiBaseUrl(raw: string | undefined, origin: string): string {
+  const value = raw === undefined || raw === '' ? DEFAULT_API_BASE_URL : raw;
   if (value.startsWith('/')) {
     const resolved = new URL(value, origin);
     if (resolved.origin !== new URL(origin).origin) {

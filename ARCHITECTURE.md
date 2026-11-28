@@ -89,7 +89,8 @@ e-deep/
 │   │   │                         + dive-contract.mapper.ts), accounts (compte, /me, onboarding, commandes),
 │   │   │                         auth (sessions, login, inscription, mots de passe, limitation, TOTP,
 │   │   │                         auth_events), consents (consentement santé)
-│   │   └── test/                 tests e2e (supertest), db/ (tests sur PostgreSQL réel)
+│   │   ├── test/                 tests e2e (supertest), db/ (tests sur PostgreSQL réel)
+│   │   └── Dockerfile            image de prod (multi-stage, pnpm deploy --prod, utilisateur node ; §12)
 │   ├── web/                      React 19 + Vite 8 + SCSS modules (design system DiveLog)
 │   │   ├── CLAUDE.md             règles du design system pour les agents
 │   │   ├── design/               handoff : README (spec), screenshots/, mockups/ (lecture seule)
@@ -126,7 +127,10 @@ e-deep/
 ├── packages/
 │   ├── shared/                   @e-deep/shared : types des contrats d'API
 │   └── tsconfig/                 @e-deep/tsconfig : base.json, react.json, nest.json
+├── deploy/                       prod (§12) : docker-compose.prod.yml (caddy + api + db), Caddyfile,
+│                                 caddy/Dockerfile (build de web et admin servis par Caddy), .env.prod.example
 ├── .github/                      workflows/ci.yml (CI), actions/setup, dependabot.yml
+├── .dockerignore                 contexte des images de prod (ni node_modules, ni dist, ni .env, ni design/)
 ├── .gitattributes                *.txt text eol=lf (liste des mots de passe compromis, comparée par SHA-256)
 ├── docker-compose.yml            PostgreSQL 18 de dev
 ├── eslint.config.js              ESLint flat config unique (toutes les apps)
@@ -145,6 +149,7 @@ Versions vérifiées le 2026-11-06. Node **26 LTS** (`.nvmrc`), pnpm **12.18** (
 | `apps/web`   | React 19.3, Vite 8 (Rolldown), @vitejs/plugin-react 6, sass-embedded, Geist via fontsource, React Router 8 (data mode), TanStack Query 5.107 (D24), Vitest 5 + Testing Library (+ user-event) + jsdom, Playwright (captures)                                                       |
 | `apps/admin` | Pareil que web pour React/Vite/tests, plus Tailwind 4.3 (`@tailwindcss/vite`) et shadcn/ui (CLI 4.23, base Radix, preset Nova), React Router 8 (data mode, D42), sans TanStack Query                                                                                               |
 | Infra dev    | PostgreSQL 18 (`postgres:18-alpine`) via docker compose                                                                                                                                                                                                                            |
+| Infra prod   | Docker Compose sur un VPS : Caddy 2.11 (TLS, proxy, statique), image de l'api sur `node:26-alpine`, PostgreSQL 18 (§12)                                                                                                                                                            |
 | CI           | GitHub Actions (`.github/workflows/ci.yml`) : format, lint et typecheck ; tests ; build et `check:public-bundle` ; `test:db` sur un PostgreSQL 18 jetable. Actions épinglées par SHA, mises à jour par Dependabot                                                                  |
 
 Ports de dev : API `3000`, web `5173`, admin `5174` (`strictPort`). Chaque front sert l'API sur sa
@@ -551,10 +556,13 @@ maintenant :
    versionnés (`.gitignore` : `.env*` sauf `*.example`). La DB de dev n'écoute que sur localhost.
    Mots de passe en Argon2id (D35) ; secrets TOTP chiffrés en AES-256-GCM (`TOTP_ENCRYPTION_KEY`,
    une clé par environnement, D42) ; le seed lit son mot de passe dans `SEED_PASSWORD`.
-10. **Limites connues** : au démarrage, en cas d'échec de connexion, `@nestjs/typeorm` logge la
-    stack de l'erreur (qui peut contenir hôte et port), et la CLI TypeORM force le log des requêtes
-    pendant `migration:*`. Aucune donnée de requête n'est concernée. À traiter avant la production,
-    par un logger personnalisé au boot.
+10. **Logs sans stack hors dev** (D68) : `LogSafeLogger` (`common/logging/`), passé à
+    `NestFactory.create`, retire toute stack des `error` et `fatal` hors `development` et `test` (un
+    `NODE_ENV` absent compte comme la production) et remplace un `Error` par son nom de classe. Le
+    log de `@nestjs/typeorm` à chaque échec de connexion (hôte et port dans la stack) et celui de
+    l'`ExceptionHandler` de Nest n'en gardent que le message ; un `bootstrap()` rejeté aussi. Limite
+    restante : la CLI TypeORM force le log des requêtes pendant `migration:*` (SQL des migrations
+    seulement, aucune donnée de requête).
 
 ## 10. Décisions
 
@@ -651,6 +659,22 @@ Décisions prises avec l'authentification (**2026-11-20**, livrées par les lots
 | D44 | **`DEV_AUTH_STUB` supprimé** (variable, validation, branche du garde) au lot 6b (2026-11-26). Les tests sans base remplacent `SessionService` par un faux. Le seed crée de vrais comptes (`@example.test`, mot de passe lu dans `SEED_PASSWORD`, sans valeur par défaut). Le staff est créé par la commande `account:create-staff`. **`NODE_ENV` devient obligatoire** (lot 0).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Supprime le risque d'un `NODE_ENV` oublié qui accepterait le stub (§11). Aucun secret dans le dépôt.                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | D45 | **Accueil public** (spec `design/pages/accueil.md`, captures 50 à 53) : une page publique de présentation avec la carte d'authentification dans le hero (≥ 1024 px), des écrans dédiés `/login` et `/signup` en dessous. L'accueil **n'importe aucun code de l'app connectée** (routes de l'app chargées à la demande ; vérifié par `pnpm --filter web run check:public-bundle`, en CI) ; aperçu produit en images WebP dans `public/marketing/` ; promesses pilotées par `features.offline`, `features.signup` et `privacy.copy` ; méta SEO et Open Graph, sans pré-rendu.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Le premier écran vu par un visiteur doit rester léger (éco-conception) et ne rien promettre que le produit ne livre pas.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
+Décisions prises pour la mise en ligne de la bêta fermée (**2026-11-28**). Détail : §12. D46 à
+D60 sont réservées au plan mobile (`docs/plans/mobile-foundations.md`).
+
+| #   | Décision                                                                                                                                                                                                                                                                                                                        | Raison                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D61 | **Caddy** est le reverse proxy **et** le serveur des fichiers statiques de la prod (`deploy/Caddyfile`, image `caddy:2.11-alpine`).                                                                                                                                                                                             | HTTPS automatique (Let's Encrypt, renouvellement, HTTP/3) sans certbot ni cron, et une configuration de quelques dizaines de lignes. Un seul processus pour le TLS, le proxy, la compression et les en-têtes.                                                                                                                                                                           |
+| D62 | **Fronts sans conteneur Node** : web et admin sont construits dans un stage de `deploy/caddy/Dockerfile`, et seuls leurs `dist/` sont copiés dans l'image Caddy (`/srv/web`, `/srv/admin`).                                                                                                                                     | Éco-conception : deux SPA statiques n'ont besoin d'aucun runtime. Une image de 69 Mo, aucun processus Node de plus à surveiller.                                                                                                                                                                                                                                                        |
+| D63 | **Même origine en prod** : `/api/*` est proxifié vers `api:3000` sur le domaine web **et** sur le domaine admin, chemin inchangé (préfixe global `api` conservé). Aucun CORS ; `ALLOWED_ORIGINS` vaut `https://${WEB_DOMAIN},https://${ADMIN_DOMAIN}`. Les fronts utilisent `/api` par défaut, sans variable `VITE_*` au build. | Prolonge D34 : cookies `__Host-` propres à chaque domaine, `SameSite=Strict` sans exception, aucun en-tête CORS à maintenir. Pas de réécriture de chemin : dev (proxy Vite) et prod se comportent de la même façon.                                                                                                                                                                     |
+| D64 | **Seul Caddy publie des ports** (80, 443, 443/udp). `api` et `db` n'ont pas de `ports:` et ne sont joignables que sur le réseau du compose.                                                                                                                                                                                     | Docker écrit ses propres règles iptables et contourne ufw : un port publié serait exposé à Internet quoi que dise le pare-feu.                                                                                                                                                                                                                                                          |
+| D65 | **Migrations de prod sans build** : `migration:run:prod` lance la CLI TypeORM (dépendance de prod) sur `dist/database/data-source.js`, par `docker compose … run --rm api npm run migration:run:prod`. C'est une étape explicite du déploiement (`migrationsRun: false` reste la règle).                                        | L'image ne contient ni sources ni `nest build`. npm est livré avec l'image Node : pnpm reste absent du runtime, et le script de `package.json` reste la seule définition de la commande.                                                                                                                                                                                                |
+| D66 | **pnpm sans corepack** dans les images : `npm install -g` de la valeur exacte de `packageManager` (lue par `node -p`), `pnpm fetch` puis `install --offline --frozen-lockfile` filtré, et `pnpm deploy --prod` pour l'api (`files: ["dist", "!dist/**/*.map"]`).                                                                | Corepack n'est plus livré avec Node ≥ 25. Une seule source de version. `fetch` met les paquets en cache sur le seul lockfile. L'api n'a aucune dépendance workspace de prod (`@e-deep/shared` = types effacés au build) : `deploy` fonctionne sans `injectWorkspacePackages`. Seul `deploy` reste en ligne, car il revérifie la politique supply-chain sur les métadonnées du registre. |
+| D67 | **`trust proxy` = 1** en prod (`TRUST_PROXY=1`, Caddy étant le seul saut).                                                                                                                                                                                                                                                      | `req.ip` (limitation par IP, D35) et `req.protocol` viennent du `X-Forwarded-*` de Caddy, qui ignore celui du client ; un nombre de sauts exact empêche un client de choisir son IP.                                                                                                                                                                                                    |
+| D68 | **`LogSafeLogger`** passé à `NestFactory.create` : aucune stack dans les logs hors `development` et `test` (§9.10).                                                                                                                                                                                                             | Le log de `@nestjs/typeorm` à l'échec de connexion contient l'hôte et le port de la base dans sa stack. Un `NODE_ENV` inconnu compte comme la production (fail-safe).                                                                                                                                                                                                                   |
+| D69 | **Basic auth Caddy devant tout le domaine admin** pendant la bêta, API comprise (hash bcrypt fourni par l'environnement), en plus de la connexion staff et du TOTP. L'en-tête `Authorization` est retiré avant le proxy. L'allowlist `remote_ip` est l'alternative documentée.                                                  | Défense en profondeur : le back-office n'est même pas atteignable sans un premier secret, et aucune surface de l'API admin n'est exposée aux scanners. Les identifiants basic n'atteignent jamais l'API.                                                                                                                                                                                |
+| D70 | **Compose de prod** : un seul `deploy/.env.prod` (interpolation par `--env-file`), un bloc `environment:` **par service** avec ses seules variables, et chaque service buildable a à la fois `build:` et `image: ghcr.io/…:${TAG:-latest}`.                                                                                     | Moindre privilège : Caddy ne voit pas le mot de passe de la base, l'API ne voit pas le hash basic. Les mêmes fichiers servent au build sur le VPS aujourd'hui et au pull depuis GHCR demain.                                                                                                                                                                                            |
+
 ## 11. Points ouverts
 
 Issus de la revue de l'initialisation (2026-11-06). Ils ne sont pas bloquants.
@@ -661,12 +685,12 @@ Issus de la revue de l'initialisation (2026-11-06). Ils ne sont pas bloquants.
   live, donc le premier résultat peut ne pas être annoncé. Il faut garder une région live
   persistante autour de la limite Suspense. _Résolu pour `/dives`_ (région persistante dans
   `DivesPage`) ; reste ouvert pour `HealthPanel`.
-- **API avant la prod** :
-  - ~~désactiver `X-Powered-By`~~ : fait (`configure-app.ts`, lot 0 de l'authentification) ;
-  - option `ssl` pour PostgreSQL ;
-  - neutraliser le message de `BadRequestException` sur JSON malformé (il cite un fragment du
-    corps) ;
-  - logger de boot sans stack (voir §9.10).
+- ~~**API avant la prod**~~ : soldé à la mise en ligne (2026-11-28, §12). `X-Powered-By` désactivé
+  (`configure-app.ts`, test `health.e2e-spec.ts`) et JSON malformé neutralisé
+  (`400 validation-failed`, `_body: ['malformed']`, sans extrait du corps : `raw-middleware-errors.ts`,
+  test `auth.e2e-spec.ts`) étaient déjà livrés ; logger sans stack : `LogSafeLogger` (D68, §9.10).
+  L'option `ssl` de PostgreSQL est sans objet tant que la base reste sur le réseau Docker interne du
+  même hôte (à rouvrir pour une base managée ou distante).
 - **Tests à ajouter** : ~~rejet CORS d'une origine non autorisée~~ (plus de CORS depuis D34 ; le
   refus d'une origine est couvert par `origin.guard.e2e-spec.ts`) ; timeout d'`apiClient` côté admin
   (`validateEnvironment` et le timeout du client web sont couverts depuis le carnet).
@@ -704,10 +728,11 @@ Issus du dashboard (phases 1 à 5, 2026-11-07) :
 
 Issus du carnet « Mes plongées » (revue et audits, 2026-11-13) :
 
-- **API avant la prod** (suite) :
-  - compression HTTP absente : `GET /api/dives` fait 56 kB bruts pour 127 plongées (~4 kB en
-    gzip, ~2,2 MB bruts au plafond) ; à faire au reverse proxy, sinon `compression` ;
-  - régler `random_page_cost≈1.1` (SSD) : avec la valeur par défaut, la liste fait un Seq Scan de
+- ~~**API avant la prod** (suite)~~ : soldé à la mise en ligne (§12) :
+  - ~~compression HTTP absente~~ : `encode zstd gzip` de Caddy, API comprise (`GET /api/dives` :
+    56 kB bruts pour 127 plongées, ~4 kB en gzip, ~2,2 MB bruts au plafond) ;
+  - ~~régler `random_page_cost≈1.1` (SSD)~~ : `command: postgres -c random_page_cost=1.1` dans
+    `deploy/docker-compose.prod.yml`. Mesure d'origine : avec la valeur par défaut, la liste fait un Seq Scan de
     `dive_events` + Hash Join (36–40 ms pour 4 900 plongées dans une table de 204 000 lignes,
     13 ms avec le réglage). L'index `(creator_id, started_at DESC, id DESC)` a été mesuré : il
     n'est **pas** utilisé, il n'est donc pas créé.
@@ -1016,3 +1041,96 @@ Issus du cadrage de l'app mobile (2026-11-27) :
   reportées au §10 et dans `docs/data-model/decisions.md` au dernier lot. Il amende D13, D22, D25,
   D33, D34, D37, D42 et §6 ; il relève que les conditions CARTO (clé obligatoire, cache de 30 jours
   au plus) concernent déjà le web.
+
+Issus de la mise en ligne (2026-11-28) :
+
+- **CI + GHCR** : construire et publier `e-deep-api` et `e-deep-caddy` en CI (tag = SHA du commit),
+  puis `docker compose pull` sur le VPS au lieu d'y builder. Le build des fronts consomme ~950 Mo de RAM
+  (pic mesuré, l'api ~400 Mo) : sur un VPS de 1 Go, prévoir du swap ou builder en CI. Ajouter
+  l'écosystème `docker` à Dependabot (`node:26-alpine`, `caddy:2.11-alpine`, `postgres:18-alpine`).
+- **`TAG` à épingler** : le repli `latest` du compose n'est qu'un défaut ; chaque déploiement fixe
+  `TAG` au commit déployé (retour arrière = `TAG` précédent).
+- **Sauvegardes** : aucune. `pg_dump` planifié vers un stockage externe (chiffré, hors du VPS) et
+  restauration testée, avant d'y mettre de vraies plongées.
+- **Durcissement du VPS** : SSH par clé seulement, ufw (22, 80, 443), mises à jour automatiques,
+  utilisateur non-root dans le groupe `docker` (équivalent root : à réserver à l'exploitant).
+- **Limites mémoire** : pas de `mem_limit` par service ; à fixer une fois la taille du VPS choisie
+  (au repos : api ~56 Mio, Caddy ~67 Mio, PostgreSQL ~33 Mio).
+- **Basic auth admin** : Caddy ne limite pas les essais ; seul le coût de bcrypt les ralentit. Mot de
+  passe long et aléatoire obligatoire.
+- **CSP** à élargir pour MapLibre : hôtes CARTO (style, tuiles, sprites, glyphes) dans `connect-src`
+  et `img-src`, et `worker-src blob:`. Aujourd'hui, la carte ne fonctionne pas en prod.
+  HSTS sans `includeSubDomains` ni `preload` tant que le domaine n'est pas choisi.
+- **Auth mobile** : la session est un cookie `__Host-` (D33, D34), inutilisable par React Native. Il
+  faudra une audience `mobile` en `Authorization: Bearer` (token opaque, `expo-secure-store`), exemptée
+  de l'`OriginGuard` puisque sans cookie, comme prévu par le plan mobile. Le domaine admin retire
+  `Authorization` : l'app mobile doit viser le domaine web.
+- **Test local** : en `localhost`, Caddy (non-root) logge l'échec de l'installation de sa CA dans le
+  magasin du conteneur, sans effet ; `curl -k` ou un navigateur qui ignore le certificat.
+
+## 12. Déploiement
+
+Bêta fermée sur un VPS, un seul hôte, Docker Compose (D61 à D70). Fichiers : `deploy/` et
+`apps/api/Dockerfile` ; le `docker-compose.yml` racine reste l'infra de dev.
+
+```
+   Internet ──► :80 / :443 (tcp+udp) ──► caddy  (seul service qui publie des ports, D64)
+                                         │  {$WEB_DOMAIN}    /srv/web    (SPA plongeur)
+                                         │  {$ADMIN_DOMAIN}  /srv/admin  (SPA admin, basic auth, D69)
+                                         │  /api/* sur les deux domaines (même origine, D63)
+                                         ▼
+                                     api:3000   NestJS (node dist/main.js, utilisateur node)
+                                         │
+                                         ▼
+                                     db:5432    PostgreSQL 18 (volume db-data)
+```
+
+- **Même origine** : chaque front appelle `/api` sur son propre domaine. Caddy proxifie `/api/*` vers
+  `api:3000` sans réécrire le chemin. Pas de CORS ; l'`OriginGuard` accepte les deux origines HTTPS.
+- **Statique** : `try_files {path} /index.html` (rechargement direct de `/dashboard`), `/assets/*`
+  en `immutable` (fichiers hachés, 404 s'ils manquent), le reste en `no-cache`, `encode zstd gzip`.
+  En-têtes : HSTS, `nosniff`, `Referrer-Policy`, CSP `default-src 'self'` (à élargir pour MapLibre,
+  §11), sans `Server` ni `X-Powered-By`.
+- **Ports** : seul Caddy en publie. Docker contourne ufw, donc ni `api` ni `db` n'ont de `ports:`
+  (`docker compose ps` le vérifie).
+- **Images** : `apps/api/Dockerfile` (236 Mo) et `deploy/caddy/Dockerfile` (69 Mo), contexte = racine
+  (`.dockerignore`). Chaque service a `build:` et `image: ghcr.io/${GHCR_OWNER}/e-deep-<service>:${TAG}`.
+
+Commandes, depuis la racine du dépôt (`DC` = `docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml`) :
+
+```bash
+cp deploy/.env.prod.example deploy/.env.prod && chmod 600 deploy/.env.prod   # puis le remplir
+export TAG=$(git rev-parse --short HEAD)       # ou TAG= dans .env.prod
+$DC build                                      # api + caddy (fronts compris)
+$DC up -d db
+$DC run --rm api npm run migration:run:prod    # à chaque déploiement, avant up (D65)
+$DC up -d
+$DC run --rm -it api node dist/cli/create-staff-account.js   # premier compte staff (TOTP)
+$DC run --rm -it api node dist/cli/reset-password.js         # idem reset-totp.js
+$DC ps                                          # seul caddy a des ports
+$DC logs -f api
+```
+
+Variables (`deploy/.env.prod`, jamais versionné ; chaque service ne reçoit que les siennes, D70) :
+
+| Variable                                            | Service    | Rôle                                                                                                 |
+| --------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------- |
+| `TAG`, `GHCR_OWNER`                                 | compose    | Tag et propriétaire des images (`latest` et `lebowvsky` par défaut).                                 |
+| `WEB_DOMAIN`, `ADMIN_DOMAIN`                        | caddy, api | Domaines nus ; `localhost` et `admin.localhost` pour un test local. L'api en tire `ALLOWED_ORIGINS`. |
+| `ADMIN_BASIC_AUTH_USER`, `ADMIN_BASIC_AUTH_HASH`    | caddy      | Barrière admin (D69) ; hash par `caddy hash-password`, entre apostrophes.                            |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | db, api    | Base, reprise par l'api en `DATABASE_*` (`DATABASE_HOST=db`).                                        |
+| `TOTP_ENCRYPTION_KEY`                               | api        | Obligatoire en prod (comptes staff, D42).                                                            |
+| `REGISTRATION_ENABLED`                              | api        | `false` pendant la bêta (D39).                                                                       |
+
+Fixées par le compose pour l'api : `NODE_ENV=production`, `PORT=3000`, `TRUST_PROXY=1` (D67),
+`SESSION_COOKIE_SECURE=true`.
+
+**Barrière admin** : basic auth Caddy sur tout `{$ADMIN_DOMAIN}`, `/api/*` compris, avant la
+connexion staff et le TOTP. L'en-tête `Authorization` est retiré avant l'API. L'alternative est une
+allowlist `remote_ip` (commentée dans le `Caddyfile`).
+
+**Vérifié en local le 2026-11-28** : migrations appliquées par `migration:run:prod` ;
+`/api/health` → `ok` via Caddy ; `/dashboard` rechargé directement → `index.html` ; pas
+d'`X-Powered-By` ; JSON malformé → `400` générique ; admin → `401` sans identifiants basic, `200`
+avec ; HTTP → `308` vers HTTPS ; aucune violation de CSP dans la console (accueil, `/login`, admin) ;
+seul caddy publie des ports.
