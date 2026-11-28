@@ -1,0 +1,64 @@
+# Reverse proxy and static server of the production stack (ARCHITECTURE.md §12, D61 to D70).
+# Each front is served with the API on its own origin: /api/* goes to the API container with its
+# path untouched (Nest global prefix `api`), everything else is the built SPA. No CORS (D34).
+# Domains come from the environment: `localhost` / `admin.localhost` to test locally (Caddy's
+# internal CA), the real domains in production (automatic Let's Encrypt certificates).
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Strict: the fronts load nothing from elsewhere (self-hosted fonts, D16). MapLibre will need
+		# it widened: the CARTO tile and style hosts in connect-src / img-src, and `worker-src blob:`
+		# for its worker (see ARCHITECTURE.md §11).
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		-Server
+	}
+}
+
+# One front and its API: `import front <directory of the built SPA>`.
+(front) {
+	encode zstd gzip
+	import security_headers
+
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	# Hashed by Vite: cached forever. A missing asset is a 404, never the SPA shell.
+	handle /assets/* {
+		root * {args[0]}
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Any other path is a client route (direct load of /dashboard…): index.html, revalidated each
+	# time so that a deployment is picked up at once.
+	handle {
+		root * {args[0]}
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+{$WEB_DOMAIN} {
+	import front /srv/web
+}
+
+{$ADMIN_DOMAIN} {
+	# Closed beta: a second barrier in front of the whole back office, its API included, on top of
+	# the staff sign-in and TOTP (D69). Hash: `caddy hash-password` (bcrypt), see .env.prod.example.
+	basic_auth {
+		{$ADMIN_BASIC_AUTH_USER} {$ADMIN_BASIC_AUTH_HASH}
+	}
+	# The basic credentials stop here: the API never receives them.
+	request_header -Authorization
+
+	# Alternative (fixed IPs only): an allowlist instead of, or on top of, basic_auth.
+	# @outside not remote_ip 203.0.113.7/32 2001:db8::/64
+	# respond @outside 403
+
+	import front /srv/admin
+}
